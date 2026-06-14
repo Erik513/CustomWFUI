@@ -755,11 +755,17 @@ namespace CustomWFUI.Controls
                 Math.Max(0, color.B - amount));
         }
 
-        protected override void OnPaint(PaintEventArgs e)
+        protected override void WndProc(ref Message m)
         {
-            base.OnPaint(e);
+            base.WndProc(ref m);
 
-            DrawDragIndicator(e.Graphics);
+            if (m.Msg == 0x0F)
+            {
+                using (Graphics graphics = CreateGraphics())
+                {
+                    DrawDragIndicator(graphics);
+                }
+            }
         }
     }
 }
