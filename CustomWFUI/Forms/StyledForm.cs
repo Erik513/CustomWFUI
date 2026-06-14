@@ -6,66 +6,6 @@ using CustomWFUI.Helpers;
 
 namespace CustomWFUI.Forms
 {
-
-    public enum StyledFormType
-    {
-        Standard,
-        Dialog
-    }
-    public class StyledFormOptions
-    {
-        public StyledFormType Type { get; set; } = StyledFormType.Standard;
-
-        public bool Borderless { get; set; } = true;
-        public bool Resizable { get; set; } = true;
-
-        public string Title { get; set; } = "";
-        public ContentAlignment TitleTextAlign { get; set; } =
-            ContentAlignment.MiddleCenter;
-
-        public Image Icon { get; set; } = null;
-
-        public bool ShowMinimizeButton { get; set; } = true;
-        public bool ShowMaximizeButton { get; set; } = true;
-        public bool ShowCloseButton { get; set; } = true;
-
-        public bool AllowWindowSnapAndMaximize { get; set; } = true;
-
-        public Color? TitleBarBackColor { get; set; } = null;
-
-        public static StyledFormOptions CreateStandard(string title = "", Image icon = null)
-        {
-            return new StyledFormOptions
-            {
-                Type = StyledFormType.Standard,
-                Borderless = true,
-                Resizable = true,
-                Title = title,
-                Icon = icon,
-                ShowMinimizeButton = true,
-                ShowMaximizeButton = true,
-                ShowCloseButton = true,
-                AllowWindowSnapAndMaximize = true
-            };
-        }
-
-        public static StyledFormOptions CreateDialog(string title = "", Image icon = null)
-        {
-            return new StyledFormOptions
-            {
-                Type = StyledFormType.Dialog,
-                Borderless = true,
-                Resizable = false,
-                Title = title,
-                Icon = icon,
-                ShowMinimizeButton = false,
-                ShowMaximizeButton = false,
-                ShowCloseButton = true,
-                AllowWindowSnapAndMaximize = false
-            };
-        }
-    }
-
     public class StyledForm : Form
     {
         private readonly TitleBarControl _titleBar;
@@ -105,7 +45,11 @@ namespace CustomWFUI.Forms
 
             DoubleBuffered = true;
             BackColor = UIColors.BackgroundBlack;
-            Padding = new Padding(options.Resizable ? 2 : 0);
+            
+            int borderSize = 0;
+            if (options.Borderless)
+                borderSize = options.Resizable ? 2 : 1;
+            Padding = new Padding(borderSize);
 
             _titleBar = new TitleBarControl(
                 options.Icon,
@@ -147,6 +91,70 @@ namespace CustomWFUI.Forms
 
             if (_resizeHandler != null)
                 _resizeHandler.TryHandleMessage(ref m);
+        }
+    }
+
+    public enum StyledFormType
+    {
+        Standard,
+        Dialog
+    }
+    public class StyledFormOptions
+    {
+        public StyledFormType Type { get; set; } = StyledFormType.Standard;
+
+        public bool Borderless { get; set; } = true;
+        public int BorderSize { get; set; } = 1;
+        public bool Resizable { get; set; } = true;
+
+        public string Title { get; set; } = "";
+        public ContentAlignment TitleTextAlign { get; set; } =
+            ContentAlignment.MiddleCenter;
+
+        public Image Icon { get; set; } = null;
+
+        public bool ShowMinimizeButton { get; set; } = true;
+        public bool ShowMaximizeButton { get; set; } = true;
+        public bool ShowCloseButton { get; set; } = true;
+
+        public bool AllowWindowSnapAndMaximize { get; set; } = true;
+
+        public Color? TitleBarBackColor { get; set; } = UIStyles.Colors.BackgroundBlack;
+
+        public static StyledFormOptions CreateStandard(string title = "", ContentAlignment titleTextAlign = ContentAlignment.MiddleCenter, Color? backColor = null, Image icon = null)
+        {
+            return new StyledFormOptions
+            {
+                Type = StyledFormType.Standard,
+                Borderless = true,
+                Resizable = true,
+                Title = title,
+                TitleTextAlign = titleTextAlign,
+                TitleBarBackColor = backColor,
+                Icon = icon,
+                ShowMinimizeButton = true,
+                ShowMaximizeButton = true,
+                ShowCloseButton = true,
+                AllowWindowSnapAndMaximize = true
+            };
+        }
+
+        public static StyledFormOptions CreateDialog(string title = "", ContentAlignment titleTextAlign = ContentAlignment.MiddleCenter, Color? backColor = null, Image icon = null)
+        {
+            return new StyledFormOptions
+            {
+                Type = StyledFormType.Dialog,
+                Borderless = true,
+                Resizable = false,
+                Title = title,
+                TitleTextAlign = titleTextAlign,
+                TitleBarBackColor = backColor,
+                Icon = icon,
+                ShowMinimizeButton = false,
+                ShowMaximizeButton = false,
+                ShowCloseButton = true,
+                AllowWindowSnapAndMaximize = false
+            };
         }
     }
 }

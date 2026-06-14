@@ -34,6 +34,13 @@ namespace CustomWFUI.Factories
                 DockStyle.None);
         }
 
+        public static Panel CreatePrimary()
+        {
+            return CreatePanel(
+                UIColors.PrimaryDarkDark,
+                DockStyle.Fill);
+        }
+
         private static Panel CreatePanel(
             Color backColor,
             DockStyle dock)

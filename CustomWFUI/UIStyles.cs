@@ -224,6 +224,10 @@ namespace CustomWFUI
             {
                 return UIPanelFactory.CreateTransparent();
             }
+            public static Panel CreatePrimary()
+            {
+                return UIPanelFactory.CreatePrimary();
+            }
         }
 
         public static class CheckBoxes
@@ -348,6 +352,22 @@ namespace CustomWFUI
             public static StyledPropertyTable Create()
             {
                 return UIStyledPropertyTableFactory.Create();
+            }
+        }
+
+        public static class NumericUpDowns
+        {
+            public static NumericUpDown CreateStandard(
+                decimal minimum = 0,
+                decimal maximum = 100,
+                decimal increment = 1,
+                decimal value = 0)
+            {
+                return UINumericUpDownFactory.CreateStandard(
+                    minimum,
+                    maximum,
+                    increment,
+                    value);
             }
         }
     }

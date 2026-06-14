@@ -179,6 +179,7 @@ namespace CustomWFUI.Controls
 
         private void ConfigureControl()
         {
+            DoubleBuffered = true;
             BackColor = Color.Transparent;
             Margin = new Padding(0);
             Padding = new Padding(0);

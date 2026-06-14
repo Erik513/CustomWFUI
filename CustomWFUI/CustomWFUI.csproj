@@ -44,9 +44,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Controls\UIColumn.cs" />
+    <Compile Include="Factories\NumericUpDowns.cs" />
     <Compile Include="Helpers\TextDragDropHelper.cs" />
     <Compile Include="Factories\UITitleBarFactory.cs" />
-    <Compile Include="Forms\StyledForm.cs" />
+    <Compile Include="Forms\StyledForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Helpers\BorderlessResizeHandler.cs" />
     <Compile Include="Helpers\FormDragHandle.cs" />
     <Compile Include="Factories\UIButtonFactory.cs" />

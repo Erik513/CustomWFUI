@@ -309,7 +309,14 @@ namespace CustomWFUI.Controls
 
             if (control is Button)
             {
-                control.Dock = DockStyle.Fill;
+                control.Dock = DockStyle.None;
+                control.Anchor = AnchorStyles.Left;
+                control.Margin = new Padding(0);
+                return;
+            }
+            if (control is NumericUpDown)
+            {
+                control.Dock = DockStyle.Left;
                 control.Margin = new Padding(0);
                 return;
             }

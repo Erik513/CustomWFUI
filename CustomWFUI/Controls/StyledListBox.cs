@@ -318,19 +318,6 @@ namespace CustomWFUI.Controls
             base.OnDrawItem(e);
         }
 
-        protected override void WndProc(ref Message m)
-        {
-            base.WndProc(ref m);
-
-            if (m.Msg == 0x0F)
-            {
-                using (Graphics graphics = CreateGraphics())
-                {
-                    DrawDragIndicator(graphics);
-                }
-            }
-        }
-
         public void ClearSelected()
         {
             if (SelectedIndex == -1)
@@ -766,6 +753,13 @@ namespace CustomWFUI.Controls
                 Math.Max(0, color.R - amount),
                 Math.Max(0, color.G - amount),
                 Math.Max(0, color.B - amount));
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+
+            DrawDragIndicator(e.Graphics);
         }
     }
 }

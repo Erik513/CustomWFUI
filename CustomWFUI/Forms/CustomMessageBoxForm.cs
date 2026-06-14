@@ -24,6 +24,13 @@ namespace CustomWFUI.Forms
         Success
     }
 
+    public enum CustomMessageBoxSize
+    {
+        Small,
+        Medium,
+        Large
+    }
+
     public static class CustomMessageBox
     {
         public static DialogResult Show(
@@ -31,9 +38,15 @@ namespace CustomWFUI.Forms
             string title = "Hinweis",
             CustomMessageBoxButtons buttons = CustomMessageBoxButtons.OK,
             CustomMessageBoxIcon icon = CustomMessageBoxIcon.Info,
-            Form owner = null)
+            Form owner = null,
+            CustomMessageBoxSize size = CustomMessageBoxSize.Medium)
         {
-            CustomMessageBoxForm form = new CustomMessageBoxForm(message, title, buttons, icon);
+            CustomMessageBoxForm form = new CustomMessageBoxForm(
+                message,
+                title,
+                buttons,
+                icon,
+                size);
 
             try
             {
@@ -51,25 +64,36 @@ namespace CustomWFUI.Forms
 
     public class CustomMessageBoxForm : StyledForm
     {
-        private const int FormWidth = 500;
-        private const int FormHeight = 220;
-        private const int ButtonPanelHeight = 70;
-        private const int ButtonColumnWidth = 125;
-        private const int DialogButtonWidth = 120;
-        private const int DialogButtonHeight = 35;
-
         private readonly string _message;
         private readonly CustomMessageBoxButtons _buttons;
+        private readonly CustomMessageBoxSize _size;
+
+        private sealed class MessageBoxPreset
+        {
+            public Size FormSize { get; set; }
+            public int ButtonPanelHeight { get; set; }
+            public int ButtonColumnWidth { get; set; }
+            public int ButtonWidth { get; set; }
+            public int ButtonHeight { get; set; }
+            public Padding ContentPadding { get; set; }
+            public Padding ButtonPanelPadding { get; set; }
+        }
 
         public CustomMessageBoxForm(
             string message,
             string title,
             CustomMessageBoxButtons buttons,
-            CustomMessageBoxIcon icon)
-            : base(StyledFormOptions.CreateDialog(title, GetTitleBarIcon(icon)))
+            CustomMessageBoxIcon icon,
+            CustomMessageBoxSize size = CustomMessageBoxSize.Medium)
+            : base(StyledFormOptions.CreateDialog(
+                title: title,
+                titleTextAlign: ContentAlignment.MiddleLeft,
+                backColor: UIStyles.Colors.BackgroundBlack,
+                icon: GetTitleBarIcon(icon)))
         {
             _message = message ?? "";
             _buttons = buttons;
+            _size = size;
 
             ConfigureForm();
             BuildLayout();
@@ -78,18 +102,61 @@ namespace CustomWFUI.Forms
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             EnsureDialogResult();
-
             base.OnFormClosing(e);
+        }
+
+        private MessageBoxPreset GetPreset()
+        {
+            switch (_size)
+            {
+                case CustomMessageBoxSize.Small:
+                    return new MessageBoxPreset
+                    {
+                        FormSize = new Size(380, 160),
+                        ButtonPanelHeight = 52,
+                        ButtonColumnWidth = 78,
+                        ButtonWidth = 72,
+                        ButtonHeight = 28,
+                        ContentPadding = new Padding(18, 12, 18, 8),
+                        ButtonPanelPadding = new Padding(8, 8, 18, 12)
+                    };
+
+                case CustomMessageBoxSize.Large:
+                    return new MessageBoxPreset
+                    {
+                        FormSize = new Size(700, 320),
+                        ButtonPanelHeight = 80,
+                        ButtonColumnWidth = 140,
+                        ButtonWidth = 130,
+                        ButtonHeight = 40,
+                        ContentPadding = new Padding(32, 26, 32, 14),
+                        ButtonPanelPadding = new Padding(12, 16, 32, 22)
+                    };
+
+                default:
+                    return new MessageBoxPreset
+                    {
+                        FormSize = new Size(500, 220),
+                        ButtonPanelHeight = 70,
+                        ButtonColumnWidth = 125,
+                        ButtonWidth = 120,
+                        ButtonHeight = 35,
+                        ContentPadding = new Padding(28, 20, 28, 10),
+                        ButtonPanelPadding = new Padding(12, 12, 28, 18)
+                    };
+            }
         }
 
         private void ConfigureForm()
         {
+            MessageBoxPreset preset = GetPreset();
+
             StartPosition = FormStartPosition.CenterParent;
             ShowInTaskbar = false;
 
-            Size = new Size(FormWidth, FormHeight);
-            MinimumSize = Size;
-            MaximumSize = Size;
+            Size = preset.FormSize;
+            MinimumSize = preset.FormSize;
+            MaximumSize = preset.FormSize;
         }
 
         private void BuildLayout()
@@ -108,6 +175,8 @@ namespace CustomWFUI.Forms
 
         private TableLayoutPanel CreateMainLayout()
         {
+            MessageBoxPreset preset = GetPreset();
+
             TableLayoutPanel layout = UITableLayoutPanelFactory.CreateStandard(1, 2);
 
             layout.Dock = DockStyle.Fill;
@@ -117,15 +186,17 @@ namespace CustomWFUI.Forms
 
             layout.RowStyles.Clear();
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, ButtonPanelHeight));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, preset.ButtonPanelHeight));
 
             return layout;
         }
 
         private Control CreateContentPanel()
         {
+            MessageBoxPreset preset = GetPreset();
+
             Panel panel = UIPanelFactory.CreateMedium();
-            panel.Padding = new Padding(28, 20, 28, 10);
+            panel.Padding = preset.ContentPadding;
 
             Label messageLabel = CreateMessageLabel();
 
@@ -150,11 +221,13 @@ namespace CustomWFUI.Forms
 
         private Control CreateButtonPanel()
         {
+            MessageBoxPreset preset = GetPreset();
+
             TableLayoutPanel buttonPanel = UITableLayoutPanelFactory.CreateStandard(1, 1);
 
             buttonPanel.Dock = DockStyle.Fill;
             buttonPanel.BackColor = UIColors.BackgroundMedium;
-            buttonPanel.Padding = new Padding(12, 12, 28, 18);
+            buttonPanel.Padding = preset.ButtonPanelPadding;
             buttonPanel.Margin = new Padding(0);
 
             AddButtonsToPanel(buttonPanel);
@@ -164,6 +237,7 @@ namespace CustomWFUI.Forms
 
         private void AddButtonsToPanel(TableLayoutPanel buttonPanel)
         {
+            MessageBoxPreset preset = GetPreset();
             DialogButtonInfo[] buttonInfos = GetButtons();
 
             buttonPanel.ColumnCount = buttonInfos.Length + 1;
@@ -175,9 +249,15 @@ namespace CustomWFUI.Forms
 
             for (int i = 0; i < buttonInfos.Length; i++)
             {
-                buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, ButtonColumnWidth));
+                buttonPanel.ColumnStyles.Add(
+                    new ColumnStyle(
+                        SizeType.Absolute,
+                        preset.ButtonColumnWidth));
 
-                Button button = CreateDialogButton(buttonInfos[i].Text, buttonInfos[i].Result);
+                Button button = CreateDialogButton(
+                    buttonInfos[i].Text,
+                    buttonInfos[i].Result);
+
                 buttonPanel.Controls.Add(button, i + 1, 0);
             }
         }
@@ -198,7 +278,11 @@ namespace CustomWFUI.Forms
 
         private Button CreateStyledButton(string text, DialogResult result)
         {
-            Size size = new Size(DialogButtonWidth, DialogButtonHeight);
+            MessageBoxPreset preset = GetPreset();
+
+            Size size = new Size(
+                preset.ButtonWidth,
+                preset.ButtonHeight);
 
             if (result == DialogResult.OK || result == DialogResult.Yes)
                 return UIButtonFactory.CreateGreen(text, "", size);
