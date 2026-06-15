@@ -1,8 +1,9 @@
-﻿using System;
+﻿using CustomWFUI.Styles;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 using System.Windows.Forms;
-using CustomWFUI.Styles;
 
 namespace CustomWFUI.Forms
 {
@@ -18,6 +19,12 @@ namespace CustomWFUI.Forms
         private readonly Label _textLabel;
         private readonly FlowLayoutPanel _layout;
 
+        private Timer _showDelayTimer;
+        private Control _pendingOwner;
+        private Point _pendingMouseScreenPosition;
+        private InfoPopupSection[] _pendingSections;
+        private string _lastSectionContentKey;
+
         public InfoPopupForm(string title = "")
         {
             ConfigureForm();
@@ -31,6 +38,10 @@ namespace CustomWFUI.Forms
 
             _layout.Controls.Add(_textLabel);
             Controls.Add(_layout);
+
+            _showDelayTimer = new Timer();
+            _showDelayTimer.Interval = 400;
+            _showDelayTimer.Tick += OnShowDelayTimerTick;
 
             Load += OnFormLoad;
             SizeChanged += OnFormSizeChanged;
@@ -54,18 +65,219 @@ namespace CustomWFUI.Forms
 
             BringToFront();
         }
-
-        protected override void Dispose(bool disposing)
+        private Point GetPopupLocation(Control owner)
         {
-            if (disposing && Region != null)
-            {
-                Region.Dispose();
-                Region = null;
-            }
+            Point location = owner.PointToScreen(
+                new Point(owner.Width + OwnerOffsetX, -Height + owner.Height + OwnerOffsetY));
 
-            base.Dispose(disposing);
+            Rectangle screen = Screen.FromControl(owner).WorkingArea;
+
+            if (location.Y < screen.Top + ScreenMargin)
+                location.Y = screen.Top + ScreenMargin;
+
+            if (location.X + Width > screen.Right)
+                location.X = screen.Right - Width - ScreenMargin;
+
+            if (location.X < screen.Left + ScreenMargin)
+                location.X = screen.Left + ScreenMargin;
+
+            if (location.Y + Height > screen.Bottom)
+                location.Y = screen.Bottom - Height - ScreenMargin;
+
+            return location;
         }
 
+        public void ShowInfoAtMouse(
+            string text,
+            Control owner,
+            Point mouseScreenPosition)
+        {
+            if (owner == null || owner.IsDisposed)
+                return;
+
+            _textLabel.Text =
+                string.IsNullOrWhiteSpace(text)
+                    ? "Keine"
+                    : text;
+
+            PerformLayout();
+
+            Location = GetPopupLocationNearMouse(
+                owner,
+                mouseScreenPosition);
+
+            if (!Visible)
+                Show(owner.FindForm());
+
+            BringToFront();
+        }
+        private Point GetPopupLocationNearMouse(Control owner, Point mouseScreenPosition)
+        {
+            Point result = new Point(mouseScreenPosition.X + 12, mouseScreenPosition.Y + 12);
+
+            Form ownerForm = owner.FindForm();
+
+            Rectangle bounds = ownerForm != null
+                ? ownerForm.Bounds
+                : Screen.FromControl(owner).WorkingArea;
+
+            if (result.X + Width > bounds.Right)
+                result.X = mouseScreenPosition.X - Width - 12;
+
+            if (result.Y + Height > bounds.Bottom)
+                result.Y = mouseScreenPosition.Y - Height - 12;
+
+            if (result.X < bounds.Left)
+                result.X = bounds.Left + 10;
+
+            if (result.Y < bounds.Top)
+                result.Y = bounds.Top + 10;
+
+            return result;
+        }
+
+        public void ShowSections(Control owner, params InfoPopupSection[] sections)
+        {
+            if (owner == null || owner.IsDisposed)
+                return;
+
+            _layout.Controls.Clear();
+
+            foreach (InfoPopupSection section in sections)
+            {
+                if (!string.IsNullOrWhiteSpace(section.Header))
+                {
+                    Label headerLabel = CreateSectionHeaderLabel(section.Header);
+                    _layout.Controls.Add(headerLabel);
+                }
+
+                if (!string.IsNullOrWhiteSpace(section.Text))
+                {
+                    Label textLabel = CreateSectionTextLabel(section.Text);
+                    _layout.Controls.Add(textLabel);
+                }
+            }
+
+            PerformLayout();
+            Location = GetPopupLocation(owner);
+
+            if (!Visible)
+                Show(owner.FindForm());
+
+            BringToFront();
+        }
+        public void ShowSectionsAtMouseDelayed(Control owner, Point mouseScreenPosition, params InfoPopupSection[] sections)
+        {
+            if (owner == null || owner.IsDisposed)
+                return;
+
+            _pendingOwner = owner;
+            _pendingMouseScreenPosition = mouseScreenPosition;
+            _pendingSections = sections;
+
+            _showDelayTimer.Stop();
+            _showDelayTimer.Start();
+        }
+
+        public void CancelPendingShow()
+        {
+            if (_showDelayTimer != null)
+                _showDelayTimer.Stop();
+
+            _pendingOwner = null;
+            _pendingSections = null;
+        }
+
+        private void OnShowDelayTimerTick(object sender, EventArgs e)
+        {
+            _showDelayTimer.Stop();
+
+            if (_pendingOwner == null || _pendingOwner.IsDisposed || _pendingSections == null)
+                return;
+
+            ShowSectionsAtMouse(_pendingOwner, _pendingMouseScreenPosition, _pendingSections);
+        }
+
+        public void ShowSectionsAtMouse(Control owner, Point mouseScreenPosition, params InfoPopupSection[] sections)
+        {
+            if (owner == null || owner.IsDisposed)
+                return;
+
+            string contentKey = BuildSectionContentKey(sections);
+
+            if (contentKey != _lastSectionContentKey)
+            {
+                _lastSectionContentKey = contentKey;
+
+                _layout.SuspendLayout();
+                _layout.Controls.Clear();
+
+                foreach (InfoPopupSection section in sections)
+                {
+                    if (!string.IsNullOrWhiteSpace(section.Header))
+                        _layout.Controls.Add(CreateSectionHeaderLabel(section.Header));
+
+                    if (!string.IsNullOrWhiteSpace(section.Text))
+                        _layout.Controls.Add(CreateSectionTextLabel(section.Text));
+                }
+
+                _layout.ResumeLayout(true);
+            }
+
+            PerformLayout();
+            Location = GetPopupLocationNearMouse(owner, mouseScreenPosition);
+
+            if (!Visible)
+                Show(owner.FindForm());
+
+            BringToFront();
+        }
+
+        private string BuildSectionContentKey(InfoPopupSection[] sections)
+        {
+            if (sections == null || sections.Length == 0)
+                return "";
+
+            string key = "";
+
+            foreach (InfoPopupSection section in sections)
+            {
+                if (section == null)
+                    continue;
+
+                key += section.Header + ":" + section.Text + "|";
+            }
+
+            return key;
+        }
+
+        private Label CreateSectionHeaderLabel(string text)
+        {
+            return new Label
+            {
+                AutoSize = true,
+                Text = text,
+                Font = UIFonts.Title,
+                ForeColor = UIColors.TextPrimary,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, 6, 0, 3),
+                MaximumSize = new Size(MaxTextWidth, 0)
+            };
+        }
+
+        private Label CreateSectionTextLabel(string text)
+        {
+            return new Label
+            {
+                AutoSize = true,
+                Text = text,
+                Font = UIFonts.Normal,
+                ForeColor = UIColors.TextPrimaryDim,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, 0, 0, 4),
+                MaximumSize = new Size(MaxTextWidth, 0)
+            };
+        }
         private void ConfigureForm()
         {
             FormBorderStyle = FormBorderStyle.None;
@@ -119,28 +331,6 @@ namespace CustomWFUI.Forms
             };
         }
 
-        private Point GetPopupLocation(Control owner)
-        {
-            Point location = owner.PointToScreen(
-                new Point(owner.Width + OwnerOffsetX, -Height + owner.Height + OwnerOffsetY));
-
-            Rectangle screen = Screen.FromControl(owner).WorkingArea;
-
-            if (location.Y < screen.Top + ScreenMargin)
-                location.Y = screen.Top + ScreenMargin;
-
-            if (location.X + Width > screen.Right)
-                location.X = screen.Right - Width - ScreenMargin;
-
-            if (location.X < screen.Left + ScreenMargin)
-                location.X = screen.Left + ScreenMargin;
-
-            if (location.Y + Height > screen.Bottom)
-                location.Y = screen.Bottom - Height - ScreenMargin;
-
-            return location;
-        }
-
         private void OnFormLoad(object sender, EventArgs e)
         {
             ApplyRoundedRegion();
@@ -185,6 +375,40 @@ namespace CustomWFUI.Forms
             path.CloseFigure();
 
             return path;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_showDelayTimer != null)
+                {
+                    _showDelayTimer.Stop();
+                    _showDelayTimer.Tick -= OnShowDelayTimerTick;
+                    _showDelayTimer.Dispose();
+                    _showDelayTimer = null;
+                }
+
+                if (base.Region != null)
+                {
+                    base.Region.Dispose();
+                    base.Region = null;
+                }
+            }
+
+            base.Dispose(disposing);
+        }
+
+    }
+    public class InfoPopupSection
+    {
+        public string Header { get; set; }
+        public string Text { get; set; }
+
+        public InfoPopupSection(string header, string text)
+        {
+            Header = header;
+            Text = text;
         }
     }
 }
