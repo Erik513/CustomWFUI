@@ -40,6 +40,28 @@ namespace CustomWFUI.Forms
 
             Text = options.Title;
 
+            if (options.WindowIcon != null)
+            {
+                Icon = options.WindowIcon;
+                ShowIcon = true;
+            }
+            else
+            {
+                try
+                {
+                    Icon extractedIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+
+                    if (extractedIcon != null)
+                    {
+                        Icon = extractedIcon;
+                        ShowIcon = true;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
             if (options.Borderless)
                 FormBorderStyle = FormBorderStyle.None;
 
@@ -121,7 +143,9 @@ namespace CustomWFUI.Forms
 
         public Color? TitleBarBackColor { get; set; } = UIStyles.Colors.BackgroundBlack;
 
-        public static StyledFormOptions CreateStandard(string title = "", ContentAlignment titleTextAlign = ContentAlignment.MiddleCenter, Color? backColor = null, Image icon = null)
+        public Icon WindowIcon { get; set; } = null;    
+
+        public static StyledFormOptions CreateStandard(string title = "", ContentAlignment titleTextAlign = ContentAlignment.MiddleCenter, Color? backColor = null, Image icon = null, Icon windowIcon = null)
         {
             return new StyledFormOptions
             {
@@ -132,6 +156,7 @@ namespace CustomWFUI.Forms
                 TitleTextAlign = titleTextAlign,
                 TitleBarBackColor = backColor,
                 Icon = icon,
+                WindowIcon = windowIcon,
                 ShowMinimizeButton = true,
                 ShowMaximizeButton = true,
                 ShowCloseButton = true,
@@ -139,7 +164,7 @@ namespace CustomWFUI.Forms
             };
         }
 
-        public static StyledFormOptions CreateDialog(string title = "", ContentAlignment titleTextAlign = ContentAlignment.MiddleCenter, Color? backColor = null, Image icon = null)
+        public static StyledFormOptions CreateDialog(string title = "", ContentAlignment titleTextAlign = ContentAlignment.MiddleCenter, Color? backColor = null, Image icon = null, Icon windowIcon = null)
         {
             return new StyledFormOptions
             {
@@ -150,6 +175,7 @@ namespace CustomWFUI.Forms
                 TitleTextAlign = titleTextAlign,
                 TitleBarBackColor = backColor,
                 Icon = icon,
+                WindowIcon = windowIcon,
                 ShowMinimizeButton = false,
                 ShowMaximizeButton = false,
                 ShowCloseButton = true,
