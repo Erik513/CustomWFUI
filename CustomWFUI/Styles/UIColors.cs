@@ -58,7 +58,12 @@ namespace CustomWFUI.Styles
 
         public static readonly Color HoverOverlay = Color.FromArgb(30, 30, 30, 80);
         public static readonly Color ActiveOverlay = Color.FromArgb(40, 40, 40, 120);
-        public static readonly Color Selection = Color.FromArgb(0, 90, 158, 60);
+        // Color.FromArgb(alpha, r, g, b) - this previously had alpha=0
+        // (fully transparent, i.e. invisible no matter what it was painted
+        // over) because the arguments were in the wrong order for a
+        // translucent tint of Primary (0, 90, 158). Fixed to match the same
+        // (alpha, r, g, b) pattern as HoverOverlay/ActiveOverlay above.
+        public static readonly Color Selection = Color.FromArgb(60, 0, 90, 158);
 
         public static readonly Color Transparent = Color.Transparent;
         public static readonly Color OverlayDark = Color.FromArgb(0, 0, 0, 180);

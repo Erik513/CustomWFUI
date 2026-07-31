@@ -75,6 +75,9 @@
     <Compile Include="Controls\StyledListBox.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Controls\StyledListView.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Controls\StyledListBoxControl.cs">
       <SubType>UserControl</SubType>
     </Compile>

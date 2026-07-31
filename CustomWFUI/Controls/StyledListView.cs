@@ -1,0 +1,1045 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Windows.Forms;
+using CustomWFUI.Forms;
+using CustomWFUI.Styles;
+
+namespace CustomWFUI.Controls
+{
+    // A dark-themed, multi-column ListView (Details view) with genuine,
+    // spreadsheet-like cell-range selection instead of the native
+    // whole-row highlight: cells stay dark until a real selection is made,
+    // and then only the selected cells turn blue.
+    //   - A plain click selects just that one cell.
+    //   - Holding the left button down and dragging extends the selection
+    //     to a rectangle between the click and the current cursor cell.
+    //   - Ctrl+Alt+Click extends the existing selection to the clicked
+    //     cell without needing to drag all the way there.
+    //   - Ctrl+A selects every cell.
+    //   - Clicking a cell that's already selected deselects it again.
+    //   - Arrow keys move a single-cell selection; Shift+arrow extends it,
+    //     the same way Shift+click would.
+    //   - Hovering a cell whose text is wider than its column shows the full
+    //     text in a tooltip.
+    // Ctrl+C copies the selected rectangle (tab-separated columns, one line
+    // per row, no header line - meant to be pasted as plain data). Ctrl+
+    // Shift+C copies the same rectangle with a leading row of column names,
+    // for pasting as a proper table. Both also place an HTML table on the
+    // clipboard alongside the plain text, so apps that understand it (Word,
+    // Outlook, browsers, Excel, ...) paste an actual bordered table instead
+    // of raw tab characters; plain-text-only targets still get the tab-
+    // separated fallback. The right-click menu only shows "Copy selection"
+    // and "Copy all" at the top level; hovering either opens a submenu with
+    // the plain action again plus "As table". Every copy is confirmed with
+    // a ToastForm.
+    public class StyledListView : ListView
+    {
+        private const int DefaultMinimumColumnWidth = 40;
+
+        private int _anchorRow = -1;
+        private int _anchorColumn = -1;
+        private int _activeRow = -1;
+        private int _activeColumn = -1;
+        private bool _isDragSelecting;
+        private bool _isApplyingFillColumn;
+
+        private Color _rowBackColor = UIColors.BackgroundMedium;
+        private Color _alternateRowBackColor;
+        private Color _rowForeColor = UIColors.TextPrimary;
+        private Color _selectionOverlayColor = UIColors.Selection;
+        private Color _headerBackColor = UIColors.BackgroundDarkElevated;
+        private Color _headerForeColor = UIColors.TextTertiary;
+        private int _minimumColumnWidth = DefaultMinimumColumnWidth;
+        private int _fillColumnIndex = -1;
+        private readonly HashSet<int> _nonResizableColumns = new HashSet<int>();
+        private readonly HashSet<int> _nonReorderableColumns = new HashSet<int>();
+
+        private readonly ToolTip _cellToolTip = new ToolTip { InitialDelay = 400, ReshowDelay = 100, AutoPopDelay = 8000, ShowAlways = true };
+        private int _toolTipRow = -1;
+        private int _toolTipDisplayColumn = -1;
+
+        // No column can be resized narrower than this.
+        public int MinimumColumnWidth
+        {
+            get { return _minimumColumnWidth; }
+            set { _minimumColumnWidth = Math.Max(1, value); }
+        }
+
+        // Which column stretches to fill any leftover width. -1 (the
+        // default) means "whichever column is last" - set this explicitly
+        // if a different column should be the one that stretches instead.
+        public int FillColumnIndex
+        {
+            get { return _fillColumnIndex; }
+            set
+            {
+                _fillColumnIndex = value;
+                ApplyFillColumn();
+            }
+        }
+
+        public Color RowBackColor
+        {
+            get { return _rowBackColor; }
+            set
+            {
+                _rowBackColor = value;
+                _alternateRowBackColor = Darken(value, 5);
+                Invalidate();
+            }
+        }
+
+        public Color RowForeColor
+        {
+            get { return _rowForeColor; }
+            set
+            {
+                _rowForeColor = value;
+                Invalidate();
+            }
+        }
+
+        // Painted on top of a selected cell's normal background rather than
+        // replacing it outright - UIColors.Selection is a translucent blue
+        // for exactly this, so the row's own (e.g. severity) color still
+        // shows through underneath a selection.
+        public Color SelectionOverlayColor
+        {
+            get { return _selectionOverlayColor; }
+            set
+            {
+                _selectionOverlayColor = value;
+                Invalidate();
+            }
+        }
+
+        public Color HeaderBackColor
+        {
+            get { return _headerBackColor; }
+            set
+            {
+                _headerBackColor = value;
+                Invalidate();
+            }
+        }
+
+        public Color HeaderForeColor
+        {
+            get { return _headerForeColor; }
+            set
+            {
+                _headerForeColor = value;
+                Invalidate();
+            }
+        }
+
+        public StyledListView()
+        {
+            View = View.Details;
+            FullRowSelect = true;
+            HideSelection = true;
+            MultiSelect = false;
+            AllowColumnReorder = true;
+            BorderStyle = BorderStyle.None;
+            BackColor = UIColors.BackgroundDark;
+            ForeColor = _rowForeColor;
+            Font = UIFonts.Normal;
+            HeaderStyle = ColumnHeaderStyle.Nonclickable;
+            OwnerDraw = true;
+
+            _alternateRowBackColor = Darken(_rowBackColor, 5);
+
+            SetStyle(
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.ResizeRedraw |
+                ControlStyles.AllPaintingInWmPaint,
+                true);
+            DoubleBuffered = true;
+            UpdateStyles();
+
+            DrawColumnHeader += OnDrawColumnHeader;
+            DrawItem += OnDrawItem;
+            DrawSubItem += OnDrawSubItem;
+            MouseDown += OnListViewMouseDown;
+            MouseMove += OnListViewMouseMove;
+            MouseMove += OnListViewMouseMoveForToolTip;
+            MouseLeave += OnListViewMouseLeave;
+            MouseUp += OnListViewMouseUp;
+            KeyDown += OnListViewKeyDown;
+            ColumnWidthChanging += OnColumnWidthChanging;
+            ColumnWidthChanged += OnColumnWidthChanged;
+            ColumnReordered += OnColumnReordered;
+
+            ContextMenuStrip = BuildContextMenu();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _cellToolTip.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
+        // Configurable per column, independent of MinimumColumnWidth - a
+        // column can be locked at its current width entirely (e.g. a
+        // narrow status/quality column that should never accidentally get
+        // dragged to something illegible) while others stay freely
+        // resizable.
+        public void SetColumnResizable(int columnIndex, bool resizable)
+        {
+            if (resizable)
+            {
+                _nonResizableColumns.Remove(columnIndex);
+            }
+            else
+            {
+                _nonResizableColumns.Add(columnIndex);
+            }
+        }
+
+        public bool IsColumnResizable(int columnIndex)
+        {
+            return !_nonResizableColumns.Contains(columnIndex);
+        }
+
+        // Configurable per column, independent of the control-wide
+        // AllowColumnReorder switch: a column can be pinned in place (e.g. a
+        // leading "Time"/"Metric" column that should always stay leftmost)
+        // while the rest can still be freely dragged into a new order.
+        public void SetColumnReorderable(int columnIndex, bool reorderable)
+        {
+            if (reorderable)
+            {
+                _nonReorderableColumns.Remove(columnIndex);
+            }
+            else
+            {
+                _nonReorderableColumns.Add(columnIndex);
+            }
+        }
+
+        public bool IsColumnReorderable(int columnIndex)
+        {
+            return !_nonReorderableColumns.Contains(columnIndex);
+        }
+
+        // Sizes every column (other than the fill column, which stretches
+        // regardless) to fit its current content and header text, then lets
+        // the fill column absorb whatever space is left. Call this again
+        // after rebuilding the rows, since content driving the "right" width
+        // may have changed.
+        public void AutoFitColumnsToContent()
+        {
+            if (!IsHandleCreated || Columns.Count == 0)
+            {
+                return;
+            }
+
+            var fillIndex = GetEffectiveFillColumnIndex();
+            for (var index = 0; index < Columns.Count; index++)
+            {
+                if (index == fillIndex)
+                {
+                    continue;
+                }
+
+                AutoResizeColumn(index, ColumnHeaderAutoResizeStyle.ColumnContent);
+                var minimumWidth = GetEffectiveMinimumWidth(index);
+                if (Columns[index].Width < minimumWidth)
+                {
+                    Columns[index].Width = minimumWidth;
+                }
+            }
+
+            ApplyFillColumn();
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            ApplyFillColumn();
+        }
+
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            ApplyFillColumn();
+        }
+
+        private void OnColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
+        {
+            if (_nonResizableColumns.Contains(e.ColumnIndex))
+            {
+                e.NewWidth = Columns[e.ColumnIndex].Width;
+                e.Cancel = true;
+                return;
+            }
+
+            var minimumWidth = GetEffectiveMinimumWidth(e.ColumnIndex);
+            if (e.NewWidth < minimumWidth)
+            {
+                e.NewWidth = minimumWidth;
+                e.Cancel = true;
+            }
+        }
+
+        // MinimumColumnWidth is a floor the caller chose, but a column must
+        // never end up narrower than its own header text needs, or the
+        // caption itself gets clipped - whichever of the two is larger wins.
+        private int GetEffectiveMinimumWidth(int columnIndex)
+        {
+            return Math.Max(_minimumColumnWidth, MeasureHeaderTextWidth(columnIndex));
+        }
+
+        private int MeasureHeaderTextWidth(int columnIndex)
+        {
+            if (columnIndex < 0 || columnIndex >= Columns.Count)
+            {
+                return 0;
+            }
+
+            using (var font = new Font(Font, FontStyle.Bold))
+            {
+                var textSize = TextRenderer.MeasureText(
+                    Columns[columnIndex].Text,
+                    font,
+                    new Size(int.MaxValue, int.MaxValue),
+                    TextFormatFlags.Left | TextFormatFlags.NoPadding);
+
+                // Matches the 7px left / 3px right padding OnDrawColumnHeader
+                // draws the caption with.
+                return textSize.Width + 10;
+            }
+        }
+
+        private void OnColumnWidthChanged(object sender, ColumnWidthChangedEventArgs e)
+        {
+            if (!_isApplyingFillColumn && e.ColumnIndex != GetEffectiveFillColumnIndex())
+            {
+                ApplyFillColumn();
+            }
+        }
+
+        private void OnColumnReordered(object sender, ColumnReorderedEventArgs e)
+        {
+            if (_nonReorderableColumns.Contains(e.Header.Index))
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            // The native drag-reorder hasn't necessarily finished updating
+            // every column's DisplayIndex yet at the moment this fires -
+            // deferring one tick keeps "which column is now rightmost"
+            // (see GetEffectiveFillColumnIndex) accurate.
+            BeginInvoke(new MethodInvoker(ApplyFillColumn));
+        }
+
+        // The column that fills leftover space is "whichever is last" by
+        // default - once columns can be dragged into a different order
+        // (AllowColumnReorder), "last" has to mean visually rightmost
+        // (DisplayIndex), not whatever its original/data index happened to
+        // be, or the wrong column would keep stretching after a reorder.
+        private int GetEffectiveFillColumnIndex()
+        {
+            if (_fillColumnIndex >= 0 && _fillColumnIndex < Columns.Count)
+            {
+                return _fillColumnIndex;
+            }
+
+            if (Columns.Count == 0)
+            {
+                return -1;
+            }
+
+            var rightmost = Columns[0];
+            foreach (ColumnHeader column in Columns)
+            {
+                if (column.DisplayIndex > rightmost.DisplayIndex)
+                {
+                    rightmost = column;
+                }
+            }
+
+            return rightmost.Index;
+        }
+
+        private List<ColumnHeader> GetColumnsInDisplayOrder()
+        {
+            var ordered = new List<ColumnHeader>();
+            foreach (ColumnHeader column in Columns)
+            {
+                ordered.Add(column);
+            }
+
+            ordered.Sort((first, second) => first.DisplayIndex.CompareTo(second.DisplayIndex));
+            return ordered;
+        }
+
+        // Whatever space isn't claimed by the other columns goes to the
+        // fill column (the last one, unless FillColumnIndex says
+        // otherwise) - so the table always reaches the right edge instead
+        // of leaving a dead strip of background, or needing a horizontal
+        // scrollbar for a couple of stray pixels.
+        private void ApplyFillColumn()
+        {
+            if (_isApplyingFillColumn || IsDisposed || !IsHandleCreated || Columns.Count == 0)
+            {
+                return;
+            }
+
+            var fillIndex = GetEffectiveFillColumnIndex();
+            var otherColumnsWidth = 0;
+            for (var index = 0; index < Columns.Count; index++)
+            {
+                if (index != fillIndex)
+                {
+                    otherColumnsWidth += Columns[index].Width;
+                }
+            }
+
+            var scrollBarAllowance = IsVerticalScrollBarLikelyVisible() ? SystemInformation.VerticalScrollBarWidth : 0;
+            var availableWidth = ClientSize.Width - otherColumnsWidth - scrollBarAllowance;
+            var newWidth = Math.Max(_minimumColumnWidth, availableWidth);
+            if (Columns[fillIndex].Width == newWidth)
+            {
+                return;
+            }
+
+            _isApplyingFillColumn = true;
+            try
+            {
+                Columns[fillIndex].Width = newWidth;
+            }
+            finally
+            {
+                _isApplyingFillColumn = false;
+            }
+        }
+
+        private bool IsVerticalScrollBarLikelyVisible()
+        {
+            if (Items.Count == 0)
+            {
+                return false;
+            }
+
+            var itemHeight = Items[0].Bounds.Height;
+            return itemHeight > 0 && Items.Count * itemHeight > ClientSize.Height;
+        }
+
+        // The top level only ever shows "Copy selection" / "Copy all" -
+        // each is a plain submenu parent (native arrow, opens on hover, no
+        // split-button chrome) whose flyout holds the actual two actions,
+        // plain and "As table".
+        private ContextMenuStrip BuildContextMenu()
+        {
+            var menu = new ContextMenuStrip();
+
+            var copySelection = new ToolStripMenuItem("Copy selection");
+            copySelection.DropDownItems.Add("Copy selection", null, (sender, e) => CopySelection());
+            copySelection.DropDownItems.Add("As table", null, (sender, e) => CopySelectionAsTable());
+
+            var copyAll = new ToolStripMenuItem("Copy all");
+            copyAll.DropDownItems.Add("Copy all", null, (sender, e) => { SelectAll(); CopySelection(); });
+            copyAll.DropDownItems.Add("As table", null, (sender, e) => { SelectAll(); CopySelectionAsTable(); });
+
+            menu.Items.Add(copySelection);
+            menu.Items.Add(copyAll);
+
+            menu.Opening += (sender, e) =>
+            {
+                // Nothing is selected outside a real anchor cell, so there's
+                // nothing for "Copy selection" (plain or as table) to act on.
+                copySelection.Enabled = _anchorRow >= 0;
+                copyAll.Enabled = Items.Count > 0;
+            };
+
+            return menu;
+        }
+
+        private void OnDrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
+        {
+            using (var background = new SolidBrush(_headerBackColor))
+            using (var divider = new Pen(UIColors.BorderMedium))
+            using (var font = new Font(Font, FontStyle.Bold))
+            {
+                e.Graphics.FillRectangle(background, e.Bounds);
+                e.Graphics.DrawLine(divider, e.Bounds.Right - 1, e.Bounds.Top, e.Bounds.Right - 1, e.Bounds.Bottom);
+                e.Graphics.DrawLine(divider, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1);
+                TextRenderer.DrawText(
+                    e.Graphics,
+                    e.Header.Text,
+                    font,
+                    new Rectangle(e.Bounds.X + 7, e.Bounds.Y, Math.Max(0, e.Bounds.Width - 10), e.Bounds.Height),
+                    _headerForeColor,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+        }
+
+        private static void OnDrawItem(object sender, DrawListViewItemEventArgs e)
+        {
+            // Details view paints complete rows in OnDrawSubItem.
+        }
+
+        private void OnDrawSubItem(object sender, DrawListViewSubItemEventArgs e)
+        {
+            // The visually leftmost column (DisplayIndex 0 - not
+            // necessarily data index 0, once columns can be reordered) has
+            // a known ownerdraw quirk in the native ListView: with
+            // FullRowSelect on, e.Bounds for it is sometimes reported as
+            // the width of the WHOLE row instead of just that column,
+            // which paints over every other column's content and
+            // misplaces the selection overlay/text. Its real bounds always
+            // start at the item's own left edge and are exactly as wide as
+            // that column actually is, regardless of what e.Bounds reports.
+            var bounds = Columns[e.ColumnIndex].DisplayIndex == 0
+                ? new Rectangle(e.Item.Bounds.Left, e.Bounds.Top, Columns[e.ColumnIndex].Width, e.Bounds.Height)
+                : e.Bounds;
+
+            var baseBackColor = e.ItemIndex % 2 == 0 ? _rowBackColor : _alternateRowBackColor;
+            using (var background = new SolidBrush(baseBackColor))
+            {
+                e.Graphics.FillRectangle(background, bounds);
+            }
+
+            if (IsCellSelected(e.ItemIndex, e.ColumnIndex))
+            {
+                using (var overlay = new SolidBrush(_selectionOverlayColor))
+                {
+                    e.Graphics.FillRectangle(overlay, bounds);
+                }
+            }
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                e.SubItem.Text,
+                e.Item.Font ?? Font,
+                new Rectangle(bounds.X + 6, bounds.Y, Math.Max(0, bounds.Width - 9), bounds.Height),
+                e.Item.ForeColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        }
+
+        // _anchorColumn/_activeColumn are tracked in DISPLAY order (visual
+        // left-to-right position), not the column's own data index - so a
+        // dragged selection rectangle stays visually correct regardless of
+        // whether columns have been reordered. dataColumnIndex (as reported
+        // by the ownerdraw events) is converted to its current display
+        // position before comparing.
+        private bool IsCellSelected(int row, int dataColumnIndex)
+        {
+            if (_anchorRow < 0 || dataColumnIndex < 0 || dataColumnIndex >= Columns.Count)
+            {
+                return false;
+            }
+
+            var displayIndex = Columns[dataColumnIndex].DisplayIndex;
+            var rowStart = Math.Min(_anchorRow, _activeRow);
+            var rowEnd = Math.Max(_anchorRow, _activeRow);
+            var columnStart = Math.Min(_anchorColumn, _activeColumn);
+            var columnEnd = Math.Max(_anchorColumn, _activeColumn);
+            return row >= rowStart && row <= rowEnd && displayIndex >= columnStart && displayIndex <= columnEnd;
+        }
+
+        private void OnListViewMouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            // Require an actual item hit here (not the clamped fallback
+            // GetRowIndexAtY uses for an in-progress drag) - a click that
+            // isn't over a real row is most often the column header, e.g.
+            // starting an AllowColumnReorder drag, and must never start or
+            // disturb a cell selection.
+            var hitTest = HitTest(e.Location);
+            if (hitTest.Item == null)
+            {
+                // Clicking below the last row (empty space in the list) clears
+                // the current selection, same as clicking outside a selection
+                // in a spreadsheet. A click in the header area (above the
+                // first row, or when there are no rows at all) is left alone
+                // so it doesn't interfere with starting a column-reorder drag.
+                if (Items.Count > 0 && e.Location.Y > Items[Items.Count - 1].Bounds.Bottom)
+                {
+                    ClearSelection();
+                }
+
+                return;
+            }
+
+            var row = hitTest.Item.Index;
+            var column = GetColumnIndexAtX(e.Location.X);
+            var extendExisting = ModifierKeys == (Keys.Control | Keys.Alt) && _anchorRow >= 0;
+            if (extendExisting)
+            {
+                _activeRow = row;
+                _activeColumn = column;
+            }
+            else if (IsCellInCurrentSelection(row, column))
+            {
+                // Clicking a cell that's already selected toggles it back off,
+                // instead of re-selecting the same single cell.
+                ClearSelection();
+                return;
+            }
+            else
+            {
+                _anchorRow = row;
+                _anchorColumn = column;
+                _activeRow = row;
+                _activeColumn = column;
+                _isDragSelecting = true;
+            }
+
+            Invalidate();
+        }
+
+        // Same rectangle test as IsCellSelected, but takes a column already
+        // expressed in DISPLAY order (as produced by GetColumnIndexAtX)
+        // instead of a data column index.
+        private bool IsCellInCurrentSelection(int row, int displayColumn)
+        {
+            if (_anchorRow < 0)
+            {
+                return false;
+            }
+
+            var rowStart = Math.Min(_anchorRow, _activeRow);
+            var rowEnd = Math.Max(_anchorRow, _activeRow);
+            var columnStart = Math.Min(_anchorColumn, _activeColumn);
+            var columnEnd = Math.Max(_anchorColumn, _activeColumn);
+            return row >= rowStart && row <= rowEnd && displayColumn >= columnStart && displayColumn <= columnEnd;
+        }
+
+        private void ClearSelection()
+        {
+            _anchorRow = -1;
+            _anchorColumn = -1;
+            _activeRow = -1;
+            _activeColumn = -1;
+            _isDragSelecting = false;
+            Invalidate();
+        }
+
+        private void OnListViewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isDragSelecting || (e.Button & MouseButtons.Left) == 0)
+            {
+                return;
+            }
+
+            var row = GetRowIndexAtY(e.Location.Y);
+            if (row < 0)
+            {
+                return;
+            }
+
+            var column = GetColumnIndexAtX(e.Location.X);
+            if (row == _activeRow && column == _activeColumn)
+            {
+                return;
+            }
+
+            _activeRow = row;
+            _activeColumn = column;
+            Invalidate();
+        }
+
+        private void OnListViewMouseUp(object sender, MouseEventArgs e)
+        {
+            _isDragSelecting = false;
+        }
+
+        // Shows the full cell text on hover whenever OnDrawSubItem would
+        // have had to ellipsize it - the same 6px left / 3px right padding
+        // it draws text with is subtracted here to decide if it actually
+        // overflows the column.
+        private void OnListViewMouseMoveForToolTip(object sender, MouseEventArgs e)
+        {
+            var hitTest = HitTest(e.Location);
+            if (hitTest.Item == null)
+            {
+                HideCellToolTip();
+                return;
+            }
+
+            var row = hitTest.Item.Index;
+            var displayColumn = GetColumnIndexAtX(e.Location.X);
+            if (row == _toolTipRow && displayColumn == _toolTipDisplayColumn)
+            {
+                return;
+            }
+
+            _toolTipRow = row;
+            _toolTipDisplayColumn = displayColumn;
+
+            var orderedColumns = GetColumnsInDisplayOrder();
+            if (displayColumn < 0 || displayColumn >= orderedColumns.Count)
+            {
+                _cellToolTip.Hide(this);
+                return;
+            }
+
+            var column = orderedColumns[displayColumn];
+            var item = hitTest.Item;
+            var text = column.Index < item.SubItems.Count ? item.SubItems[column.Index].Text : string.Empty;
+
+            if (string.IsNullOrEmpty(text) || !IsTextTruncated(text, item.Font ?? Font, column.Width))
+            {
+                _cellToolTip.Hide(this);
+                return;
+            }
+
+            _cellToolTip.Show(text, this, e.Location.X + 12, e.Location.Y + 18, 8000);
+        }
+
+        private void OnListViewMouseLeave(object sender, EventArgs e)
+        {
+            HideCellToolTip();
+        }
+
+        private void HideCellToolTip()
+        {
+            _toolTipRow = -1;
+            _toolTipDisplayColumn = -1;
+            _cellToolTip.Hide(this);
+        }
+
+        private static bool IsTextTruncated(string text, Font font, int columnWidth)
+        {
+            var availableWidth = columnWidth - 9;
+            if (availableWidth <= 0)
+            {
+                return true;
+            }
+
+            var measured = TextRenderer.MeasureText(
+                text,
+                font,
+                new Size(int.MaxValue, int.MaxValue),
+                TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+            return measured.Width > availableWidth;
+        }
+
+        private void OnListViewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Control && e.Shift && e.KeyCode == Keys.C)
+            {
+                CopySelectionAsTable();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.Control && e.KeyCode == Keys.C)
+            {
+                CopySelection();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.Control && e.KeyCode == Keys.A)
+            {
+                SelectAll();
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+            }
+            else if (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down || e.KeyCode == Keys.Left || e.KeyCode == Keys.Right)
+            {
+                if (MoveSelectionWithArrowKey(e.KeyCode, e.Shift))
+                {
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            }
+        }
+
+        // Plain arrow key moves a single-cell selection by one row/column
+        // (like clicking a neighboring cell). Shift+arrow instead extends
+        // the active corner while the anchor stays put, same as Shift+click
+        // would - so a range can be built up without touching the mouse.
+        private bool MoveSelectionWithArrowKey(Keys key, bool extendSelection)
+        {
+            if (Items.Count == 0 || Columns.Count == 0)
+            {
+                return false;
+            }
+
+            int row;
+            int column;
+            if (_anchorRow < 0)
+            {
+                row = 0;
+                column = 0;
+            }
+            else
+            {
+                row = _activeRow;
+                column = _activeColumn;
+                switch (key)
+                {
+                    case Keys.Up:
+                        row = Math.Max(0, row - 1);
+                        break;
+                    case Keys.Down:
+                        row = Math.Min(Items.Count - 1, row + 1);
+                        break;
+                    case Keys.Left:
+                        column = Math.Max(0, column - 1);
+                        break;
+                    case Keys.Right:
+                        column = Math.Min(Columns.Count - 1, column + 1);
+                        break;
+                }
+            }
+
+            if (extendSelection && _anchorRow >= 0)
+            {
+                _activeRow = row;
+                _activeColumn = column;
+            }
+            else
+            {
+                _anchorRow = row;
+                _anchorColumn = column;
+                _activeRow = row;
+                _activeColumn = column;
+            }
+
+            if (row >= 0 && row < Items.Count)
+            {
+                Items[row].EnsureVisible();
+            }
+
+            Invalidate();
+            return true;
+        }
+
+        private void SelectAll()
+        {
+            if (Items.Count == 0 || Columns.Count == 0)
+            {
+                return;
+            }
+
+            _anchorRow = 0;
+            _anchorColumn = 0;
+            _activeRow = Items.Count - 1;
+            _activeColumn = Columns.Count - 1;
+            Invalidate();
+        }
+
+        private int GetRowIndexAtY(int y)
+        {
+            if (Items.Count == 0)
+            {
+                return -1;
+            }
+
+            var hitTest = HitTest(new Point(1, y));
+            if (hitTest.Item != null)
+            {
+                return hitTest.Item.Index;
+            }
+
+            // Dragging above the first row or below the last one still
+            // extends the selection to that end, the same way a
+            // spreadsheet does when a drag leaves the visible grid.
+            return y < Items[0].Bounds.Top ? 0 : Items.Count - 1;
+        }
+
+        // Returns a DISPLAY index (position in visual column order), to match
+        // how _anchorColumn/_activeColumn and IsCellSelected are tracked -
+        // necessary so drag-selection stays visually correct after columns
+        // have been reordered.
+        private int GetColumnIndexAtX(int x)
+        {
+            var orderedColumns = GetColumnsInDisplayOrder();
+            var cumulativeWidth = 0;
+            for (var displayIndex = 0; displayIndex < orderedColumns.Count; displayIndex++)
+            {
+                cumulativeWidth += orderedColumns[displayIndex].Width;
+                if (x < cumulativeWidth)
+                {
+                    return displayIndex;
+                }
+            }
+
+            return Math.Max(0, orderedColumns.Count - 1);
+        }
+
+        private void CopySelection()
+        {
+            CopySelectionCore(includeHeader: false);
+        }
+
+        // Same selected rectangle as CopySelection, but with a leading row of
+        // column captions - so the clipboard content pastes as a proper
+        // table (e.g. into a spreadsheet) instead of bare data rows.
+        private void CopySelectionAsTable()
+        {
+            CopySelectionCore(includeHeader: true);
+        }
+
+        private void CopySelectionCore(bool includeHeader)
+        {
+            if (_anchorRow < 0)
+            {
+                return;
+            }
+
+            var rowStart = Math.Min(_anchorRow, _activeRow);
+            var rowEnd = Math.Min(Math.Max(_anchorRow, _activeRow), Items.Count - 1);
+
+            // _anchorColumn/_activeColumn are DISPLAY indices; map the
+            // selected display range back to actual data columns before
+            // indexing SubItems, so copying still lines up correctly after
+            // the user has dragged columns into a different order.
+            var orderedColumns = GetColumnsInDisplayOrder();
+            var columnStart = Math.Min(_anchorColumn, _activeColumn);
+            var columnEnd = Math.Min(Math.Max(_anchorColumn, _activeColumn), orderedColumns.Count - 1);
+
+            List<string> headerCells = null;
+            if (includeHeader)
+            {
+                headerCells = new List<string>();
+                for (var displayColumn = columnStart; displayColumn <= columnEnd; displayColumn++)
+                {
+                    headerCells.Add(orderedColumns[displayColumn].Text);
+                }
+            }
+
+            var plainTextBuilder = new StringBuilder();
+            if (headerCells != null)
+            {
+                plainTextBuilder.AppendLine(string.Join("\t", headerCells));
+            }
+
+            var rows = new List<List<string>>();
+            var cellCount = 0;
+            for (var row = rowStart; row <= rowEnd; row++)
+            {
+                var item = Items[row];
+                var cells = new List<string>();
+                for (var displayColumn = columnStart; displayColumn <= columnEnd; displayColumn++)
+                {
+                    var dataColumn = orderedColumns[displayColumn].Index;
+                    cells.Add(dataColumn < item.SubItems.Count ? item.SubItems[dataColumn].Text : string.Empty);
+                    cellCount++;
+                }
+
+                rows.Add(cells);
+                plainTextBuilder.AppendLine(string.Join("\t", cells));
+            }
+
+            if (cellCount == 0)
+            {
+                return;
+            }
+
+            // Plain text is the universal fallback (any app that only reads
+            // text gets the tab-separated rows, exactly as before). "HTML
+            // Format" rides alongside it on the same clipboard payload so
+            // that apps which understand it - Word, Outlook, browsers,
+            // Excel, most chat/notes apps - paste an actual bordered table
+            // instead of raw tab characters.
+            var dataObject = new DataObject();
+            dataObject.SetText(plainTextBuilder.ToString(), TextDataFormat.UnicodeText);
+            dataObject.SetData(DataFormats.Html, BuildCfHtmlTable(headerCells, rows));
+            Clipboard.SetDataObject(dataObject, true);
+
+            var message = cellCount == 1 ? "Cell copied" : cellCount + " cells copied";
+            ShowCopyToast(includeHeader ? message + " (with header)" : message);
+        }
+
+        // Wraps an HTML <table> in the CF_HTML clipboard envelope Windows
+        // requires (Version/StartHTML/EndHTML/StartFragment/EndFragment byte
+        // offsets around an <html><body> shell). See the CF_HTML spec - the
+        // offsets are byte counts, and .NET writes "HTML Format" clipboard
+        // data as UTF-8, so they're computed in UTF-8 bytes rather than .NET
+        // char counts (matters here since summaries/titles routinely contain
+        // German umlauts).
+        private static string BuildCfHtmlTable(IReadOnlyList<string> headerCells, IReadOnlyList<List<string>> rows)
+        {
+            var table = BuildHtmlTable(headerCells, rows);
+
+            const string HeaderTemplate =
+                "Version:0.9\r\n" +
+                "StartHTML:{0:0000000000}\r\n" +
+                "EndHTML:{1:0000000000}\r\n" +
+                "StartFragment:{2:0000000000}\r\n" +
+                "EndFragment:{3:0000000000}\r\n";
+            const string HtmlPrefix = "<html><head><meta charset=\"utf-8\"></head><body><!--StartFragment-->";
+            const string HtmlSuffix = "<!--EndFragment--></body></html>";
+
+            // Every offset is zero-padded to a fixed width, so the header's
+            // own byte length is identical whether computed from placeholder
+            // zeros or from the real (larger) offsets it ends up holding.
+            var headerLength = Encoding.UTF8.GetByteCount(string.Format(HeaderTemplate, 0, 0, 0, 0));
+            var startHtml = headerLength;
+            var startFragment = startHtml + Encoding.UTF8.GetByteCount(HtmlPrefix);
+            var endFragment = startFragment + Encoding.UTF8.GetByteCount(table);
+            var endHtml = endFragment + Encoding.UTF8.GetByteCount(HtmlSuffix);
+
+            return string.Format(HeaderTemplate, startHtml, endHtml, startFragment, endFragment) + HtmlPrefix + table + HtmlSuffix;
+        }
+
+        private static string BuildHtmlTable(IReadOnlyList<string> headerCells, IReadOnlyList<List<string>> rows)
+        {
+            var builder = new StringBuilder();
+            builder.Append("<table style=\"border-collapse:collapse;font-family:Segoe UI,sans-serif;font-size:9pt;\">");
+
+            if (headerCells != null)
+            {
+                builder.Append("<tr>");
+                foreach (var cell in headerCells)
+                {
+                    builder.Append("<th style=\"border:1px solid #999;padding:4px 8px;background:#eee;text-align:left;\">");
+                    builder.Append(WebUtility.HtmlEncode(cell));
+                    builder.Append("</th>");
+                }
+
+                builder.Append("</tr>");
+            }
+
+            foreach (var row in rows)
+            {
+                builder.Append("<tr>");
+                foreach (var cell in row)
+                {
+                    builder.Append("<td style=\"border:1px solid #999;padding:4px 8px;\">");
+                    builder.Append(WebUtility.HtmlEncode(cell));
+                    builder.Append("</td>");
+                }
+
+                builder.Append("</tr>");
+            }
+
+            builder.Append("</table>");
+            return builder.ToString();
+        }
+
+        private void ShowCopyToast(string message)
+        {
+            var owner = FindForm();
+            if (owner != null)
+            {
+                ToastForm.ShowToast(message, owner);
+            }
+        }
+
+        private static Color Darken(Color color, int amount)
+        {
+            return Color.FromArgb(
+                Math.Max(0, color.R - amount),
+                Math.Max(0, color.G - amount),
+                Math.Max(0, color.B - amount));
+        }
+    }
+}
