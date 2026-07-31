@@ -15,7 +15,7 @@ namespace CustomWFUI.Factories
         {
             return CreateStyledButton(text, tooltip, size, isIcon,
                 UIColors.BackgroundMedium, UIColors.TextPrimary, UIColors.BorderDark, 1,
-                UIColors.BackgroundLight, UIColors.Primary);
+                UIColors.BackgroundLighter, UIColors.Primary);
         }
 
         public static Button CreatePrimary(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
