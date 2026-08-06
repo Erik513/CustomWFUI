@@ -431,7 +431,14 @@ namespace CustomWFUI.Controls
                 return false;
             }
 
-            var itemHeight = Items[0].Bounds.Height;
+            // Estimated from the font rather than a live item's own Bounds -
+            // reading Bounds requires the native control to have already
+            // laid out that row, which isn't guaranteed at every point
+            // ApplyFillColumn can run from (right after Items is cleared
+            // and repopulated, or during a handle recreation) and has been
+            // observed to throw there. A small fixed padding approximates
+            // the same per-row height OwnerDraw would otherwise use.
+            var itemHeight = Font.Height + 6;
             return itemHeight > 0 && Items.Count * itemHeight > ClientSize.Height;
         }
 
