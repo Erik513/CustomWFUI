@@ -1,39 +1,61 @@
 using System;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using CustomWFUI.Factories;
 using CustomWFUI.Styles;
 
 namespace CustomWFUI.Forms
 {
+    public enum UpdateOutcome
+    {
+        Declined,
+        Applied,
+        Failed
+    }
+
     public static class UpdatePrompt
     {
         /// <summary>
-        /// Shows a standardized "a new version is available" dialog. Returns true when
-        /// the user chose to update, false when they dismissed it for now.
+        /// Shows a standardized "a new version is available" dialog. If the user
+        /// clicks "Update now", the same window switches to a progress view and calls
+        /// applyUpdateAsync, reporting its progress back into that view. Returns how
+        /// the dialog ended.
         /// </summary>
-        public static bool ShowUpdateAvailable(
+        public static Task<UpdateOutcome> ShowUpdateAvailableAsync(
             string currentVersion,
             string latestVersion,
+            Func<IProgress<int>, Task<bool>> applyUpdateAsync,
             Form owner = null,
             string title = "Update available")
         {
-            UpdateAvailableForm form = new UpdateAvailableForm(
+            using (UpdateAvailableForm form = new UpdateAvailableForm(
                 currentVersion,
                 latestVersion,
-                title);
-
-            try
+                title))
             {
-                DialogResult result = owner != null
-                    ? form.ShowDialog(owner)
-                    : form.ShowDialog();
+                UpdateOutcome outcome = UpdateOutcome.Declined;
 
-                return result == DialogResult.Yes;
-            }
-            finally
-            {
-                form.Dispose();
+                form.UpdateRequested += async (sender, e) =>
+                {
+                    form.ShowProgressState();
+                    Progress<int> progress = new Progress<int>(form.SetProgress);
+
+                    bool applied = await applyUpdateAsync(progress);
+                    outcome = applied ? UpdateOutcome.Applied : UpdateOutcome.Failed;
+                    form.Close();
+                };
+
+                if (owner != null)
+                {
+                    form.ShowDialog(owner);
+                }
+                else
+                {
+                    form.ShowDialog();
+                }
+
+                return Task.FromResult(outcome);
             }
         }
     }
@@ -44,6 +66,15 @@ namespace CustomWFUI.Forms
 
         private readonly string _currentVersion;
         private readonly string _latestVersion;
+
+        private Control _promptContent;
+        private Control _buttonPanel;
+        private Control _progressContent;
+        private Label _progressStatusLabel;
+        private ProgressBar _progressBar;
+        private bool _updateRequested;
+
+        public event EventHandler UpdateRequested;
 
         public UpdateAvailableForm(
             string currentVersion,
@@ -62,11 +93,39 @@ namespace CustomWFUI.Forms
             BuildLayout();
         }
 
+        /// <summary>
+        /// Switches the window from the prompt (headline + buttons) to a progress
+        /// view (status text + progress bar), without opening a second window.
+        /// </summary>
+        public void ShowProgressState()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(ShowProgressState));
+                return;
+            }
+
+            ControlBox = false;
+            _promptContent.Visible = false;
+            _buttonPanel.Visible = false;
+            _progressContent.Visible = true;
+        }
+
+        public void SetProgress(int percent)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action<int>(SetProgress), percent);
+                return;
+            }
+
+            int clamped = Math.Max(0, Math.Min(100, percent));
+            _progressBar.Value = clamped;
+            _progressStatusLabel.Text = "Downloading update... " + clamped + "%";
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            if (DialogResult == DialogResult.None)
-                DialogResult = DialogResult.No;
-
             base.OnFormClosing(e);
         }
 
@@ -93,8 +152,23 @@ namespace CustomWFUI.Forms
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
 
-            mainLayout.Controls.Add(CreateContentPanel(), 0, 0);
-            mainLayout.Controls.Add(CreateButtonPanel(), 0, 1);
+            Panel contentHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent
+            };
+
+            _promptContent = CreatePromptContent();
+            _progressContent = CreateProgressContent();
+            _progressContent.Visible = false;
+
+            contentHost.Controls.Add(_progressContent);
+            contentHost.Controls.Add(_promptContent);
+
+            _buttonPanel = CreateButtonPanel();
+
+            mainLayout.Controls.Add(contentHost, 0, 0);
+            mainLayout.Controls.Add(_buttonPanel, 0, 1);
 
             rootPanel.Controls.Add(mainLayout);
 
@@ -102,9 +176,10 @@ namespace CustomWFUI.Forms
             ContentPanel.Controls.Add(rootPanel);
         }
 
-        private Control CreateContentPanel()
+        private Control CreatePromptContent()
         {
             Panel panel = UIPanelFactory.CreateMedium();
+            panel.Dock = DockStyle.Fill;
             panel.Padding = new Padding(24, 18, 24, 8);
 
             FlowLayoutPanel layout = new FlowLayoutPanel
@@ -134,6 +209,43 @@ namespace CustomWFUI.Forms
             return panel;
         }
 
+        private Control CreateProgressContent()
+        {
+            Panel panel = UIPanelFactory.CreateMedium();
+            panel.Dock = DockStyle.Fill;
+            panel.Padding = new Padding(24, 18, 24, 8);
+
+            FlowLayoutPanel layout = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                BackColor = Color.Transparent
+            };
+
+            _progressStatusLabel = UILabelFactory.CreateNormal("Downloading update... 0%");
+            _progressStatusLabel.AutoSize = true;
+            _progressStatusLabel.Font = UIFonts.Normal;
+            _progressStatusLabel.ForeColor = UIColors.TextPrimary;
+            _progressStatusLabel.Margin = new Padding(0, 6, 0, 14);
+
+            _progressBar = new ProgressBar
+            {
+                Width = DialogSize.Width - 24 - 24 - 24,
+                Height = 18,
+                Minimum = 0,
+                Maximum = 100,
+                Value = 0,
+                Style = ProgressBarStyle.Continuous
+            };
+
+            layout.Controls.Add(_progressStatusLabel);
+            layout.Controls.Add(_progressBar);
+            panel.Controls.Add(layout);
+
+            return panel;
+        }
+
         private Control CreateButtonPanel()
         {
             TableLayoutPanel buttonPanel = UITableLayoutPanelFactory.CreateStandard(3, 1);
@@ -154,16 +266,14 @@ namespace CustomWFUI.Forms
                 "Later", "", new Size(80, 30));
             laterButton.Dock = DockStyle.Fill;
             laterButton.Margin = new Padding(0, 0, 6, 0);
-            laterButton.DialogResult = DialogResult.No;
-            laterButton.Click += OnButtonClick;
+            laterButton.Click += (sender, e) => Close();
             CancelButton = laterButton;
 
             Button updateButton = UIButtonFactory.CreateGreen(
                 "Update now", "", new Size(100, 30));
             updateButton.Dock = DockStyle.Fill;
             updateButton.Margin = new Padding(6, 0, 0, 0);
-            updateButton.DialogResult = DialogResult.Yes;
-            updateButton.Click += OnButtonClick;
+            updateButton.Click += OnUpdateButtonClick;
             AcceptButton = updateButton;
 
             buttonPanel.Controls.Add(laterButton, 1, 0);
@@ -172,15 +282,20 @@ namespace CustomWFUI.Forms
             return buttonPanel;
         }
 
-        private void OnButtonClick(object sender, EventArgs e)
+        private void OnUpdateButtonClick(object sender, EventArgs e)
         {
-            Button button = sender as Button;
-
-            if (button == null)
+            if (_updateRequested)
+            {
                 return;
+            }
 
-            DialogResult = button.DialogResult;
-            Close();
+            _updateRequested = true;
+
+            EventHandler handler = UpdateRequested;
+            if (handler != null)
+            {
+                handler(this, EventArgs.Empty);
+            }
         }
     }
 }
