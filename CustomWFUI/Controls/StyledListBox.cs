@@ -315,6 +315,18 @@ namespace CustomWFUI.Controls
 
             DrawItemContent(e.Graphics, rect, item, e.Index, textColor, dragRect, isVScrollVisible);
 
+            if (_isDragging && _dragInsertPosition != -1)
+            {
+                if (_dragInsertPosition == e.Index)
+                {
+                    DrawIndicatorLine(e.Graphics, rect.Top);
+                }
+                else if (_dragInsertPosition >= Items.Count && e.Index == Items.Count - 1)
+                {
+                    DrawIndicatorLine(e.Graphics, rect.Bottom);
+                }
+            }
+
             base.OnDrawItem(e);
         }
 
@@ -611,16 +623,11 @@ namespace CustomWFUI.Controls
             }
         }
 
-        private void DrawDragIndicator(Graphics graphics)
+        private void DrawIndicatorLine(Graphics graphics, int y)
         {
-            if (!_isDragging || _dragInsertPosition == -1)
-                return;
-
-            int yPosition = GetDragIndicatorYPosition();
-
             using (Pen pen = new Pen(_dragIndicatorColor, 3))
             {
-                graphics.DrawLine(pen, 0, yPosition, Width, yPosition);
+                graphics.DrawLine(pen, 0, y, Width, y);
             }
         }
 
@@ -753,19 +760,6 @@ namespace CustomWFUI.Controls
                 Math.Max(0, color.R - amount),
                 Math.Max(0, color.G - amount),
                 Math.Max(0, color.B - amount));
-        }
-
-        protected override void WndProc(ref Message m)
-        {
-            base.WndProc(ref m);
-
-            if (m.Msg == 0x0F)
-            {
-                using (Graphics graphics = CreateGraphics())
-                {
-                    DrawDragIndicator(graphics);
-                }
-            }
         }
     }
 }
