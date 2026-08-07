@@ -370,6 +370,22 @@ namespace CustomWFUI
                     value);
             }
         }
+
+        public static class FlowPanels
+        {
+            public static FlowLayoutPanel CreateStandard()
+            {
+                return UIFlowLayoutPanelFactory.CreateStandard();
+            }
+        }
+
+        public static class ProgressBars
+        {
+            public static ProgressBar CreateStandard()
+            {
+                return UIProgressBarFactory.CreateStandard();
+            }
+        }
     }
 
 }
