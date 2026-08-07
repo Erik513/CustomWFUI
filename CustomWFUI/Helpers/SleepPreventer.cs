@@ -44,14 +44,15 @@ namespace CustomWFUI.Helpers
             ExecutionFlag flags,
             string operation)
         {
-            try
+            // SetThreadExecutionState reports failure via its return value (0),
+            // not an exception - P/Invoke calls to it essentially never throw.
+            uint previousState = SetThreadExecutionState(flags);
+
+            if (previousState == 0)
             {
-                SetThreadExecutionState(flags);
-            }
-            catch (Exception ex)
-            {
+                int error = Marshal.GetLastWin32Error();
                 Debug.WriteLine(
-                    $"Failed to {operation}: {ex.Message}");
+                    $"Failed to {operation}: SetThreadExecutionState returned 0 (Win32 error {error}).");
             }
         }
     }
