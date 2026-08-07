@@ -41,8 +41,16 @@ namespace CustomWFUI.Forms
                     form.ShowProgressState();
                     Progress<int> progress = new Progress<int>(form.SetProgress);
 
-                    bool applied = await applyUpdateAsync(progress);
-                    outcome = applied ? UpdateOutcome.Applied : UpdateOutcome.Failed;
+                    try
+                    {
+                        bool applied = await applyUpdateAsync(progress);
+                        outcome = applied ? UpdateOutcome.Applied : UpdateOutcome.Failed;
+                    }
+                    catch
+                    {
+                        outcome = UpdateOutcome.Failed;
+                    }
+
                     form.Close();
                 };
 
