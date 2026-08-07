@@ -386,6 +386,14 @@ namespace CustomWFUI
                 return UIProgressBarFactory.CreateStandard();
             }
         }
+
+        public static class Icons
+        {
+            public static Image Web { get { return UIIcons.Web; } }
+            public static Image Folder { get { return UIIcons.Folder; } }
+            public static Image Document { get { return UIIcons.Document; } }
+            public static Image Application { get { return UIIcons.Application; } }
+        }
     }
 
 }
