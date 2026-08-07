@@ -71,6 +71,12 @@ namespace CustomWFUI.Controls
             set { _listBox.IconProvider = value; }
         }
 
+        public Func<object, string> DisplayTextProvider
+        {
+            get { return _listBox.DisplayTextProvider; }
+            set { _listBox.DisplayTextProvider = value; }
+        }
+
         public string Title
         {
             get { return _titleLabel.Text; }

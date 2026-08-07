@@ -197,7 +197,7 @@ namespace CustomWFUI
         public static class ComboBoxes
         {
             public static ComboBox CreateStandard(
-                ComboBoxStyle comboBoxStyle)
+                ComboBoxStyle comboBoxStyle = ComboBoxStyle.DropDownList)
             {
                 return UIComboBoxFactory.CreateStandard(
                     comboBoxStyle);
@@ -372,7 +372,7 @@ namespace CustomWFUI
             }
         }
 
-        public static class FlowPanels
+        public static class FlowLayoutPanels
         {
             public static FlowLayoutPanel CreateStandard()
             {

@@ -6,7 +6,7 @@ namespace CustomWFUI.Factories
     public static class UIComboBoxFactory
     {
         public static ComboBox CreateStandard(
-            ComboBoxStyle comboBoxStyle)
+            ComboBoxStyle comboBoxStyle = ComboBoxStyle.DropDownList)
         {
             return new ComboBox
             {

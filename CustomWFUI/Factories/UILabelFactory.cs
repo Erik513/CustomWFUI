@@ -47,6 +47,11 @@ namespace CustomWFUI.Factories
                 ForeColor = UIColors.TextMuted,
                 Font = UIFonts.Small,
                 BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true,
+                AllowDrop = true,
+                AutoSize = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
                 UseMnemonic = false
             };
         }
