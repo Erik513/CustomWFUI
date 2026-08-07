@@ -24,10 +24,10 @@ namespace CustomWFUI.Factories
                 Margin = new Padding(0)
             };
 
-            // Mit aktivierten Visual Styles ignoriert der native ProgressBar
-            // ForeColor/BackColor komplett und zeigt immer den System-Grün-Balken.
-            // SetWindowTheme("", "") schaltet die Visual Styles nur für dieses
-            // Control ab, damit die eigenen Farben tatsächlich greifen.
+            // With visual styles enabled, the native ProgressBar ignores
+            // ForeColor/BackColor entirely and always shows the system green
+            // bar. SetWindowTheme("", "") opts just this control out of visual
+            // styles so the custom colors actually take effect.
             progressBar.HandleCreated += (s, e) =>
                 SetWindowTheme(progressBar.Handle, "", "");
 

@@ -6,9 +6,9 @@ using System.Reflection;
 
 namespace CustomWFUI.Styles
 {
-    // Wiederverwendbare Step-/Aktions-Icons, als eingebettete Ressourcen in
-    // CustomWFUI.dll mitgeliefert, damit sie in mehreren Projekten ohne
-    // eigene Kopie der Bilddateien genutzt werden können.
+    // Reusable step/action icons, shipped as embedded resources in
+    // CustomWFUI.dll so multiple projects can use them without keeping
+    // their own copy of the image files.
     public static class UIIcons
     {
         private static readonly Lazy<Image> WebIcon = new Lazy<Image>(() => LoadIcon("IconWeb.png"));
@@ -21,8 +21,8 @@ namespace CustomWFUI.Styles
         public static Image Document => DocumentIcon.Value;
         public static Image Application => ApplicationIcon.Value;
 
-        // Erstellt eine skalierte Kopie eines Icons, z.B. für Buttons, die das
-        // Bild in fester Pixelgröße zeichnen (Button.Image skaliert selbst nicht).
+        // Creates a scaled copy of an icon, e.g. for buttons that draw the
+        // image at a fixed pixel size (Button.Image doesn't scale itself).
         public static Image Resize(Image source, int size)
         {
             if (source == null || size <= 0)
@@ -72,7 +72,7 @@ namespace CustomWFUI.Styles
 
                 using (Image loaded = Image.FromStream(stream))
                 {
-                    // Kopie anlegen, damit der Stream danach gefahrlos geschlossen werden kann.
+                    // Copy it so the stream can be closed safely afterward.
                     return new Bitmap(loaded);
                 }
             }

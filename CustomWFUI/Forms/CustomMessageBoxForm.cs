@@ -35,7 +35,7 @@ namespace CustomWFUI.Forms
     {
         public static DialogResult Show(
             string message,
-            string title = "Hinweis",
+            string title = "Notice",
             CustomMessageBoxButtons buttons = CustomMessageBoxButtons.OK,
             CustomMessageBoxIcon icon = CustomMessageBoxIcon.Info,
             Form owner = null,
@@ -327,7 +327,7 @@ namespace CustomWFUI.Forms
                     return new[]
                     {
                         new DialogButtonInfo("✓", DialogResult.OK),
-                        new DialogButtonInfo("Abbrechen", DialogResult.Cancel)
+                        new DialogButtonInfo("Cancel", DialogResult.Cancel)
                     };
 
                 case CustomMessageBoxButtons.YesNo:
@@ -342,7 +342,7 @@ namespace CustomWFUI.Forms
                     {
                         new DialogButtonInfo("✓", DialogResult.Yes),
                         new DialogButtonInfo("✖", DialogResult.No),
-                        new DialogButtonInfo("Abbrechen", DialogResult.Cancel)
+                        new DialogButtonInfo("Cancel", DialogResult.Cancel)
                     };
 
                 default:

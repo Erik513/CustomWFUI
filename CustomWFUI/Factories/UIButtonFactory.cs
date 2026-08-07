@@ -41,10 +41,10 @@ namespace CustomWFUI.Factories
 
         public static Button CreateBrowseInFolder(string tooltip = "", Size? size = null, bool isIcon = true)
         {
-            // Bewusst eine Font-Glyphe statt des OpenFolder-PNG-Icons: Ein auf
-            // Button-Größe herunterskaliertes 512x512-Rasterbild wirkt unscharf
-            // und kollidiert farblich mit dem eigenen Gelb dieses Buttons, anders
-            // als die einfarbigen Glyphen der übrigen Icon-Buttons.
+            // Deliberately a font glyph instead of the OpenFolder PNG icon: a
+            // 512x512 raster image downscaled to button size looks blurry and
+            // clashes with this button's own yellow, unlike the flat-color
+            // glyphs used by the other icon buttons.
             return CreateStyledButton("📁", tooltip, size, isIcon,
                 UIColors.Yellow, UIColors.TextPrimary, UIColors.BorderDark, 1,
                 UIColors.YellowLight, UIColors.YellowLighter);
