@@ -18,6 +18,7 @@ namespace CustomWFUI.Factories
             ProgressBar progressBar = new ProgressBar
             {
                 Minimum = 0,
+                Style = ProgressBarStyle.Continuous,
                 ForeColor = UIColors.Green,
                 BackColor = UIColors.BackgroundLight,
                 Margin = new Padding(0)
