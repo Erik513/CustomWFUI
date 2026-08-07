@@ -421,7 +421,7 @@ namespace CustomWFUI.Controls
 
         private void ToggleMaximize()
         {
-            if (_parentForm == null)
+            if (_parentForm == null || !_allowWindowSnapAndMaximize)
                 return;
 
             _parentForm.WindowState = _parentForm.WindowState == FormWindowState.Maximized
