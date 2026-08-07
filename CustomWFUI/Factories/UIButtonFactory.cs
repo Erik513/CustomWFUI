@@ -10,6 +10,7 @@ namespace CustomWFUI.Factories
     {
         private static readonly Size DefaultButtonSize = new Size(30, 30);
         private static readonly Size DefaultIconButtonSize = new Size(32, 32);
+        private const double DisabledColorFactor = 0.65;
 
         public static Button CreateStandard(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
         {
@@ -95,7 +96,7 @@ namespace CustomWFUI.Factories
                 BackColor = backColor,
                 ForeColor = foreColor,
                 Font = isIcon ? UIFonts.Icon : UIFonts.Normal,
-                TabStop = false,
+                TabStop = true,
                 Cursor = Cursors.Hand,
                 Margin = new Padding(0),
                 Padding = isIcon ? new Padding(0) : new Padding(6, 0, 6, 0),
@@ -129,7 +130,7 @@ namespace CustomWFUI.Factories
 
         private static void SetEnabledStyle(Button button, Color enabledBackColor, Color enabledForeColor)
         {
-            Color disabledBackColor = Darken(enabledBackColor, 0.65);
+            Color disabledBackColor = Darken(enabledBackColor, DisabledColorFactor);
             Color disabledForeColor = UIColors.TextDisabled;
 
             ApplyEnabledStyle(button, enabledBackColor, enabledForeColor, disabledBackColor, disabledForeColor);
