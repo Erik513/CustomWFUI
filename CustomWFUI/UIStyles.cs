@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 using CustomWFUI.Controls;
 using CustomWFUI.Factories;
@@ -393,6 +394,11 @@ namespace CustomWFUI
             public static Image Folder { get { return UIIcons.Folder; } }
             public static Image Document { get { return UIIcons.Document; } }
             public static Image Application { get { return UIIcons.Application; } }
+
+            public static Image LoadEmbedded(Assembly assembly, string resourceName)
+            {
+                return UIIcons.LoadEmbedded(assembly, resourceName);
+            }
         }
     }
 

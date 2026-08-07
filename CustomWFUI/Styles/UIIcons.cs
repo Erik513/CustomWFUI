@@ -43,15 +43,31 @@ namespace CustomWFUI.Styles
 
         private static Image LoadIcon(string fileName)
         {
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            string resourceName = $"CustomWFUI.Icons.{fileName}";
+            return LoadEmbedded(Assembly.GetExecutingAssembly(), $"CustomWFUI.Icons.{fileName}");
+        }
+
+        /// <summary>
+        /// Loads an image from an embedded resource in the given assembly. Intended
+        /// for consuming apps to load their own logo/icon the same way CustomWFUI
+        /// loads its bundled icons: baked into the assembly instead of a loose file
+        /// next to the exe, so it can't go missing or get left behind by an update.
+        /// </summary>
+        public static Image LoadEmbedded(Assembly assembly, string resourceName)
+        {
+            if (assembly == null)
+                throw new ArgumentNullException(nameof(assembly));
+
+            if (string.IsNullOrWhiteSpace(resourceName))
+                throw new ArgumentNullException(nameof(resourceName));
 
             using (Stream stream = assembly.GetManifestResourceStream(resourceName))
             {
                 if (stream == null)
                 {
+                    string available = string.Join(", ", assembly.GetManifestResourceNames());
                     throw new InvalidOperationException(
-                        $"Eingebettete Ressource '{resourceName}' wurde nicht gefunden.");
+                        $"Embedded resource '{resourceName}' was not found in assembly " +
+                        $"'{assembly.GetName().Name}'. Available resources: {available}");
                 }
 
                 using (Image loaded = Image.FromStream(stream))
