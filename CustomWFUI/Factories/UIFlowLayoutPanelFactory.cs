@@ -1,8 +1,10 @@
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
 namespace CustomWFUI.Factories
 {
+    [Obsolete("Use CustomWFUI.UIStyles.FlowLayoutPanels instead.", false)]
     public static class UIFlowLayoutPanelFactory
     {
         public static FlowLayoutPanel CreateStandard()

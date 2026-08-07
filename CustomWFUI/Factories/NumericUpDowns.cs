@@ -4,6 +4,7 @@ using static CustomWFUI.UIStyles;
 
 namespace CustomWFUI.Factories
 {
+    [Obsolete("Use CustomWFUI.UIStyles.NumericUpDowns instead.", false)]
     public static class UINumericUpDownFactory
     {
         public static NumericUpDown CreateStandard(

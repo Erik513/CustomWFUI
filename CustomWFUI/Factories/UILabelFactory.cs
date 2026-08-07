@@ -1,9 +1,11 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
 using System.Windows.Forms;
 using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
+    [Obsolete("Use CustomWFUI.UIStyles.Labels instead.", false)]
     public static class UILabelFactory
     {
         public static Label CreateTitle(string text = "")
