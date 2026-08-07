@@ -142,14 +142,17 @@ namespace CustomWFUI.Helpers
 
             RunDelayed(delegate
             {
-                Point cursor = Cursor.Position;
-                Screen screen = Screen.FromPoint(cursor);
+                if (!form.IsDisposed)
+                {
+                    Point cursor = Cursor.Position;
+                    Screen screen = Screen.FromPoint(cursor);
 
-                form.Location = new Point(
-                    cursor.X - form.Width / 2,
-                    Math.Max(screen.WorkingArea.Top, cursor.Y - 10));
+                    form.Location = new Point(
+                        cursor.X - form.Width / 2,
+                        Math.Max(screen.WorkingArea.Top, cursor.Y - 10));
 
-                StartNativeDrag(form);
+                    StartNativeDrag(form);
+                }
 
                 _isRestoringFromMaximized = false;
             });
