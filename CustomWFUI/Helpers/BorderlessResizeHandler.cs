@@ -87,8 +87,8 @@ namespace CustomWFUI.Helpers
         {
             int value = lParam.ToInt32();
 
-            int x = value & 0xFFFF;
-            int y = value >> 16;
+            int x = unchecked((short)(value & 0xFFFF));
+            int y = unchecked((short)((value >> 16) & 0xFFFF));
 
             return new Point(x, y);
         }
