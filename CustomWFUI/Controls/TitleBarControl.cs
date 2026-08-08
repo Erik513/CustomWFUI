@@ -107,9 +107,9 @@ namespace CustomWFUI.Controls
                 titleTextAlign,
                 resolvedBackColor);
             _iconPictureBox = CreateIconPictureBox(icon);
-            _minimizeButton = CreateTitleBarButton("🗕", "Minimize window", showMinimizeButton);
-            _maximizeButton = CreateTitleBarButton("🗖", "Maximize window", showMaximizeButton);
-            _closeButton = CreateTitleBarButton("✕", "Close window", showCloseButton);
+            _minimizeButton = CreateTitleBarButton("🗕", UIStrings.Get("TitleBar.Minimize"), showMinimizeButton);
+            _maximizeButton = CreateTitleBarButton("🗖", UIStrings.Get("TitleBar.Maximize"), showMaximizeButton);
+            _closeButton = CreateTitleBarButton("✕", UIStrings.Get("TitleBar.Close"), showCloseButton);
 
             AddControls();
             CreateDragHandles();

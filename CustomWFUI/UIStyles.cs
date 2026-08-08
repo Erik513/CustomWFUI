@@ -10,6 +10,16 @@ namespace CustomWFUI
 {
     public static class UIStyles
     {
+        /// <summary>
+        /// Language used by built-in dialogs/controls that ship their own text
+        /// (update prompt, title bar tooltips). Set once at startup, before any
+        /// CustomWFUI form is created, to switch away from the English default.
+        /// </summary>
+        public static UILanguage Language
+        {
+            get { return UIStrings.Language; }
+            set { UIStrings.Language = value; }
+        }
 
         public static class Colors
         {

@@ -89,6 +89,7 @@
     <Compile Include="Factories\UIFlowLayoutPanelFactory.cs" />
     <Compile Include="Factories\UIProgressBarFactory.cs" />
     <Compile Include="Styles\UIIcons.cs" />
+    <Compile Include="Styles\UIStrings.cs" />
     <Compile Include="Factories\UIStyledListBoxControlFactory.cs" />
     <Compile Include="Factories\UIStyledListBoxFactory.cs" />
     <Compile Include="Factories\UIStyledPropertyTableFactory.cs" />

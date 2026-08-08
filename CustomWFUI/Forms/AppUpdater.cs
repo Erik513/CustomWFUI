@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using CustomWFUI.Styles;
 using GitHubSelfUpdater;
 
 namespace CustomWFUI.Forms
@@ -61,8 +62,8 @@ namespace CustomWFUI.Forms
                     if (outcome == UpdateOutcome.Failed)
                     {
                         CustomMessageBox.Show(
-                            "The update download failed. Opening the release page instead.",
-                            "Update",
+                            UIStrings.Get("Update.DownloadFailedMessage"),
+                            UIStrings.Get("Update.Title"),
                             CustomMessageBoxButtons.OK,
                             CustomMessageBoxIcon.Warning,
                             owner,

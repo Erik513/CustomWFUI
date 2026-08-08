@@ -27,12 +27,12 @@ namespace CustomWFUI.Forms
             string latestVersion,
             Func<IProgress<int>, Task<bool>> applyUpdateAsync,
             Form owner = null,
-            string title = "Update available")
+            string title = null)
         {
             using (UpdateAvailableForm form = new UpdateAvailableForm(
                 currentVersion,
                 latestVersion,
-                title))
+                title ?? UIStrings.Get("UpdateAvailable.Title")))
             {
                 UpdateOutcome outcome = UpdateOutcome.Declined;
 
@@ -87,9 +87,9 @@ namespace CustomWFUI.Forms
         public UpdateAvailableForm(
             string currentVersion,
             string latestVersion,
-            string title = "Update available")
+            string title = null)
             : base(StyledFormOptions.CreateDialog(
-                title: title,
+                title: title ?? UIStrings.Get("UpdateAvailable.Title"),
                 titleTextAlign: ContentAlignment.MiddleLeft,
                 backColor: UIStyles.Colors.BackgroundBlack,
                 icon: SystemIcons.Information.ToBitmap()))
@@ -129,7 +129,7 @@ namespace CustomWFUI.Forms
 
             int clamped = Math.Max(0, Math.Min(100, percent));
             _progressBar.Value = clamped;
-            _progressStatusLabel.Text = "Downloading update... " + clamped + "%";
+            _progressStatusLabel.Text = string.Format(UIStrings.Get("UpdateAvailable.Downloading"), clamped);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -198,7 +198,7 @@ namespace CustomWFUI.Forms
                 BackColor = Color.Transparent
             };
 
-            Label headline = UILabelFactory.CreateNormal("A new version is available.");
+            Label headline = UILabelFactory.CreateNormal(UIStrings.Get("UpdateAvailable.Message"));
             headline.AutoSize = true;
             headline.Font = UIFonts.Title;
             headline.ForeColor = UIColors.TextPrimary;
@@ -231,7 +231,7 @@ namespace CustomWFUI.Forms
                 BackColor = Color.Transparent
             };
 
-            _progressStatusLabel = UILabelFactory.CreateNormal("Downloading update... 0%");
+            _progressStatusLabel = UILabelFactory.CreateNormal(string.Format(UIStrings.Get("UpdateAvailable.Downloading"), 0));
             _progressStatusLabel.AutoSize = true;
             _progressStatusLabel.Font = UIFonts.Normal;
             _progressStatusLabel.ForeColor = UIColors.TextPrimary;
@@ -262,23 +262,32 @@ namespace CustomWFUI.Forms
             buttonPanel.Padding = new Padding(12, 12, 24, 18);
             buttonPanel.Margin = new Padding(0);
 
+            // Button widths grow to fit whatever UIStrings resolves to for the
+            // active language (e.g. German "Jetzt aktualisieren" is wider than
+            // English "Update now") - the 80/100 minimums keep English pixel-
+            // identical to before.
+            string laterText = UIStrings.Get("UpdateAvailable.Later");
+            string updateText = UIStrings.Get("UpdateAvailable.UpdateNow");
+            int laterButtonWidth = Math.Max(80, TextRenderer.MeasureText(laterText, UIFonts.Normal).Width + 50);
+            int updateButtonWidth = Math.Max(100, TextRenderer.MeasureText(updateText, UIFonts.Normal).Width + 50);
+
             buttonPanel.ColumnStyles.Clear();
             buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
-            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, laterButtonWidth));
+            buttonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, updateButtonWidth));
 
             buttonPanel.RowStyles.Clear();
             buttonPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             Button laterButton = UIButtonFactory.CreateStandard(
-                "Later", "", new Size(80, 30));
+                laterText, "", new Size(laterButtonWidth, 30));
             laterButton.Dock = DockStyle.Fill;
             laterButton.Margin = new Padding(0, 0, 6, 0);
             laterButton.Click += (sender, e) => Close();
             CancelButton = laterButton;
 
             Button updateButton = UIButtonFactory.CreateGreen(
-                "Update now", "", new Size(100, 30));
+                updateText, "", new Size(updateButtonWidth, 30));
             updateButton.Dock = DockStyle.Fill;
             updateButton.Margin = new Padding(6, 0, 0, 0);
             updateButton.Click += OnUpdateButtonClick;
