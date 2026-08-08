@@ -12,12 +12,6 @@
     <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
-    <!-- CS0618: the Factories.* classes are marked [Obsolete] to steer external
-         consumers toward UIStyles.*, but CustomWFUI's own internal code (UIStyles
-         itself, StyledForm, TitleBarControl, the dialog forms, ...) legitimately
-         keeps calling Factories.* directly - suppressed here so that doesn't spam
-         this project's own build. External consumers still see the warning. -->
-    <NoWarn>$(NoWarn);0618</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

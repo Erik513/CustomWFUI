@@ -5,8 +5,7 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.TableLayoutPanels instead.", false)]
-    public static class UITableLayoutPanelFactory
+    internal static class UITableLayoutPanelFactory
     {
         public static TableLayoutPanel CreateStandard(
             int columnCount,

@@ -1,11 +1,9 @@
-﻿using System;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.TextBoxes instead.", false)]
-    public static class UITextBoxFactory
+    internal static class UITextBoxFactory
     {
         public static TextBox CreateStandard(
             string text = "",

@@ -6,8 +6,7 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.Buttons instead.", false)]
-    public static class UIButtonFactory
+    internal static class UIButtonFactory
     {
         private static readonly Size DefaultButtonSize = new Size(30, 30);
         private static readonly Size DefaultIconButtonSize = new Size(32, 32);

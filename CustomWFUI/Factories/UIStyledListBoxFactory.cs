@@ -1,10 +1,8 @@
-﻿using System;
-using CustomWFUI.Controls;
+﻿using CustomWFUI.Controls;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.StyledListBoxes instead.", false)]
-    public static class UIStyledListBoxFactory
+    internal static class UIStyledListBoxFactory
     {
         public static StyledListBox Create(
             string displayTextMember = null,

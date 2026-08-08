@@ -5,8 +5,7 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.ProgressBars instead.", false)]
-    public static class UIProgressBarFactory
+    internal static class UIProgressBarFactory
     {
         [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
         private static extern int SetWindowTheme(

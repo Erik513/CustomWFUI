@@ -1,12 +1,10 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.Panels instead.", false)]
-    public static class UIPanelFactory
+    internal static class UIPanelFactory
     {
         public static Panel CreateDark()
         {

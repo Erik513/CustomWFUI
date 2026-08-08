@@ -1,11 +1,9 @@
-﻿using System;
-using System.Windows.Forms;
+﻿using System.Windows.Forms;
 using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.ToolTips instead.", false)]
-    public static class UIToolTipFactory
+    internal static class UIToolTipFactory
     {
         public static ToolTip CreateToolTip(
             string text = "")

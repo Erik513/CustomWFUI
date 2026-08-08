@@ -1,12 +1,10 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.CheckBoxes instead.", false)]
-    public static class UICheckBoxFactory
+    internal static class UICheckBoxFactory
     {
         public static CheckBox CreateStandard(
             string text = "",

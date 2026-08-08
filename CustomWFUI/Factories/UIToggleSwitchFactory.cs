@@ -1,12 +1,10 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 using CustomWFUI.Controls;
 using CustomWFUI.Styles;
 
 namespace CustomWFUI.Factories
 {
-    [Obsolete("Use CustomWFUI.UIStyles.ToggleSwitches instead.", false)]
-    public static class UIToggleSwitchFactory
+    internal static class UIToggleSwitchFactory
     {
         public static ToggleSwitch CreateStandard(
             bool checkedState = true,
