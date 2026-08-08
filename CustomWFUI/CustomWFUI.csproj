@@ -76,7 +76,6 @@
     <Compile Include="Controls\UIColumn.cs" />
     <Compile Include="Factories\NumericUpDowns.cs" />
     <Compile Include="Helpers\TextDragDropHelper.cs" />
-    <Compile Include="Factories\UITitleBarFactory.cs" />
     <Compile Include="Forms\StyledForm.cs">
       <SubType>Form</SubType>
     </Compile>
