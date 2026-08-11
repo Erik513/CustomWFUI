@@ -251,6 +251,8 @@ namespace CustomWFUI.Controls
             _minimizeButton.Click += OnMinimizeButtonClick;
             _maximizeButton.Click += OnMaximizeButtonClick;
             _closeButton.Click += OnCloseButtonClick;
+
+            UIStrings.LanguageChanged += OnUIStringsLanguageChanged;
         }
 
         private void UnwireControlEvents()
@@ -267,6 +269,15 @@ namespace CustomWFUI.Controls
 
             if (_closeButton != null)
                 _closeButton.Click -= OnCloseButtonClick;
+
+            UIStrings.LanguageChanged -= OnUIStringsLanguageChanged;
+        }
+
+        private void OnUIStringsLanguageChanged(object sender, EventArgs e)
+        {
+            UIButtonFactory.UpdateTooltip(_minimizeButton, UIStrings.Get("TitleBar.Minimize"));
+            UIButtonFactory.UpdateTooltip(_maximizeButton, UIStrings.Get("TitleBar.Maximize"));
+            UIButtonFactory.UpdateTooltip(_closeButton, UIStrings.Get("TitleBar.Close"));
         }
 
         private void CreateDragHandles()

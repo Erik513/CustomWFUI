@@ -163,6 +163,15 @@ namespace CustomWFUI
                     text,
                     size);
             }
+
+            /// <summary>
+            /// Changes an already-created button's tooltip text - e.g. to
+            /// re-translate it after a language switch.
+            /// </summary>
+            public static void UpdateTooltip(Button button, string tooltip)
+            {
+                UIButtonFactory.UpdateTooltip(button, tooltip);
+            }
         }
 
         public static class Labels

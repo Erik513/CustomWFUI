@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using CustomWFUI.Styles;
 
@@ -11,6 +12,12 @@ namespace CustomWFUI.Factories
         private static readonly Size DefaultButtonSize = new Size(30, 30);
         private static readonly Size DefaultIconButtonSize = new Size(32, 32);
         private const double DisabledColorFactor = 0.65;
+
+        // Tracks the ToolTip component each button got from AddToolTip, so
+        // UpdateTooltip can change its text later (e.g. on a language
+        // switch) instead of only being able to set it once at creation.
+        private static readonly ConditionalWeakTable<Button, ToolTip> _tooltips =
+            new ConditionalWeakTable<Button, ToolTip>();
 
         public static Button CreateStandard(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
         {
@@ -121,11 +128,27 @@ namespace CustomWFUI.Factories
 
             ToolTip toolTip = UIToolTipFactory.CreateToolTip();
             toolTip.SetToolTip(button, tooltip);
+            _tooltips.Add(button, toolTip);
 
             button.Disposed += delegate
             {
                 toolTip.Dispose();
             };
+        }
+
+        /// <summary>
+        /// Changes an already-created button's tooltip text - e.g. to
+        /// re-translate it after a language switch. No-op if the button was
+        /// created without a tooltip in the first place.
+        /// </summary>
+        public static void UpdateTooltip(Button button, string tooltip)
+        {
+            if (button == null)
+                return;
+
+            ToolTip toolTip;
+            if (_tooltips.TryGetValue(button, out toolTip))
+                toolTip.SetToolTip(button, tooltip ?? "");
         }
 
         private static void SetEnabledStyle(Button button, Color enabledBackColor, Color enabledForeColor)

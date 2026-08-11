@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace CustomWFUI.Styles
@@ -11,18 +12,35 @@ namespace CustomWFUI.Styles
     /// <summary>
     /// User-facing text for the handful of built-in dialogs/controls that ship
     /// their own copy (update prompt, title bar tooltips). Defaults to English so
-    /// existing consumers see no change; set <see cref="Language"/> once at
-    /// startup (e.g. via UIStyles.Language) to switch everything at once.
+    /// existing consumers see no change; set <see cref="Language"/> (e.g. via
+    /// UIStyles.Language) to switch everything at once, at startup or live at
+    /// runtime - LanguageChanged lets already-built controls (like the title
+    /// bar's own tooltips) react immediately.
     /// </summary>
     internal static class UIStrings
     {
-        public static UILanguage Language { get; set; } = UILanguage.English;
+        private static UILanguage _language = UILanguage.English;
+
+        public static UILanguage Language
+        {
+            get { return _language; }
+            set
+            {
+                if (_language == value)
+                    return;
+
+                _language = value;
+                LanguageChanged?.Invoke(null, EventArgs.Empty);
+            }
+        }
+
+        public static event EventHandler LanguageChanged;
 
         private static readonly Dictionary<string, string> English = new Dictionary<string, string>
         {
-            ["TitleBar.Minimize"] = "Minimize window",
-            ["TitleBar.Maximize"] = "Maximize window",
-            ["TitleBar.Close"] = "Close window",
+            ["TitleBar.Minimize"] = "Minimize",
+            ["TitleBar.Maximize"] = "Maximize",
+            ["TitleBar.Close"] = "Close",
 
             ["UpdateAvailable.Title"] = "Update available",
             ["UpdateAvailable.Message"] = "A new version is available.",
