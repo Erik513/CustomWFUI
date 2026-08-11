@@ -271,7 +271,12 @@ namespace CustomWFUI.Controls
                 Dock = DockStyle.Fill,
                 BackColor = Colors.BackgroundLight,
                 Padding = new Padding(0),
-                Margin = new Padding(0, 2, 0, 2)
+                // Right margin matches the existing top/bottom margin, so
+                // the table's own background shows as a border on all three
+                // sides - previously only 0 on the right, so each editor
+                // cell ran flush to the table's right edge with no border
+                // there.
+                Margin = new Padding(0, 2, 2, 2)
             };
         }
 
