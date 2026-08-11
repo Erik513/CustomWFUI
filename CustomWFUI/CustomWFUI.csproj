@@ -131,6 +131,11 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\AppUpdater.cs" />
+    <Compile Include="Localization\AppLocalization.cs" />
+    <Compile Include="Localization\AppCurrency.cs" />
+    <Compile Include="Forms\StyledOptionsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Icons\IconWeb.png" />
