@@ -1,46 +1,42 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{67BEB9A5-DD73-4C4A-910B-D9848640924A}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>CustomWFUI</RootNamespace>
     <AssemblyName>CustomWFUI</AssemblyName>
-    <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+
+  <!-- Silences CA1416 "only supported on windows" warnings on the
+       net8.0-windows leg - every WinForms API call here is already
+       Windows-only by definition on this TFM (Microsoft.NET.Sdk +
+       UseWindowsForms doesn't auto-emit the assembly-level
+       [SupportedOSPlatform] attribute the way Microsoft.NET.Sdk.WindowsDesktop
+       would), so the warning has no information value. Meaningless/ignored
+       on net48. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
+
+  <!-- Unlike net8.0-windows, the classic .NET Framework SDK-style target
+       doesn't implicitly reference these (UseWindowsForms only covers
+       System.Windows.Forms) - same set the old-style csproj listed
+       explicitly. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+  </ItemGroup>
+
+  <!-- net48 keeps referencing the manually-copied GitHubSelfUpdater build
+       output, exactly as before - untouched so SmartRoutine (still on
+       .NET Framework 4.8.1) sees zero change on this leg. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <Reference Include="GitHubSelfUpdater">
       <HintPath>..\lib\GitHubSelfUpdater\GitHubSelfUpdater.dll</HintPath>
     </Reference>
@@ -72,76 +68,19 @@
       <HintPath>..\lib\GitHubSelfUpdater\System.ValueTuple.dll</HintPath>
     </Reference>
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Controls\UIColumn.cs" />
-    <Compile Include="Factories\NumericUpDowns.cs" />
-    <Compile Include="Helpers\TextDragDropHelper.cs" />
-    <Compile Include="Forms\StyledForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Helpers\BorderlessResizeHandler.cs" />
-    <Compile Include="Helpers\FormDragHandle.cs" />
-    <Compile Include="Factories\UIButtonFactory.cs" />
-    <Compile Include="Factories\UICheckBoxFactory.cs" />
-    <Compile Include="Factories\UIComboBoxFactory.cs" />
-    <Compile Include="Factories\UILabelFactory.cs" />
-    <Compile Include="Factories\UIPanelFactory.cs" />
-    <Compile Include="Factories\UIFlowLayoutPanelFactory.cs" />
-    <Compile Include="Factories\UIProgressBarFactory.cs" />
-    <Compile Include="Styles\UIIcons.cs" />
-    <Compile Include="Styles\UIStrings.cs" />
-    <Compile Include="Factories\UIStyledListBoxControlFactory.cs" />
-    <Compile Include="Factories\UIStyledListBoxFactory.cs" />
-    <Compile Include="Factories\UIStyledPropertyTableFactory.cs" />
-    <Compile Include="Factories\UITableLayoutPanelFactory.cs" />
-    <Compile Include="Factories\UITextBoxFactory.cs" />
-    <Compile Include="Factories\UIToggleSwitchFactory.cs" />
-    <Compile Include="Factories\UIToolTipFactory.cs" />
-    <Compile Include="Controls\ToggleSwitch.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Forms\CustomMessageBoxForm.cs" />
-    <Compile Include="Helpers\SleepPreventer.cs" />
-    <Compile Include="Forms\InfoPopupForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Controls\StyledListBox.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Controls\StyledListView.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Controls\StyledListBoxControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\StyledPropertyTable.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Styles\UIColors.cs" />
-    <Compile Include="Styles\UIFonts.cs" />
-    <Compile Include="UIStyles.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Controls\TitleBarControl.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Forms\ToastForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\UpdateAvailableForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\AppUpdater.cs" />
-    <Compile Include="Localization\AppLocalization.cs" />
-    <Compile Include="Localization\AppCurrency.cs" />
-    <Compile Include="Forms\StyledOptionsForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
+
+  <!-- net8.0-windows references the sibling GitHubSelfUpdater project
+       directly instead of a manually-copied DLL folder - it already
+       dual-targets net48;net8.0 itself. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <ProjectReference Include="..\..\GitHubSelfUpdater\GitHubSelfUpdater\GitHubSelfUpdater.csproj" />
   </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="Icons\IconWeb.png" />
     <EmbeddedResource Include="Icons\IconFolder.png" />
     <EmbeddedResource Include="Icons\IconDocument.png" />
     <EmbeddedResource Include="Icons\IconApplication.png" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
 </Project>
