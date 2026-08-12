@@ -18,7 +18,8 @@ namespace CustomWFUI
     /// </summary>
     public static class AppCurrencyFormatter
     {
-        private static AppCurrency _currency = AppCurrency.Euro;
+        // Matches AppLocalization's own default language (English).
+        private static AppCurrency _currency = AppCurrency.Dollar;
 
         public static AppCurrency Currency
         {
