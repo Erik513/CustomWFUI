@@ -24,6 +24,24 @@ namespace CustomWFUI.Forms
         }
 
         /// <summary>
+        /// "Save"/"Cancel" by default - this class has no notion of the
+        /// consuming app's language, so callers that localize their own UI
+        /// (e.g. via AppLocalization) need to set these explicitly, or the
+        /// buttons stay stuck in English regardless of the app's language.
+        /// </summary>
+        public string SaveButtonText
+        {
+            get { return _saveButton.Text; }
+            set { _saveButton.Text = value; }
+        }
+
+        public string CancelButtonText
+        {
+            get { return _cancelButton.Text; }
+            set { _cancelButton.Text = value; }
+        }
+
+        /// <summary>
         /// Raised when the save button is clicked, before the dialog closes
         /// with DialogResult.OK - read whatever the option controls added
         /// to PropertyTable are currently set to here.
