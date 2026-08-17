@@ -27,7 +27,6 @@ namespace CustomWFUI.Controls
         private Color _alternateItemBackColor;
         private Color _itemForeColor = UIColors.TextPrimary;
         private Color _selectedBackColor = UIColors.Primary;
-        private Color _selectedForeColor = UIColors.White;
         private Color _hoverBackColor = UIColors.BackgroundLight;
         private Color _dragHandleColor = UIColors.TextTertiary;
         private Color _dragIndicatorColor = UIColors.PrimaryLight;
@@ -150,6 +149,20 @@ namespace CustomWFUI.Controls
             set
             {
                 _disabledBackColor = value;
+                Invalidate();
+            }
+        }
+
+        // Defaults to UIColors.Primary (the accent color) - unlike most of
+        // this control's other colors, there was previously no way for a
+        // consuming app to override just the selection color without
+        // reaching into private state.
+        public Color SelectedBackColor
+        {
+            get => _selectedBackColor;
+            set
+            {
+                _selectedBackColor = value;
                 Invalidate();
             }
         }
@@ -680,8 +693,11 @@ namespace CustomWFUI.Controls
 
         private Color GetTextColor(bool isSelected, bool isDisabled)
         {
+            // Derived live from _selectedBackColor (rather than a fixed
+            // white) so a custom/accent SelectedBackColor - which might be
+            // bright, e.g. yellow - always gets readable text.
             if (isSelected)
-                return _selectedForeColor;
+                return UIColors.GetContrastingForeColor(_selectedBackColor);
 
             if (isDisabled)
                 return _disabledForeColor;

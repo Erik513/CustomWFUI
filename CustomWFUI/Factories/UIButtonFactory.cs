@@ -28,8 +28,11 @@ namespace CustomWFUI.Factories
 
         public static Button CreatePrimary(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
         {
+            // Unlike the other variants, this button's background is
+            // accent-colored even at rest - so its text needs to track
+            // the accent's contrast too, not just the pressed state.
             return CreateStyledButton(text, tooltip, size, isIcon,
-                UIColors.PrimaryDark, UIColors.TextPrimary, UIColors.BorderDark, 0,
+                UIColors.PrimaryDark, UIColors.AccentForeColor, UIColors.BorderDark, 0,
                 UIColors.Primary, UIColors.PrimaryLight);
         }
 
@@ -116,9 +119,61 @@ namespace CustomWFUI.Factories
             button.FlatAppearance.MouseDownBackColor = mouseDownBackColor;
 
             SetEnabledStyle(button, backColor, foreColor);
+            SetPressedForeColor(button, foreColor, mouseDownBackColor);
             AddToolTip(button, tooltip);
 
             return button;
+        }
+
+        // FlatAppearance only lets a button swap its BACKGROUND per
+        // mouse state, not its text/icon color - so a fixed foreColor
+        // (fine against the idle/hover backgrounds) can still go
+        // unreadable for the brief moment a button is held down, if
+        // mouseDownBackColor happens to be a bright accent color (e.g.
+        // yellow). Swap the text color to match only while pressed.
+        //
+        // MouseLeave fires on every plain hover-then-move-away too, not
+        // just after a press - so this must only touch ForeColor if a
+        // press is actually in progress (isPressed), and must restore
+        // whatever ForeColor was live right before the press (not the
+        // color captured at construction time), since callers are free
+        // to recolor a button after creation (e.g. DealOrNoDeal's price
+        // buttons set ForeColor = Black on top of this factory's default).
+        private static void SetPressedForeColor(Button button, Color idleForeColor, Color mouseDownBackColor)
+        {
+            Color pressedForeColor = UIColors.GetContrastingForeColor(mouseDownBackColor);
+            bool isPressed = false;
+            Color restoreForeColor = idleForeColor;
+
+            button.MouseDown += delegate
+            {
+                if (!button.Enabled)
+                    return;
+
+                restoreForeColor = button.ForeColor;
+                isPressed = true;
+
+                if (restoreForeColor != pressedForeColor)
+                    button.ForeColor = pressedForeColor;
+            };
+
+            button.MouseUp += delegate
+            {
+                if (!isPressed)
+                    return;
+
+                isPressed = false;
+                button.ForeColor = restoreForeColor;
+            };
+
+            button.MouseLeave += delegate
+            {
+                if (!isPressed)
+                    return;
+
+                isPressed = false;
+                button.ForeColor = restoreForeColor;
+            };
         }
 
         private static void AddToolTip(Button button, string tooltip)

@@ -113,7 +113,7 @@ namespace CustomWFUI.Forms
             return new Label
             {
                 Text = "✓",
-                ForeColor = UIColors.White,
+                ForeColor = UIColors.AccentForeColor,
                 Font = UIFonts.Icon,
                 Size = new Size(30, 30),
                 Location = new Point(10, 25),
@@ -127,7 +127,7 @@ namespace CustomWFUI.Forms
             return new Label
             {
                 Text = "",
-                ForeColor = UIColors.White,
+                ForeColor = UIColors.AccentForeColor,
                 Font = UIFonts.Normal,
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent,

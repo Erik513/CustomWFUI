@@ -152,6 +152,12 @@ namespace CustomWFUI.Controls
             set { _listBox.DragIndicatorColor = value; }
         }
 
+        public Color SelectedBackColor
+        {
+            get { return _listBox.SelectedBackColor; }
+            set { _listBox.SelectedBackColor = value; }
+        }
+
         public int IndexFromPoint(Point point)
         {
             return _listBox.IndexFromPoint(point);

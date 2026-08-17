@@ -70,6 +70,8 @@ namespace CustomWFUI
             public static Color BorderPrimary { get { return UIColors.BorderPrimary; } }
             public static Color BorderRed { get { return UIColors.BorderRed; } }
 
+            public static Color AccentForeColor { get { return UIColors.AccentForeColor; } }
+
             public static Color HoverOverlay { get { return UIColors.HoverOverlay; } }
             public static Color ActiveOverlay { get { return UIColors.ActiveOverlay; } }
             public static Color Selection { get { return UIColors.Selection; } }
@@ -78,6 +80,20 @@ namespace CustomWFUI
             public static Color OverlayDark { get { return UIColors.OverlayDark; } }
             public static Color OverlayMedium { get { return UIColors.OverlayMedium; } }
             public static Color OverlayLight { get { return UIColors.OverlayLight; } }
+
+            /// <summary>
+            /// Replaces the blue accent used throughout every built-in
+            /// control (buttons, toggle switches, selection highlights,
+            /// ...) with shades computed from a single color. Set once, as
+            /// early as possible - before building any UI - same as
+            /// <see cref="Language"/>; a couple of controls only read their
+            /// accent color once at construction time, so they won't
+            /// retroactively pick up a change made after they're built.
+            /// </summary>
+            public static void SetAccent(Color accent)
+            {
+                UIColors.SetAccent(accent);
+            }
         }
 
         public static class Fonts
