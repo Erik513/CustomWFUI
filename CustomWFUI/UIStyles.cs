@@ -367,6 +367,14 @@ namespace CustomWFUI
             }
         }
 
+        public static class DataTables
+        {
+            public static StyledDataTable Create()
+            {
+                return new StyledDataTable();
+            }
+        }
+
         public static class PropertyTables
         {
             public static StyledPropertyTable Create()
