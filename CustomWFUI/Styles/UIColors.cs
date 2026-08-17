@@ -51,6 +51,12 @@ namespace CustomWFUI.Styles
 
         public static readonly Color White = Color.White;
         public static readonly Color TextPrimary = Color.FromArgb(240, 240, 240);
+        // Fixed dark text color used against any surface that's brighter
+        // than its idle state - e.g. every button's mouse-down background,
+        // which is always a lighter shade than its idle one regardless of
+        // hue, so pressed text needs to go dark unconditionally rather
+        // than depend on that particular hue's computed contrast.
+        public static readonly Color DarkForeColor = Color.FromArgb(20, 20, 20);
         public static readonly Color TextPrimaryDim = Color.FromArgb(220, 220, 220);
         public static readonly Color TextSecondary = Color.FromArgb(180, 180, 180);
         public static readonly Color TextTertiary = Color.FromArgb(140, 140, 140);
@@ -124,7 +130,7 @@ namespace CustomWFUI.Styles
         public static Color GetContrastingForeColor(Color background)
         {
             double luminance = (0.299 * background.R + 0.587 * background.G + 0.114 * background.B) / 255.0;
-            return luminance > 0.5 ? Color.FromArgb(20, 20, 20) : Color.FromArgb(240, 240, 240);
+            return luminance > 0.5 ? DarkForeColor : TextPrimary;
         }
 
         private static Color Darken(Color color, double amount)

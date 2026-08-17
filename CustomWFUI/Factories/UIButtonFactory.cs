@@ -28,11 +28,8 @@ namespace CustomWFUI.Factories
 
         public static Button CreatePrimary(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
         {
-            // Unlike the other variants, this button's background is
-            // accent-colored even at rest - so its text needs to track
-            // the accent's contrast too, not just the pressed state.
             return CreateStyledButton(text, tooltip, size, isIcon,
-                UIColors.PrimaryDark, UIColors.AccentForeColor, UIColors.BorderDark, 0,
+                UIColors.PrimaryDark, UIColors.TextPrimary, UIColors.BorderDark, 0,
                 UIColors.Primary, UIColors.PrimaryLight);
         }
 
@@ -119,18 +116,18 @@ namespace CustomWFUI.Factories
             button.FlatAppearance.MouseDownBackColor = mouseDownBackColor;
 
             SetEnabledStyle(button, backColor, foreColor);
-            SetPressedForeColor(button, foreColor, mouseDownBackColor);
+            SetPressedForeColor(button, foreColor);
             AddToolTip(button, tooltip);
 
             return button;
         }
 
-        // FlatAppearance only lets a button swap its BACKGROUND per
-        // mouse state, not its text/icon color - so a fixed foreColor
-        // (fine against the idle/hover backgrounds) can still go
-        // unreadable for the brief moment a button is held down, if
-        // mouseDownBackColor happens to be a bright accent color (e.g.
-        // yellow). Swap the text color to match only while pressed.
+        // Every button's mouse-down background (the *Light/*Lighter colors
+        // passed as mouseDownBackColor in CreateStyledButton) is a
+        // lighter/brighter shade than its idle one - so pressed text
+        // always goes dark, unconditionally, regardless of hue.
+        // FlatAppearance only lets a button swap its BACKGROUND per mouse
+        // state, not its text/icon color, so this has to be done by hand.
         //
         // MouseLeave fires on every plain hover-then-move-away too, not
         // just after a press - so this must only touch ForeColor if a
@@ -139,9 +136,9 @@ namespace CustomWFUI.Factories
         // color captured at construction time), since callers are free
         // to recolor a button after creation (e.g. DealOrNoDeal's price
         // buttons set ForeColor = Black on top of this factory's default).
-        private static void SetPressedForeColor(Button button, Color idleForeColor, Color mouseDownBackColor)
+        private static void SetPressedForeColor(Button button, Color idleForeColor)
         {
-            Color pressedForeColor = UIColors.GetContrastingForeColor(mouseDownBackColor);
+            Color pressedForeColor = UIColors.DarkForeColor;
             bool isPressed = false;
             Color restoreForeColor = idleForeColor;
 
