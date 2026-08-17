@@ -11,6 +11,27 @@ namespace CustomWFUI.Factories
         [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
         private static extern int SetWindowTheme(IntPtr hWnd, string pszSubAppName, string pszSubIdList);
 
+        [DllImport("user32.dll")]
+        private static extern bool GetComboBoxInfo(IntPtr hwndCombo, ref ComboBoxInfo pcbi);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Rect
+        {
+            public int Left, Top, Right, Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ComboBoxInfo
+        {
+            public int cbSize;
+            public Rect rcItem;
+            public Rect rcButton;
+            public int buttonState;
+            public IntPtr hwndCombo;
+            public IntPtr hwndEdit;
+            public IntPtr hwndList;
+        }
+
         public static ComboBox CreateStandard(
             ComboBoxStyle comboBoxStyle = ComboBoxStyle.DropDownList)
         {
@@ -46,7 +67,24 @@ namespace CustomWFUI.Factories
             // rendering blank.
             SetWindowTheme(comboBox.Handle, "", "");
 
+            // The dropdown popup is a SEPARATE native window (its own HWND,
+            // fetched via GetComboBoxInfo) from the combo box itself - it
+            // still had its own themed border in the OS accent (blue) even
+            // after the line above, since stripping the combo box's own
+            // window theme doesn't touch it. Comctl32 creates this child
+            // window up front (hidden until first drop-down), so it's
+            // already available right after the combo box's own handle is.
+            UnthemeDropDownList(comboBox);
+
             return comboBox;
+        }
+
+        private static void UnthemeDropDownList(ComboBox comboBox)
+        {
+            ComboBoxInfo info = new ComboBoxInfo { cbSize = Marshal.SizeOf(typeof(ComboBoxInfo)) };
+
+            if (GetComboBoxInfo(comboBox.Handle, ref info) && info.hwndList != IntPtr.Zero)
+                SetWindowTheme(info.hwndList, "", "");
         }
 
         private static void ComboBox_DrawItem(object sender, DrawItemEventArgs e)
