@@ -94,6 +94,18 @@ namespace CustomWFUI
             {
                 UIColors.SetAccent(accent);
             }
+
+            /// <summary>
+            /// Switches the base theme (backgrounds/text/borders), e.g.
+            /// UIThemes.Light to move off the dark default. Same "call once,
+            /// before building any UI" caveat as <see cref="SetAccent"/>. Combine
+            /// freely with SetAccent - the two are independent (e.g. a light
+            /// theme with a purple accent).
+            /// </summary>
+            public static void ApplyTheme(UIColorTheme theme)
+            {
+                UIColors.ApplyTheme(theme);
+            }
         }
 
         public static class Fonts

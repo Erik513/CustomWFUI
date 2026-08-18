@@ -11,13 +11,18 @@ namespace CustomWFUI.Styles
     {
         public static readonly Color Black = Color.Black;
 
-        public static readonly Color BackgroundBlack = Color.FromArgb(10, 10, 10);
-        public static readonly Color BackgroundDark = Color.FromArgb(20, 20, 20);
-        public static readonly Color BackgroundDarkElevated = Color.FromArgb(25, 25, 25);
-        public static readonly Color BackgroundMedium = Color.FromArgb(35, 35, 35);
-        public static readonly Color BackgroundMediumElevated = Color.FromArgb(40, 40, 40);
-        public static readonly Color BackgroundLight = Color.FromArgb(50, 50, 50);
-        public static readonly Color BackgroundLighter = Color.FromArgb(60, 60, 60);
+        // Base surface/text/border shades - mutable (unlike the semantic
+        // Green/Yellow/Red families below, which stay fixed across themes)
+        // so ApplyTheme can swap all of them at once. Defaults are exactly
+        // today's dark palette, so ApplyTheme is strictly opt-in, same as
+        // SetAccent below.
+        public static Color BackgroundBlack { get; set; } = Color.FromArgb(10, 10, 10);
+        public static Color BackgroundDark { get; set; } = Color.FromArgb(20, 20, 20);
+        public static Color BackgroundDarkElevated { get; set; } = Color.FromArgb(25, 25, 25);
+        public static Color BackgroundMedium { get; set; } = Color.FromArgb(35, 35, 35);
+        public static Color BackgroundMediumElevated { get; set; } = Color.FromArgb(40, 40, 40);
+        public static Color BackgroundLight { get; set; } = Color.FromArgb(50, 50, 50);
+        public static Color BackgroundLighter { get; set; } = Color.FromArgb(60, 60, 60);
 
         // All shades of the app's single "accent" color - blue by default,
         // like every built-in Windows control. Not readonly (unlike the
@@ -50,22 +55,24 @@ namespace CustomWFUI.Styles
         public static readonly Color RedLight = Color.FromArgb(210, 60, 70);
 
         public static readonly Color White = Color.White;
-        public static readonly Color TextPrimary = Color.FromArgb(240, 240, 240);
+        public static Color TextPrimary { get; set; } = Color.FromArgb(240, 240, 240);
         // Fixed dark text color used against any surface that's brighter
         // than its idle state - e.g. every button's mouse-down background,
         // which is always a lighter shade than its idle one regardless of
         // hue, so pressed text needs to go dark unconditionally rather
-        // than depend on that particular hue's computed contrast.
+        // than depend on that particular hue's computed contrast. Not part
+        // of the theme (stays dark in both Dark and Light) - the whole
+        // point of this color is that it doesn't change.
         public static readonly Color DarkForeColor = Color.FromArgb(20, 20, 20);
-        public static readonly Color TextPrimaryDim = Color.FromArgb(220, 220, 220);
-        public static readonly Color TextSecondary = Color.FromArgb(180, 180, 180);
-        public static readonly Color TextTertiary = Color.FromArgb(140, 140, 140);
-        public static readonly Color TextDisabled = Color.FromArgb(100, 100, 100);
-        public static readonly Color TextMuted = Color.FromArgb(120, 120, 120);
+        public static Color TextPrimaryDim { get; set; } = Color.FromArgb(220, 220, 220);
+        public static Color TextSecondary { get; set; } = Color.FromArgb(180, 180, 180);
+        public static Color TextTertiary { get; set; } = Color.FromArgb(140, 140, 140);
+        public static Color TextDisabled { get; set; } = Color.FromArgb(100, 100, 100);
+        public static Color TextMuted { get; set; } = Color.FromArgb(120, 120, 120);
 
-        public static readonly Color BorderDark = Color.FromArgb(50, 50, 50);
-        public static readonly Color BorderMedium = Color.FromArgb(70, 70, 70);
-        public static readonly Color BorderLight = Color.FromArgb(90, 90, 90);
+        public static Color BorderDark { get; set; } = Color.FromArgb(50, 50, 50);
+        public static Color BorderMedium { get; set; } = Color.FromArgb(70, 70, 70);
+        public static Color BorderLight { get; set; } = Color.FromArgb(90, 90, 90);
         public static Color BorderPrimary { get; set; } = Color.FromArgb(0, 100, 180);
         public static readonly Color BorderRed = Color.FromArgb(180, 40, 50);
 
@@ -76,8 +83,8 @@ namespace CustomWFUI.Styles
         // text nobody can read.
         public static Color AccentForeColor { get; set; } = Color.FromArgb(240, 240, 240);
 
-        public static readonly Color HoverOverlay = Color.FromArgb(30, 30, 30, 80);
-        public static readonly Color ActiveOverlay = Color.FromArgb(40, 40, 40, 120);
+        public static Color HoverOverlay { get; set; } = Color.FromArgb(30, 30, 30, 80);
+        public static Color ActiveOverlay { get; set; } = Color.FromArgb(40, 40, 40, 120);
         // Color.FromArgb(alpha, r, g, b) - this previously had alpha=0
         // (fully transparent, i.e. invisible no matter what it was painted
         // over) because the arguments were in the wrong order for a
@@ -89,6 +96,47 @@ namespace CustomWFUI.Styles
         public static readonly Color OverlayDark = Color.FromArgb(0, 0, 0, 180);
         public static readonly Color OverlayMedium = Color.FromArgb(0, 0, 0, 120);
         public static readonly Color OverlayLight = Color.FromArgb(0, 0, 0, 60);
+
+        /// <summary>
+        /// Replaces every base surface color (backgrounds, text, borders,
+        /// hover/active tints - everything except the accent, which is set
+        /// independently via <see cref="SetAccent"/>) with the ones from the
+        /// given theme, e.g. <see cref="UIThemes.Light"/> to switch away from
+        /// the dark default. Same "call once, as early as possible - before
+        /// building any UI" caveat as SetAccent: every control that already
+        /// exists keeps the colors it was built with, since none of them
+        /// re-read UIColors after construction. Applying <see
+        /// cref="UIThemes.Dark"/> is a no-op unless something else already
+        /// changed the theme, since Dark matches today's original defaults
+        /// exactly.
+        /// </summary>
+        public static void ApplyTheme(UIColorTheme theme)
+        {
+            if (theme == null)
+                return;
+
+            BackgroundBlack = theme.BackgroundBlack;
+            BackgroundDark = theme.BackgroundDark;
+            BackgroundDarkElevated = theme.BackgroundDarkElevated;
+            BackgroundMedium = theme.BackgroundMedium;
+            BackgroundMediumElevated = theme.BackgroundMediumElevated;
+            BackgroundLight = theme.BackgroundLight;
+            BackgroundLighter = theme.BackgroundLighter;
+
+            TextPrimary = theme.TextPrimary;
+            TextPrimaryDim = theme.TextPrimaryDim;
+            TextSecondary = theme.TextSecondary;
+            TextTertiary = theme.TextTertiary;
+            TextDisabled = theme.TextDisabled;
+            TextMuted = theme.TextMuted;
+
+            BorderDark = theme.BorderDark;
+            BorderMedium = theme.BorderMedium;
+            BorderLight = theme.BorderLight;
+
+            HoverOverlay = theme.HoverOverlay;
+            ActiveOverlay = theme.ActiveOverlay;
+        }
 
         /// <summary>
         /// Replaces every accent shade (Primary/Secondary/Selection/
