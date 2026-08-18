@@ -7,10 +7,14 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Forms
 {
+    /// <summary>How an <see cref="UpdatePrompt.ShowUpdateAvailableAsync"/> dialog ended.</summary>
     public enum UpdateOutcome
     {
+        /// <summary>Closed without clicking "Update now".</summary>
         Declined,
+        /// <summary>applyUpdateAsync returned true.</summary>
         Applied,
+        /// <summary>applyUpdateAsync returned false or threw.</summary>
         Failed
     }
 
@@ -68,6 +72,7 @@ namespace CustomWFUI.Forms
         }
     }
 
+    /// <summary>The dialog behind <see cref="UpdatePrompt.ShowUpdateAvailableAsync"/> - prefer calling that over constructing this directly, it handles wiring <see cref="UpdateRequested"/> up to your download logic and reporting the outcome.</summary>
     public class UpdateAvailableForm : StyledForm
     {
         private static readonly Size DialogSize = new Size(420, 190);
@@ -82,6 +87,7 @@ namespace CustomWFUI.Forms
         private ProgressBar _progressBar;
         private bool _updateRequested;
 
+        /// <summary>Raised when "Update now" is clicked - call <see cref="ShowProgressState"/> and start downloading.</summary>
         public event EventHandler UpdateRequested;
 
         public UpdateAvailableForm(
@@ -119,6 +125,7 @@ namespace CustomWFUI.Forms
             _progressContent.Visible = true;
         }
 
+        /// <summary>Updates the progress bar/status text - safe to call from a background download thread, marshals to the UI thread itself.</summary>
         public void SetProgress(int percent)
         {
             if (InvokeRequired)

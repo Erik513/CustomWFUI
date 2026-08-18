@@ -4,6 +4,15 @@ using System.Windows.Forms;
 
 namespace CustomWFUI.Helpers
 {
+    /// <summary>
+    /// Restores edge/corner resize cursors and dragging for a borderless
+    /// (<see cref="FormBorderStyle.None"/>) form, which loses that
+    /// automatically along with its native frame.
+    /// <see cref="CustomWFUI.Forms.StyledForm"/> already wires this up for
+    /// you when its Borderless/Resizable options are both true - construct
+    /// one directly only if you're building a borderless window from
+    /// scratch instead of deriving from StyledForm.
+    /// </summary>
     public class BorderlessResizeHandler
     {
         private const int WmNcHitTest = 0x84;
@@ -26,6 +35,7 @@ namespace CustomWFUI.Helpers
             _form = form;
         }
 
+        /// <summary>Call from the form's <c>WndProc</c> override with every message. Returns true (and sets <c>message.Result</c>) if this handled it as a resize hit-test - the form should skip its own handling of that message when this returns true.</summary>
         public bool TryHandleMessage(ref Message message)
         {
             if (_form == null)

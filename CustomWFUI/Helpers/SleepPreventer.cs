@@ -4,6 +4,13 @@ using System.Runtime.InteropServices;
 
 namespace CustomWFUI.Helpers
 {
+    /// <summary>
+    /// Keeps the display and system from sleeping while active, e.g. during
+    /// a long-running download or playback - call <see cref="PreventSleep"/>
+    /// when starting and <see cref="AllowSleep"/> when done. Note:
+    /// <c>SetThreadExecutionState</c> is per-thread, so call both from the
+    /// same thread (typically the UI thread).
+    /// </summary>
     public static class SleepPreventer
     {
         private static readonly ExecutionFlag PreventSleepFlags =
@@ -26,6 +33,7 @@ namespace CustomWFUI.Helpers
             Continuous = 0x80000000
         }
 
+        /// <summary>Starts preventing sleep - remember to call <see cref="AllowSleep"/> when done, this doesn't reset itself.</summary>
         public static void PreventSleep()
         {
             TrySetExecutionState(
@@ -33,6 +41,7 @@ namespace CustomWFUI.Helpers
                 "prevent sleep");
         }
 
+        /// <summary>Undoes <see cref="PreventSleep"/>.</summary>
         public static void AllowSleep()
         {
             TrySetExecutionState(

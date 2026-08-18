@@ -12,6 +12,7 @@ namespace CustomWFUI.Helpers
     /// </summary>
     public static class TextDragDropHelper
     {
+        /// <summary>Wires up drag/drop of plain text onto <paramref name="control"/>, calling <paramref name="onTextDropped"/> with whatever text was dropped. Sets <see cref="Control.AllowDrop"/> and swaps the cursor to indicate whether the current drag target has droppable text.</summary>
         public static void EnableTextDragDrop(
             Control control,
             Action<string> onTextDropped)

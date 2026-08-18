@@ -19,6 +19,7 @@ namespace CustomWFUI.Forms
         private readonly GitHubUpdateChecker _updateChecker;
         private readonly SelfUpdater _selfUpdater;
 
+        /// <summary>checkHttpClient/downloadHttpClient are typically two separate <see cref="HttpClient"/>s so the download's own timeout/headers don't have to match the (usually much shorter) update-check ones.</summary>
         public AppUpdater(
             string repositoryOwner,
             string repositoryName,

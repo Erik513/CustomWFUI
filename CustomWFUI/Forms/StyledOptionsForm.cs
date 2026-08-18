@@ -18,6 +18,7 @@ namespace CustomWFUI.Forms
         private readonly Button _saveButton;
         private readonly Button _cancelButton;
 
+        /// <summary>Add your option rows here, then call <see cref="FitToContent"/>.</summary>
         public StyledPropertyTable PropertyTable
         {
             get { return _propertyTable; }
@@ -35,6 +36,7 @@ namespace CustomWFUI.Forms
             set { _saveButton.Text = value; }
         }
 
+        /// <inheritdoc cref="SaveButtonText"/>
         public string CancelButtonText
         {
             get { return _cancelButton.Text; }
@@ -48,6 +50,7 @@ namespace CustomWFUI.Forms
         /// </summary>
         public event EventHandler SaveClicked;
 
+        /// <summary>Add rows to <see cref="PropertyTable"/> and call <see cref="FitToContent"/> after construction.</summary>
         public StyledOptionsForm(string title = "Options")
             : base(StyledFormOptions.CreateDialog(title))
         {
