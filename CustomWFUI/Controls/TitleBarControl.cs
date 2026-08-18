@@ -47,6 +47,12 @@ namespace CustomWFUI.Controls
             }
         }
 
+        public Color TitleForeColor
+        {
+            get { return _titleLabel.ForeColor; }
+            set { _titleLabel.ForeColor = value; }
+        }
+
         public ContentAlignment TitleTextAlign
         {
             get { return _titleLabel.TextAlign; }
