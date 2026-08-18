@@ -82,6 +82,14 @@ namespace CustomWFUI.Controls
             }
         }
 
+        // Null (the default) means "follow the current theme/accent", same
+        // as every other control - set any of these to opt a single
+        // instance out of the shared theme for a special case (e.g. a
+        // danger toggle that should always read red, regardless of accent).
+        public Color? CheckedBackColor { get; set; }
+        public Color? UncheckedBackColor { get; set; }
+        public Color? KnobColor { get; set; }
+
         public ToggleSwitch()
         {
             ConfigureControl();
@@ -328,9 +336,9 @@ namespace CustomWFUI.Controls
                 return UIStyles.Colors.BackgroundDark;
 
             if (Checked)
-                return UIStyles.Colors.Primary;
+                return CheckedBackColor ?? UIStyles.Colors.Primary;
 
-            return UIStyles.Colors.BackgroundMedium;
+            return UncheckedBackColor ?? UIStyles.Colors.BackgroundMedium;
         }
 
         private Color GetBorderColor()
@@ -348,6 +356,9 @@ namespace CustomWFUI.Controls
         {
             if (!Enabled)
                 return UIStyles.Colors.TextDisabled;
+
+            if (KnobColor.HasValue)
+                return KnobColor.Value;
 
             if (_isPressed)
                 return UIStyles.Colors.PrimaryLight;
