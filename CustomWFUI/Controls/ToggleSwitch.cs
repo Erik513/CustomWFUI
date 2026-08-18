@@ -5,6 +5,7 @@ using System.Windows.Forms;
 
 namespace CustomWFUI.Controls
 {
+    /// <summary>An iOS-style on/off switch, an alternative to a <see cref="CheckBox"/>.</summary>
     public class ToggleSwitch : Control
     {
         private const int DefaultWidth = 45;
@@ -21,8 +22,10 @@ namespace CustomWFUI.Controls
         private string _toolTipTextChecked = "";
         private string _toolTipTextUnchecked = "";
 
+        /// <summary>Raised when <see cref="Checked"/> changes, whether from user interaction or setting the property directly.</summary>
         public event EventHandler CheckedChanged;
 
+        /// <summary>The switch's on/off state.</summary>
         public bool Checked
         {
             get
@@ -43,6 +46,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Tooltip text shown while <see cref="Checked"/> is true.</summary>
         public string ToolTipTextChecked
         {
             get
@@ -56,6 +60,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Tooltip text shown while <see cref="Checked"/> is false.</summary>
         public string ToolTipTextUnchecked
         {
             get
@@ -69,6 +74,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Write-only shorthand for setting both <see cref="ToolTipTextChecked"/> and <see cref="ToolTipTextUnchecked"/> to the same text.</summary>
         public string ToolTipText
         {
             set
@@ -82,12 +88,16 @@ namespace CustomWFUI.Controls
             }
         }
 
-        // Null (the default) means "follow the current theme/accent", same
-        // as every other control - set any of these to opt a single
-        // instance out of the shared theme for a special case (e.g. a
-        // danger toggle that should always read red, regardless of accent).
+        /// <summary>
+        /// Null (the default) means "follow the current theme/accent", same
+        /// as every other control - set any of these to opt a single
+        /// instance out of the shared theme for a special case (e.g. a
+        /// danger toggle that should always read red, regardless of accent).
+        /// </summary>
         public Color? CheckedBackColor { get; set; }
+        /// <inheritdoc cref="CheckedBackColor"/>
         public Color? UncheckedBackColor { get; set; }
+        /// <inheritdoc cref="CheckedBackColor"/>
         public Color? KnobColor { get; set; }
 
         public ToggleSwitch()

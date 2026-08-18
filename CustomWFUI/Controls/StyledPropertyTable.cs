@@ -4,6 +4,13 @@ using static CustomWFUI.UIStyles;
 
 namespace CustomWFUI.Controls
 {
+    /// <summary>
+    /// A two-column "label: editor" table, grouped into optional labeled
+    /// sections - typical use is a settings/options panel. Build it up with
+    /// <see cref="AddSection"/> and <see cref="AddRow(string,Control[])"/>;
+    /// a row can hold more than one editor control side by side via the
+    /// <see cref="UIColumn"/>-based overloads.
+    /// </summary>
     public partial class StyledPropertyTable : UserControl
     {
         private const int DefaultLabelColumnWidth = 130;
@@ -27,6 +34,7 @@ namespace CustomWFUI.Controls
             Controls.Add(_layout);
         }
 
+        /// <summary>Removes every row and section, leaving an empty table.</summary>
         public void ClearRows()
         {
             _layout.Controls.Clear();
@@ -34,6 +42,7 @@ namespace CustomWFUI.Controls
             _layout.RowCount = 0;
         }
 
+        /// <summary>Adds a full-width section header row.</summary>
         public void AddSection(string title)
         {
             int row = AddRowStyle(DefaultSectionHeight);
@@ -44,6 +53,13 @@ namespace CustomWFUI.Controls
             _layout.SetColumnSpan(label, 2);
         }
 
+        /// <summary>
+        /// Adds a row: a label on the left, one or more editor controls
+        /// sharing the remaining width equally on the right (each gets
+        /// <see cref="UIColumn.Auto"/> sizing). Use the
+        /// <see cref="AddRow(string,UIColumn[])"/> overload instead if the
+        /// controls need different widths.
+        /// </summary>
         public void AddRow(
             string labelText,
             params Control[] controls)
@@ -56,6 +72,7 @@ namespace CustomWFUI.Controls
                 columns);
         }
 
+        /// <inheritdoc cref="AddRow(string,Control[])"/>
         public void AddRow(
             string labelText,
             int rowHeight,
@@ -69,6 +86,7 @@ namespace CustomWFUI.Controls
                 columns);
         }
 
+        /// <summary>Adds a row with explicit per-column sizing - see <see cref="UIColumn.Auto"/>/<see cref="UIColumn.Absolute"/>/<see cref="UIColumn.Percent"/>.</summary>
         public void AddRow(
             string labelText,
             params UIColumn[] columns)
@@ -79,6 +97,7 @@ namespace CustomWFUI.Controls
                 columns);
         }
 
+        /// <inheritdoc cref="AddRow(string,UIColumn[])"/>
         public void AddRow(
             string labelText,
             int rowHeight,

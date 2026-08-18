@@ -34,48 +34,56 @@ namespace CustomWFUI.Controls
         private int _headerHeight = 32;
         private int _rowHeight = 32;
 
+        /// <summary>Background color of the header row.</summary>
         public Color HeaderBackColor
         {
             get => _headerBackColor;
             set { _headerBackColor = value; Rebuild(); }
         }
 
+        /// <summary>Text color of the header row.</summary>
         public Color HeaderForeColor
         {
             get => _headerForeColor;
             set { _headerForeColor = value; Rebuild(); }
         }
 
+        /// <summary>Background color of a data row. Odd/even rows alternate between this and a slightly darker shade of it.</summary>
         public Color RowBackColor
         {
             get => _rowBackColor;
             set { _rowBackColor = value; _alternateRowBackColor = Darken(value, 5); Rebuild(); }
         }
 
+        /// <summary>Text color of a data row.</summary>
         public Color RowForeColor
         {
             get => _rowForeColor;
             set { _rowForeColor = value; Rebuild(); }
         }
 
+        /// <summary>Font for the header row. Defaults to a bold version of <see cref="RowFont"/>.</summary>
         public Font HeaderFont
         {
             get => _headerFont;
             set { _headerFont = value; Rebuild(); }
         }
 
+        /// <summary>Font for data rows.</summary>
         public Font RowFont
         {
             get => _rowFont;
             set { _rowFont = value; Rebuild(); }
         }
 
+        /// <summary>Header row height in pixels.</summary>
         public int HeaderHeight
         {
             get => _headerHeight;
             set { _headerHeight = Math.Max(0, value); Rebuild(); }
         }
 
+        /// <summary>Data row height in pixels.</summary>
         public int RowHeight
         {
             get => _rowHeight;
