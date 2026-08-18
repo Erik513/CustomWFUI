@@ -8,6 +8,18 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI
 {
+    /// <summary>
+    /// The single entry point for CustomWFUI's control factories and styling
+    /// - start here rather than the individual classes under
+    /// <see cref="CustomWFUI.Factories"/>/<see cref="CustomWFUI.Styles"/>
+    /// (most of which are internal). Each nested class below (<see
+    /// cref="Buttons"/>, <see cref="Labels"/>, ...) mirrors one control type
+    /// with a set of <c>Create*</c> factory methods that return a
+    /// pre-themed, ready-to-add WinForms control. See <see cref="Colors"/>
+    /// for how to customize the color scheme (accent color and/or full
+    /// light/dark theme) and <see cref="Language"/> for switching the
+    /// language of built-in dialog text.
+    /// </summary>
     public static class UIStyles
     {
         /// <summary>
@@ -21,6 +33,12 @@ namespace CustomWFUI
             set { UIStrings.Language = value; }
         }
 
+        /// <summary>
+        /// Read-only access to every color used across CustomWFUI's controls,
+        /// plus <see cref="SetAccent"/>/<see cref="ApplyTheme"/> to customize
+        /// them. Defaults to a dark gray theme with a blue accent; nothing
+        /// here needs to be set unless you want to change that.
+        /// </summary>
         public static class Colors
         {
             public static Color Black { get { return UIColors.Black; } }
@@ -108,6 +126,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>The fonts used across CustomWFUI's controls.</summary>
         public static class Fonts
         {
             public static Font Title { get { return UIFonts.Title; } }
@@ -118,6 +137,7 @@ namespace CustomWFUI
             public static Font Emoji { get { return UIFonts.Emoji; } }
         }
 
+        /// <summary>Flat, themed <see cref="Button"/>s in a few preset colors (<see cref="CreateStandard"/>, <see cref="CreatePrimary"/>, <see cref="CreateGreen"/>, <see cref="CreateDanger"/>) plus a couple of special-purpose ones.</summary>
         public static class Buttons
         {
             public static Button CreateStandard(
@@ -202,6 +222,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>Themed <see cref="Label"/>s: <see cref="CreateTitle"/> (bold/large), <see cref="CreateNormal"/> (body text), <see cref="CreateMuted"/> (de-emphasized).</summary>
         public static class Labels
         {
             public static Label CreateTitle(string text = "")
@@ -220,6 +241,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>Themed <see cref="TextBox"/>es.</summary>
         public static class TextBoxes
         {
             public static TextBox CreateStandard(
@@ -241,6 +263,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A themed <see cref="ComboBox"/>. Note: only the edit portion follows the theme - the native dropdown list itself still renders with system colors (see CustomWFUI/README.md).</summary>
         public static class ComboBoxes
         {
             public static ComboBox CreateStandard(
@@ -251,6 +274,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>Plain <see cref="Panel"/>s pre-filled with one of the theme's background shades - handy as containers/cards.</summary>
         public static class Panels
         {
             public static Panel CreateDark()
@@ -278,6 +302,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>Themed <see cref="CheckBox"/>es.</summary>
         public static class CheckBoxes
         {
             public static CheckBox CreateStandard(
@@ -298,6 +323,7 @@ namespace CustomWFUI
         }
 
 
+        /// <summary>iOS-style on/off <see cref="Controls.ToggleSwitch"/>es in three sizes. Colors can be overridden per-instance - see <see cref="Controls.ToggleSwitch.CheckedBackColor"/>.</summary>
         public static class ToggleSwitches
         {
             public static ToggleSwitch CreateStandard(
@@ -333,6 +359,7 @@ namespace CustomWFUI
                     tooltipUnchecked);
             }
         }
+        /// <summary>Themed <see cref="TableLayoutPanel"/>s, pre-sized to the given column/row count.</summary>
         public static class TableLayoutPanels
         {
             public static TableLayoutPanel CreateStandard(
@@ -354,6 +381,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>Creates a plain <see cref="ToolTip"/> component - note it isn't owned by any control, so dispose it yourself if you're not letting it live for the app's whole lifetime.</summary>
         public static class ToolTips
         {
             public static ToolTip CreateToolTip(
@@ -363,6 +391,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A themed, owner-drawn, optionally drag-reorderable <see cref="Controls.StyledListBox"/> - a heavier alternative to the native ListBox with icons, custom item colors, and enumeration support.</summary>
         public static class StyledListBoxes
         {
             public static StyledListBox Create(
@@ -377,6 +406,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A <see cref="Controls.StyledListBox"/> wrapped with an optional header bar - see <see cref="StyledListBoxes"/> for the list box on its own.</summary>
         public static class StyledListBoxControls
         {
             public static StyledListBoxControl Create(
@@ -395,6 +425,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A lightweight, read-only <see cref="Controls.StyledDataTable"/> for displaying tabular data - see <see cref="Controls.StyledListView"/> for a heavier, sortable/copyable alternative.</summary>
         public static class DataTables
         {
             public static StyledDataTable Create()
@@ -403,6 +434,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A themed key/value <see cref="Controls.StyledPropertyTable"/> (label + editor per row, grouped into sections) - typical use is a settings/options panel.</summary>
         public static class PropertyTables
         {
             public static StyledPropertyTable Create()
@@ -411,6 +443,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A themed <see cref="NumericUpDown"/>. Note: the up/down spinner buttons themselves stay system-colored - only the field's own colors follow the theme.</summary>
         public static class NumericUpDowns
         {
             public static NumericUpDown CreateStandard(
@@ -427,6 +460,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A plain, transparent <see cref="FlowLayoutPanel"/> with no padding/margin - a layout helper, not itself themed.</summary>
         public static class FlowLayoutPanels
         {
             public static FlowLayoutPanel CreateStandard()
@@ -435,6 +469,7 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A themed <see cref="ProgressBar"/> (continuous style, not the native blocky one).</summary>
         public static class ProgressBars
         {
             public static ProgressBar CreateStandard()
@@ -443,6 +478,12 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>
+        /// CustomWFUI's own bundled icons (Web/Folder/Document/Application),
+        /// plus <see cref="LoadEmbedded"/> for loading your own app's icon
+        /// from its embedded resources the same way - see
+        /// CustomWFUI/README.md for why that's preferable to a loose file.
+        /// </summary>
         public static class Icons
         {
             public static Image Web { get { return UIIcons.Web; } }

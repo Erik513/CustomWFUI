@@ -7,6 +7,15 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Controls
 {
+    /// <summary>
+    /// A custom-drawn window title bar: logo, title text, minimize/maximize/
+    /// close buttons, and window dragging (including drag-to-maximize and
+    /// double-click-to-maximize) - all reimplemented in managed code since it
+    /// replaces the native one. <see cref="CustomWFUI.Forms.StyledForm"/> already creates and
+    /// docks one of these for you; construct it directly only if you're
+    /// building a custom top-level window from scratch instead of deriving
+    /// from StyledForm.
+    /// </summary>
     public class TitleBarControl : Panel
     {
         private const int TitleBarHeight = 30;
@@ -30,12 +39,14 @@ namespace CustomWFUI.Controls
 
         private Form _parentForm;
 
+        /// <summary>The window title text.</summary>
         public string Title
         {
             get { return _titleLabel.Text; }
             set { _titleLabel.Text = value ?? ""; }
         }
 
+        /// <summary>The small logo at the top-left, or null to hide it entirely (default). See CustomWFUI/README.md for how to load this from your own embedded resources.</summary>
         public Image IconImage
         {
             get { return _iconPictureBox.Image; }
@@ -47,6 +58,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>The title text's color.</summary>
         public Color TitleForeColor
         {
             get { return _titleLabel.ForeColor; }
@@ -93,6 +105,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>allowWindowSnapAndMaximize controls both double-click-to-maximize and drag-to-top-of-screen-to-maximize.</summary>
         public TitleBarControl(
             Image icon = null,
             string title = "",

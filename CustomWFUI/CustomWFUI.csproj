@@ -6,6 +6,17 @@
     <RootNamespace>CustomWFUI</RootNamespace>
     <AssemblyName>CustomWFUI</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Ships CustomWFUI.xml next to the DLL so a consuming project sees
+         IntelliSense tooltips from this library's XML doc comments -
+         without this, /// <summary> comments only ever help someone
+         reading this source, never someone who just added a DLL
+         reference. CS1591 ("missing XML comment for publicly visible
+         type or member") is suppressed since doc-comment coverage is
+         being filled in incrementally, not all at once - only warn on
+         comments that exist and are malformed, not on ones that are
+         simply missing yet. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <!-- Silences CA1416 "only supported on windows" warnings on the
