@@ -384,7 +384,7 @@ namespace CustomWFUI.Controls
             base.OnDrawItem(e);
         }
 
-        public void ClearSelected()
+        public new void ClearSelected()
         {
             if (SelectedIndex == -1)
                 return;
