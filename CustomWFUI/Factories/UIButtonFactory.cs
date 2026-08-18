@@ -203,26 +203,35 @@ namespace CustomWFUI.Factories
                 toolTip.SetToolTip(button, tooltip ?? "");
         }
 
+        // Like SetPressedForeColor above: restores whatever BackColor/ForeColor
+        // was live right before the button got disabled, not the color
+        // captured here at construction time - so a caller's manual override
+        // (button.BackColor = ... after creation) survives an Enabled
+        // round-trip instead of silently snapping back to the factory
+        // default the next time the button re-enables.
         private static void SetEnabledStyle(Button button, Color enabledBackColor, Color enabledForeColor)
         {
             Color disabledBackColor = Darken(enabledBackColor, DisabledColorFactor);
             Color disabledForeColor = UIColors.TextDisabled;
 
-            ApplyEnabledStyle(button, enabledBackColor, enabledForeColor, disabledBackColor, disabledForeColor);
+            Color restoreBackColor = enabledBackColor;
+            Color restoreForeColor = enabledForeColor;
 
             button.EnabledChanged += delegate
             {
-                ApplyEnabledStyle(button, enabledBackColor, enabledForeColor, disabledBackColor, disabledForeColor);
+                if (button.Enabled)
+                {
+                    button.BackColor = restoreBackColor;
+                    button.ForeColor = restoreForeColor;
+                }
+                else
+                {
+                    restoreBackColor = button.BackColor;
+                    restoreForeColor = button.ForeColor;
+                    button.BackColor = disabledBackColor;
+                    button.ForeColor = disabledForeColor;
+                }
             };
-        }
-
-        private static void ApplyEnabledStyle(Button button, Color enabledBackColor, Color enabledForeColor, Color disabledBackColor, Color disabledForeColor)
-        {
-            if (button == null)
-                return;
-
-            button.BackColor = button.Enabled ? enabledBackColor : disabledBackColor;
-            button.ForeColor = button.Enabled ? enabledForeColor : disabledForeColor;
         }
 
         private static Color Darken(Color color, double factor)
