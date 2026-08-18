@@ -6,6 +6,7 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Forms
 {
+    /// <summary>Which buttons a <see cref="CustomMessageBox"/> shows.</summary>
     public enum CustomMessageBoxButtons
     {
         OK,
@@ -14,6 +15,7 @@ namespace CustomWFUI.Forms
         YesNoCancel
     }
 
+    /// <summary>Which icon a <see cref="CustomMessageBox"/> shows in its title bar.</summary>
     public enum CustomMessageBoxIcon
     {
         None,
@@ -24,6 +26,7 @@ namespace CustomWFUI.Forms
         Success
     }
 
+    /// <summary>Overall size preset for a <see cref="CustomMessageBox"/>.</summary>
     public enum CustomMessageBoxSize
     {
         Small,
@@ -31,8 +34,10 @@ namespace CustomWFUI.Forms
         Large
     }
 
+    /// <summary>CustomWFUI's themed replacement for <see cref="MessageBox"/> - call <see cref="Show"/>.</summary>
     public static class CustomMessageBox
     {
+        /// <summary>Shows the dialog modally and returns which button was clicked (or the safe default - Cancel/No/OK - if the dialog is closed without clicking one).</summary>
         public static DialogResult Show(
             string message,
             string title = "Notice",

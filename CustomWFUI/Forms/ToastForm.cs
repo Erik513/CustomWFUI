@@ -6,6 +6,12 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Forms
 {
+    /// <summary>
+    /// A small, rounded, self-dismissing confirmation toast (checkmark +
+    /// message) - call the static <see cref="ShowToast"/> rather than
+    /// constructing this directly. Only one toast shows at a time; showing
+    /// a new one closes whatever's currently up.
+    /// </summary>
     public class ToastForm : Form
     {
         private const int ToastWidth = 350;
@@ -29,6 +35,7 @@ namespace CustomWFUI.Forms
             Load += OnToastLoad;
         }
 
+        /// <summary>Shows a toast near the bottom-center of <paramref name="owner"/>, auto-closing itself after ~2.5s.</summary>
         public static void ShowToast(string message, Form owner)
         {
             if (owner == null || owner.IsDisposed)

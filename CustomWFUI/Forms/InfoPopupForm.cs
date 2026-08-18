@@ -7,6 +7,15 @@ using System.Windows.Forms;
 
 namespace CustomWFUI.Forms
 {
+    /// <summary>
+    /// A small, borderless, rounded-corner tooltip-like popup for showing
+    /// extra info next to a control or the mouse cursor - reuse a single
+    /// instance across many show calls rather than creating a new one each
+    /// time (it repositions/relabels itself instead of flashing closed and
+    /// reopening). Two independent content modes: a single block of text
+    /// (<see cref="ShowInfo"/>/<see cref="ShowInfoAtMouse"/>) or one or more
+    /// labeled sections (<see cref="ShowSections"/> and friends).
+    /// </summary>
     public class InfoPopupForm : Form
     {
         private const int CornerRadius = 12;
@@ -47,6 +56,7 @@ namespace CustomWFUI.Forms
             SizeChanged += OnFormSizeChanged;
         }
 
+        /// <summary>Shows (or repositions, if already visible) a single block of text, anchored to the bottom-right of <paramref name="owner"/>.</summary>
         public void ShowInfo(string text, Control owner)
         {
             if (owner == null || owner.IsDisposed)
@@ -87,6 +97,7 @@ namespace CustomWFUI.Forms
             return location;
         }
 
+        /// <summary>Same as <see cref="ShowInfo"/>, but anchored near <paramref name="mouseScreenPosition"/> instead of <paramref name="owner"/>'s bounds - typical use is showing this from a MouseMove handler.</summary>
         public void ShowInfoAtMouse(
             string text,
             Control owner,
@@ -136,6 +147,7 @@ namespace CustomWFUI.Forms
             return result;
         }
 
+        /// <summary>Shows one or more labeled <see cref="InfoPopupSection"/>s instead of plain text, anchored to <paramref name="owner"/>.</summary>
         public void ShowSections(Control owner, params InfoPopupSection[] sections)
         {
             if (owner == null || owner.IsDisposed)
@@ -166,6 +178,13 @@ namespace CustomWFUI.Forms
 
             BringToFront();
         }
+        /// <summary>
+        /// Like <see cref="ShowSectionsAtMouse"/>, but waits 400ms before
+        /// actually showing - meant for hover tooltips, so quickly passing
+        /// the mouse over several items doesn't flash a popup for each one.
+        /// Call <see cref="CancelPendingShow"/> on MouseLeave to cancel a
+        /// still-pending show.
+        /// </summary>
         public void ShowSectionsAtMouseDelayed(Control owner, Point mouseScreenPosition, params InfoPopupSection[] sections)
         {
             if (owner == null || owner.IsDisposed)
@@ -179,6 +198,7 @@ namespace CustomWFUI.Forms
             _showDelayTimer.Start();
         }
 
+        /// <summary>Cancels a show scheduled by <see cref="ShowSectionsAtMouseDelayed"/> that hasn't fired yet - does not hide the popup if it's already showing.</summary>
         public void CancelPendingShow()
         {
             if (_showDelayTimer != null)
@@ -198,6 +218,7 @@ namespace CustomWFUI.Forms
             ShowSectionsAtMouse(_pendingOwner, _pendingMouseScreenPosition, _pendingSections);
         }
 
+        /// <summary>Immediate (non-delayed) version of <see cref="ShowSectionsAtMouseDelayed"/> - skips rebuilding the section labels if the content is identical to what's already showing.</summary>
         public void ShowSectionsAtMouse(Control owner, Point mouseScreenPosition, params InfoPopupSection[] sections)
         {
             if (owner == null || owner.IsDisposed)
@@ -400,6 +421,7 @@ namespace CustomWFUI.Forms
         }
 
     }
+    /// <summary>One labeled block of text for <see cref="InfoPopupForm.ShowSections"/> and its overloads - a section with an empty/null Header or Text just omits that part.</summary>
     public class InfoPopupSection
     {
         public string Header { get; set; }
