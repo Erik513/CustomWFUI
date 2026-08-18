@@ -7,6 +7,14 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Controls
 {
+    /// <summary>
+    /// An owner-drawn <see cref="ListBox"/> with per-item icons, optional
+    /// drag-to-reorder (a drag handle appears on the right of each item),
+    /// enumeration numbers, and fully overridable item colors - a themed
+    /// alternative to the native list box for anything beyond plain text
+    /// rows. Use <see cref="StyledListBoxControl"/> instead if you also want
+    /// a header bar above the list.
+    /// </summary>
     public class StyledListBox : ListBox
     {
         private const int DragHandleWidth = 30;
@@ -48,8 +56,15 @@ namespace CustomWFUI.Controls
         private Func<object, Image> _iconProvider;
         private Func<object, bool> _isItemDisabled;
 
+        /// <summary>Raised after a drag-to-reorder moves an item to a new position (see <see cref="AllowReorder"/>).</summary>
         public event EventHandler ItemsReordered;
 
+        /// <summary>
+        /// Computes each item's display text from the item itself, e.g.
+        /// <c>o => ((Track)o).Title</c>. Takes priority over
+        /// <see cref="DisplayTextMember"/> when both are set; falls back to
+        /// <c>item.ToString()</c> when neither is.
+        /// </summary>
         public Func<object, string> DisplayTextProvider
         {
             get => _displayTextProvider;
@@ -60,6 +75,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Name of a property to read each item's display text from via reflection - simpler alternative to <see cref="DisplayTextProvider"/> for the common case.</summary>
         public string DisplayTextMember
         {
             get => _displayTextMember;
@@ -71,6 +87,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Prefixes each item with its 1-based position ("1.", "2.", ...).</summary>
         public bool ShowEnumeration
         {
             get => _showEnumeration;
@@ -81,6 +98,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Optional per-item icon, drawn to the left of the display text.</summary>
         public Func<object, Image> IconProvider
         {
             get => _iconProvider;
@@ -91,6 +109,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Optional per-item disabled state (grayed out, non-interactive appearance) - independent of the whole control's own <see cref="Control.Enabled"/>.</summary>
         public Func<object, bool> IsItemDisabled
         {
             get => _isItemDisabled;
@@ -101,6 +120,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Whether items can be dragged to reorder them (drag handle on the right of each item) - also controls <see cref="Control.AllowDrop"/>.</summary>
         public bool AllowReorder
         {
             get => _allowReorder;
@@ -112,6 +132,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Row height in pixels - use this instead of the inherited <see cref="ListBox.ItemHeight"/> so the internal default stays in sync.</summary>
         public int ItemHeightCustom
         {
             get => _itemHeight;
@@ -123,6 +144,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Color of the horizontal line shown at the drop position while dragging an item to reorder it.</summary>
         public Color DragIndicatorColor
         {
             get => _dragIndicatorColor;
@@ -133,6 +155,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Text color for an item where <see cref="IsItemDisabled"/> returns true.</summary>
         public Color DisabledForeColor
         {
             get => _disabledForeColor;
@@ -143,6 +166,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Background color for an item where <see cref="IsItemDisabled"/> returns true.</summary>
         public Color DisabledBackColor
         {
             get => _disabledBackColor;
@@ -153,10 +177,13 @@ namespace CustomWFUI.Controls
             }
         }
 
-        // Defaults to UIColors.Primary (the accent color) - unlike most of
-        // this control's other colors, there was previously no way for a
-        // consuming app to override just the selection color without
-        // reaching into private state.
+        /// <summary>
+        /// Background color of the selected item. Defaults to the current
+        /// accent color (<see cref="UIColors.Primary"/>) - override this
+        /// specifically rather than calling <c>UIStyles.Colors.SetAccent</c>
+        /// if you only want to change selection, not every accent-colored
+        /// control in the app.
+        /// </summary>
         public Color SelectedBackColor
         {
             get => _selectedBackColor;
@@ -167,6 +194,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Background color of a normal (not selected/hovered/disabled) item. Odd/even rows alternate between this and a slightly darker shade of it.</summary>
         public Color ItemBackColor
         {
             get => _itemBackColor;
@@ -178,6 +206,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Text color of a normal (not selected/disabled) item.</summary>
         public Color ItemForeColor
         {
             get => _itemForeColor;
@@ -188,6 +217,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Background color of the item currently under the mouse.</summary>
         public Color HoverBackColor
         {
             get => _hoverBackColor;
@@ -198,6 +228,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Color of the drag-handle glyph shown on the right of each item when <see cref="AllowReorder"/> is true.</summary>
         public Color DragHandleColor
         {
             get => _dragHandleColor;
@@ -384,6 +415,7 @@ namespace CustomWFUI.Controls
             base.OnDrawItem(e);
         }
 
+        /// <summary>Clears the single selection. Deliberately hides (not overrides) the inherited multi-select-clearing <see cref="ListBox.ClearSelected"/> - this control is always single-select.</summary>
         public new void ClearSelected()
         {
             if (SelectedIndex == -1)
@@ -393,6 +425,7 @@ namespace CustomWFUI.Controls
             Invalidate();
         }
 
+        /// <summary>Moves an item to a new index without user drag interaction - does not raise <see cref="ItemsReordered"/>.</summary>
         public void MoveItem(int fromIndex, int toIndex)
         {
             if (fromIndex < 0 || fromIndex >= Items.Count || toIndex < 0 || toIndex >= Items.Count)

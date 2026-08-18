@@ -5,6 +5,12 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Controls
 {
+    /// <summary>
+    /// A <see cref="StyledListBox"/> with an optional header bar above it.
+    /// Most members here just proxy the same-named member on the inner list
+    /// box (see <see cref="InnerListBox"/>) - reach through InnerListBox
+    /// directly for anything not proxied.
+    /// </summary>
     public class StyledListBoxControl : UserControl
     {
         private const int DefaultHeaderHeight = 30;
@@ -22,6 +28,7 @@ namespace CustomWFUI.Controls
         {
         }
 
+        /// <summary>headerTitle left null/empty hides the header bar entirely (the default) - set <see cref="Title"/> later to show it.</summary>
         public StyledListBoxControl(
             string displayTextMember = null,
             bool allowReorder = false,
@@ -54,6 +61,7 @@ namespace CustomWFUI.Controls
             UpdateStyles();
         }
 
+        /// <summary>The wrapped list box - use this for anything (events, colors, ...) not already proxied by a member on this class.</summary>
         public StyledListBox InnerListBox
         {
             get { return _listBox; }

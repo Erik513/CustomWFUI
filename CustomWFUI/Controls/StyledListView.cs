@@ -10,32 +10,32 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Controls
 {
-    // A dark-themed, multi-column ListView (Details view) with genuine,
-    // spreadsheet-like cell-range selection instead of the native
-    // whole-row highlight: cells stay dark until a real selection is made,
-    // and then only the selected cells turn blue.
-    //   - A plain click selects just that one cell.
-    //   - Holding the left button down and dragging extends the selection
-    //     to a rectangle between the click and the current cursor cell.
-    //   - Ctrl+Alt+Click extends the existing selection to the clicked
-    //     cell without needing to drag all the way there.
-    //   - Ctrl+A selects every cell.
-    //   - Clicking a cell that's already selected deselects it again.
-    //   - Arrow keys move a single-cell selection; Shift+arrow extends it,
-    //     the same way Shift+click would.
-    //   - Hovering a cell whose text is wider than its column shows the full
-    //     text in a tooltip.
-    // Ctrl+C copies the selected rectangle (tab-separated columns, one line
-    // per row, no header line - meant to be pasted as plain data). Ctrl+
-    // Shift+C copies the same rectangle with a leading row of column names,
-    // for pasting as a proper table. Both also place an HTML table on the
-    // clipboard alongside the plain text, so apps that understand it (Word,
-    // Outlook, browsers, Excel, ...) paste an actual bordered table instead
-    // of raw tab characters; plain-text-only targets still get the tab-
-    // separated fallback. The right-click menu only shows "Copy selection"
-    // and "Copy all" at the top level; hovering either opens a submenu with
-    // the plain action again plus "As table". Every copy is confirmed with
-    // a ToastForm.
+    /// <summary>
+    /// A dark-themed, multi-column ListView (Details view) with genuine,
+    /// spreadsheet-like cell-range selection instead of the native
+    /// whole-row highlight: cells stay dark until a real selection is made,
+    /// and then only the selected cells turn blue.
+    /// <list type="bullet">
+    /// <item>A plain click selects just that one cell.</item>
+    /// <item>Holding the left button down and dragging extends the selection to a rectangle between the click and the current cursor cell.</item>
+    /// <item>Ctrl+Alt+Click extends the existing selection to the clicked cell without needing to drag all the way there.</item>
+    /// <item>Ctrl+A selects every cell.</item>
+    /// <item>Clicking a cell that's already selected deselects it again.</item>
+    /// <item>Arrow keys move a single-cell selection; Shift+arrow extends it, the same way Shift+click would.</item>
+    /// <item>Hovering a cell whose text is wider than its column shows the full text in a tooltip.</item>
+    /// </list>
+    /// Ctrl+C copies the selected rectangle (tab-separated columns, one line
+    /// per row, no header line - meant to be pasted as plain data). Ctrl+
+    /// Shift+C copies the same rectangle with a leading row of column names,
+    /// for pasting as a proper table. Both also place an HTML table on the
+    /// clipboard alongside the plain text, so apps that understand it (Word,
+    /// Outlook, browsers, Excel, ...) paste an actual bordered table instead
+    /// of raw tab characters; plain-text-only targets still get the tab-
+    /// separated fallback. The right-click menu only shows "Copy selection"
+    /// and "Copy all" at the top level; hovering either opens a submenu with
+    /// the plain action again plus "As table". Every copy is confirmed with
+    /// a <see cref="Forms.ToastForm"/>.
+    /// </summary>
     public class StyledListView : ListView
     {
         private const int DefaultMinimumColumnWidth = 40;
@@ -62,16 +62,18 @@ namespace CustomWFUI.Controls
         private int _toolTipRow = -1;
         private int _toolTipDisplayColumn = -1;
 
-        // No column can be resized narrower than this.
+        /// <summary>No column can be resized narrower than this.</summary>
         public int MinimumColumnWidth
         {
             get { return _minimumColumnWidth; }
             set { _minimumColumnWidth = Math.Max(1, value); }
         }
 
-        // Which column stretches to fill any leftover width. -1 (the
-        // default) means "whichever column is last" - set this explicitly
-        // if a different column should be the one that stretches instead.
+        /// <summary>
+        /// Which column stretches to fill any leftover width. -1 (the
+        /// default) means "whichever column is last" - set this explicitly
+        /// if a different column should be the one that stretches instead.
+        /// </summary>
         public int FillColumnIndex
         {
             get { return _fillColumnIndex; }
@@ -82,6 +84,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Background color of a normal (not selected) row. Odd/even rows alternate between this and a slightly darker shade of it.</summary>
         public Color RowBackColor
         {
             get { return _rowBackColor; }
@@ -93,6 +96,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Text color of a normal (not selected) row.</summary>
         public Color RowForeColor
         {
             get { return _rowForeColor; }
@@ -103,10 +107,12 @@ namespace CustomWFUI.Controls
             }
         }
 
-        // Painted on top of a selected cell's normal background rather than
-        // replacing it outright - UIColors.Selection is a translucent blue
-        // for exactly this, so the row's own (e.g. severity) color still
-        // shows through underneath a selection.
+        /// <summary>
+        /// Painted on top of a selected cell's normal background rather than
+        /// replacing it outright - <see cref="UIColors.Selection"/> is a
+        /// translucent blue for exactly this, so the row's own (e.g.
+        /// severity) color still shows through underneath a selection.
+        /// </summary>
         public Color SelectionOverlayColor
         {
             get { return _selectionOverlayColor; }
@@ -117,6 +123,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Background color of the column header row.</summary>
         public Color HeaderBackColor
         {
             get { return _headerBackColor; }
@@ -127,6 +134,7 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>Text color of the column header row.</summary>
         public Color HeaderForeColor
         {
             get { return _headerForeColor; }
@@ -187,11 +195,13 @@ namespace CustomWFUI.Controls
             base.Dispose(disposing);
         }
 
-        // Configurable per column, independent of MinimumColumnWidth - a
-        // column can be locked at its current width entirely (e.g. a
-        // narrow status/quality column that should never accidentally get
-        // dragged to something illegible) while others stay freely
-        // resizable.
+        /// <summary>
+        /// Configurable per column, independent of <see cref="MinimumColumnWidth"/> - a
+        /// column can be locked at its current width entirely (e.g. a
+        /// narrow status/quality column that should never accidentally get
+        /// dragged to something illegible) while others stay freely
+        /// resizable.
+        /// </summary>
         public void SetColumnResizable(int columnIndex, bool resizable)
         {
             if (resizable)
@@ -209,10 +219,13 @@ namespace CustomWFUI.Controls
             return !_nonResizableColumns.Contains(columnIndex);
         }
 
-        // Configurable per column, independent of the control-wide
-        // AllowColumnReorder switch: a column can be pinned in place (e.g. a
-        // leading "Time"/"Metric" column that should always stay leftmost)
-        // while the rest can still be freely dragged into a new order.
+        /// <summary>
+        /// Configurable per column, independent of the control-wide
+        /// <see cref="ListView.AllowColumnReorder"/> switch: a column can be
+        /// pinned in place (e.g. a leading "Time"/"Metric" column that should
+        /// always stay leftmost) while the rest can still be freely dragged
+        /// into a new order.
+        /// </summary>
         public void SetColumnReorderable(int columnIndex, bool reorderable)
         {
             if (reorderable)
@@ -230,11 +243,13 @@ namespace CustomWFUI.Controls
             return !_nonReorderableColumns.Contains(columnIndex);
         }
 
-        // Sizes every column (other than the fill column, which stretches
-        // regardless) to fit its current content and header text, then lets
-        // the fill column absorb whatever space is left. Call this again
-        // after rebuilding the rows, since content driving the "right" width
-        // may have changed.
+        /// <summary>
+        /// Sizes every column (other than the fill column, which stretches
+        /// regardless) to fit its current content and header text, then lets
+        /// the fill column absorb whatever space is left. Call this again
+        /// after rebuilding the rows, since content driving the "right" width
+        /// may have changed.
+        /// </summary>
         public void AutoFitColumnsToContent()
         {
             if (!IsHandleCreated || Columns.Count == 0)
