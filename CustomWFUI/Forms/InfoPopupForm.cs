@@ -53,7 +53,7 @@ namespace CustomWFUI.Forms
                 return;
 
             _textLabel.Text = string.IsNullOrWhiteSpace(text)
-                ? "None"
+                ? UIStrings.Get("InfoPopup.None")
                 : text;
 
             PerformLayout();
@@ -97,7 +97,7 @@ namespace CustomWFUI.Forms
 
             _textLabel.Text =
                 string.IsNullOrWhiteSpace(text)
-                    ? "None"
+                    ? UIStrings.Get("InfoPopup.None")
                     : text;
 
             PerformLayout();

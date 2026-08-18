@@ -347,7 +347,7 @@ namespace CustomWFUI.Forms
                     return new[]
                     {
                         new DialogButtonInfo("✓", DialogResult.OK),
-                        new DialogButtonInfo("Cancel", DialogResult.Cancel)
+                        new DialogButtonInfo(UIStrings.Get("MessageBox.Cancel"), DialogResult.Cancel)
                     };
 
                 case CustomMessageBoxButtons.YesNo:
@@ -362,7 +362,7 @@ namespace CustomWFUI.Forms
                     {
                         new DialogButtonInfo("✓", DialogResult.Yes),
                         new DialogButtonInfo("✖", DialogResult.No),
-                        new DialogButtonInfo("Cancel", DialogResult.Cancel)
+                        new DialogButtonInfo(UIStrings.Get("MessageBox.Cancel"), DialogResult.Cancel)
                     };
 
                 default:

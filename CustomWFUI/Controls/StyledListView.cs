@@ -450,13 +450,17 @@ namespace CustomWFUI.Controls
         {
             var menu = new ContextMenuStrip();
 
-            var copySelection = new ToolStripMenuItem("Copy selection");
-            copySelection.DropDownItems.Add("Copy selection", null, (sender, e) => CopySelection());
-            copySelection.DropDownItems.Add("As table", null, (sender, e) => CopySelectionAsTable());
+            string copySelectionText = UIStrings.Get("ListView.CopySelection");
+            string copyAllText = UIStrings.Get("ListView.CopyAll");
+            string asTableText = UIStrings.Get("ListView.AsTable");
 
-            var copyAll = new ToolStripMenuItem("Copy all");
-            copyAll.DropDownItems.Add("Copy all", null, (sender, e) => { SelectAll(); CopySelection(); });
-            copyAll.DropDownItems.Add("As table", null, (sender, e) => { SelectAll(); CopySelectionAsTable(); });
+            var copySelection = new ToolStripMenuItem(copySelectionText);
+            copySelection.DropDownItems.Add(copySelectionText, null, (sender, e) => CopySelection());
+            copySelection.DropDownItems.Add(asTableText, null, (sender, e) => CopySelectionAsTable());
+
+            var copyAll = new ToolStripMenuItem(copyAllText);
+            copyAll.DropDownItems.Add(copyAllText, null, (sender, e) => { SelectAll(); CopySelection(); });
+            copyAll.DropDownItems.Add(asTableText, null, (sender, e) => { SelectAll(); CopySelectionAsTable(); });
 
             menu.Items.Add(copySelection);
             menu.Items.Add(copyAll);
@@ -961,8 +965,10 @@ namespace CustomWFUI.Controls
             dataObject.SetData(DataFormats.Html, BuildCfHtmlTable(headerCells, rows));
             Clipboard.SetDataObject(dataObject, true);
 
-            var message = cellCount == 1 ? "Cell copied" : cellCount + " cells copied";
-            ShowCopyToast(includeHeader ? message + " (with header)" : message);
+            var message = cellCount == 1
+                ? UIStrings.Get("ListView.CellCopied")
+                : string.Format(UIStrings.Get("ListView.CellsCopied"), cellCount);
+            ShowCopyToast(includeHeader ? message + UIStrings.Get("ListView.WithHeaderSuffix") : message);
         }
 
         // Wraps an HTML <table> in the CF_HTML clipboard envelope Windows

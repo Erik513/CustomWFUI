@@ -50,6 +50,16 @@ namespace CustomWFUI.Styles
 
             ["Update.Title"] = "Update",
             ["Update.DownloadFailedMessage"] = "The update download failed. Opening the release page instead.",
+
+            ["MessageBox.Cancel"] = "Cancel",
+            ["InfoPopup.None"] = "None",
+
+            ["ListView.CopySelection"] = "Copy selection",
+            ["ListView.CopyAll"] = "Copy all",
+            ["ListView.AsTable"] = "As table",
+            ["ListView.CellCopied"] = "Cell copied",
+            ["ListView.CellsCopied"] = "{0} cells copied",
+            ["ListView.WithHeaderSuffix"] = " (with header)",
         };
 
         private static readonly Dictionary<string, string> German = new Dictionary<string, string>
@@ -66,6 +76,16 @@ namespace CustomWFUI.Styles
 
             ["Update.Title"] = "Update",
             ["Update.DownloadFailedMessage"] = "Der Update-Download ist fehlgeschlagen. Die Release-Seite wird stattdessen geöffnet.",
+
+            ["MessageBox.Cancel"] = "Abbrechen",
+            ["InfoPopup.None"] = "Keine",
+
+            ["ListView.CopySelection"] = "Auswahl kopieren",
+            ["ListView.CopyAll"] = "Alles kopieren",
+            ["ListView.AsTable"] = "Als Tabelle",
+            ["ListView.CellCopied"] = "Zelle kopiert",
+            ["ListView.CellsCopied"] = "{0} Zellen kopiert",
+            ["ListView.WithHeaderSuffix"] = " (mit Kopfzeile)",
         };
 
         public static string Get(string key)
