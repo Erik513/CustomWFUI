@@ -103,6 +103,20 @@ namespace CustomWFUI.Forms
 
             ConfigureForm();
             BuildLayout();
+
+            // Whichever button was added first (Yes, for YesNo) otherwise
+            // silently ends up with the initial keyboard focus via normal
+            // tab order - meaning a stray Space press confirms the
+            // destructive option instead of doing nothing, since Space
+            // activates whatever's focused (unlike Enter, which respects
+            // AcceptButton). Defaulting focus to CancelButton (No/Cancel)
+            // makes an accidental key press safe instead. ActiveControl,
+            // not Control.Focus() - Focus() requires the top-level form to
+            // already be the active window, which isn't guaranteed yet
+            // this early; ActiveControl is the documented way to set a
+            // form's initial focus before it's actually shown.
+            if (CancelButton is Control cancelControl)
+                ActiveControl = cancelControl;
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
