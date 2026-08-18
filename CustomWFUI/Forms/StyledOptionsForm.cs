@@ -99,6 +99,15 @@ namespace CustomWFUI.Forms
             ContentPanel.Controls.Add(_propertyTable);
             ContentPanel.Controls.Add(_buttonBar);
 
+            // Each button's own DialogResult only fires on an actual click -
+            // it does nothing for the Enter/Escape keys on its own. Wiring
+            // the form's AcceptButton/CancelButton is what makes Enter (in
+            // any child control that doesn't itself consume it, e.g. a
+            // single-line TextBox) submit and Escape cancel, matching every
+            // other CustomWFUI dialog convention.
+            AcceptButton = _saveButton;
+            CancelButton = _cancelButton;
+
             Resize += (s, e) => RepositionButtons();
             RepositionButtons();
         }
