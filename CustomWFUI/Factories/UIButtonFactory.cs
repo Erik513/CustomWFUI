@@ -29,21 +29,21 @@ namespace CustomWFUI.Factories
         public static Button CreatePrimary(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
         {
             return CreateStyledButton(text, tooltip, size, isIcon,
-                UIColors.PrimaryDark, UIColors.TextPrimary, UIColors.BorderDark, 0,
+                UIColors.PrimaryDark, UIColors.GetContrastingForeColor(UIColors.PrimaryDark), UIColors.BorderDark, 0,
                 UIColors.Primary, UIColors.PrimaryLight);
         }
 
         public static Button CreateGreen(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
         {
             return CreateStyledButton(text, tooltip, size, isIcon,
-                UIColors.GreenDark, UIColors.TextPrimary, UIColors.BorderDark, 1,
+                UIColors.GreenDark, UIColors.GetContrastingForeColor(UIColors.GreenDark), UIColors.BorderDark, 1,
                 UIColors.Green, UIColors.GreenLight);
         }
 
         public static Button CreateDanger(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
         {
             return CreateStyledButton(text, tooltip, size, isIcon,
-                UIColors.RedDark, UIColors.TextPrimary, UIColors.BorderDark, 1,
+                UIColors.RedDark, UIColors.GetContrastingForeColor(UIColors.RedDark), UIColors.BorderDark, 1,
                 UIColors.Red, UIColors.RedLight);
         }
 
@@ -54,7 +54,7 @@ namespace CustomWFUI.Factories
             // clashes with this button's own yellow, unlike the flat-color
             // glyphs used by the other icon buttons.
             return CreateStyledButton("📁", tooltip, size, isIcon,
-                UIColors.Yellow, UIColors.TextPrimary, UIColors.BorderDark, 1,
+                UIColors.Yellow, UIColors.GetContrastingForeColor(UIColors.Yellow), UIColors.BorderDark, 1,
                 UIColors.YellowLight, UIColors.YellowLighter);
         }
 

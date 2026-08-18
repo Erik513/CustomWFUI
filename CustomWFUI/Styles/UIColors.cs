@@ -56,14 +56,19 @@ namespace CustomWFUI.Styles
 
         public static readonly Color White = Color.White;
         public static Color TextPrimary { get; set; } = Color.FromArgb(240, 240, 240);
-        // Fixed dark text color used against any surface that's brighter
-        // than its idle state - e.g. every button's mouse-down background,
-        // which is always a lighter shade than its idle one regardless of
-        // hue, so pressed text needs to go dark unconditionally rather
-        // than depend on that particular hue's computed contrast. Not part
-        // of the theme (stays dark in both Dark and Light) - the whole
-        // point of this color is that it doesn't change.
+        // Fixed dark/light text colors for use against a surface whose shade
+        // doesn't follow the current theme - accent shades (PrimaryDark,
+        // GreenDark, RedDark, ...) stay the same in Dark and Light, e.g.
+        // every button's mouse-down background, which is always a lighter
+        // shade than its idle one regardless of hue, so pressed text needs
+        // to go dark unconditionally rather than depend on that particular
+        // hue's computed contrast. Deliberately NOT TextPrimary/TextPrimaryDim
+        // - those are theme roles that flip between near-white and
+        // near-black, which is exactly wrong here: GetContrastingForeColor
+        // needs a text color that stays readable on a fixed-shade surface
+        // regardless of which base theme happens to be active.
         public static readonly Color DarkForeColor = Color.FromArgb(20, 20, 20);
+        public static readonly Color LightForeColor = Color.FromArgb(240, 240, 240);
         public static Color TextPrimaryDim { get; set; } = Color.FromArgb(220, 220, 220);
         public static Color TextSecondary { get; set; } = Color.FromArgb(180, 180, 180);
         public static Color TextTertiary { get; set; } = Color.FromArgb(140, 140, 140);
@@ -173,12 +178,16 @@ namespace CustomWFUI.Styles
         /// <summary>
         /// White or near-black, whichever reads better on top of the given
         /// background - e.g. white text is unreadable on a bright yellow
-        /// accent even though it's fine on the default dark blue.
+        /// accent even though it's fine on the default dark blue. Always
+        /// picks between the two fixed DarkForeColor/LightForeColor shades,
+        /// not the current theme's TextPrimary - callers use this
+        /// specifically for surfaces (accent/semantic colors) that don't
+        /// follow the base theme, so the answer must not depend on it either.
         /// </summary>
         public static Color GetContrastingForeColor(Color background)
         {
             double luminance = (0.299 * background.R + 0.587 * background.G + 0.114 * background.B) / 255.0;
-            return luminance > 0.5 ? DarkForeColor : TextPrimary;
+            return luminance > 0.5 ? DarkForeColor : LightForeColor;
         }
 
         private static Color Darken(Color color, double amount)
