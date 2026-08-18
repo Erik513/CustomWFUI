@@ -167,6 +167,47 @@ namespace CustomWFUI.Controls
             }
         }
 
+        public Color ItemBackColor
+        {
+            get => _itemBackColor;
+            set
+            {
+                _itemBackColor = value;
+                _alternateItemBackColor = Darken(_itemBackColor, 5);
+                Invalidate();
+            }
+        }
+
+        public Color ItemForeColor
+        {
+            get => _itemForeColor;
+            set
+            {
+                _itemForeColor = value;
+                Invalidate();
+            }
+        }
+
+        public Color HoverBackColor
+        {
+            get => _hoverBackColor;
+            set
+            {
+                _hoverBackColor = value;
+                Invalidate();
+            }
+        }
+
+        public Color DragHandleColor
+        {
+            get => _dragHandleColor;
+            set
+            {
+                _dragHandleColor = value;
+                Invalidate();
+            }
+        }
+
         public StyledListBox()
         {
             _alternateItemBackColor = Darken(_itemBackColor, 5);
