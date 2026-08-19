@@ -38,6 +38,7 @@ namespace CustomWFUI.Showcase
         private Panel _toolbar;
         private Panel _scrollHost;
         private InfoPopupForm _infoPopup;
+        private Timer _infoPopupHideTimer;
         private bool _isLightTheme;
 
         public ShowcaseForm()
@@ -49,15 +50,32 @@ namespace CustomWFUI.Showcase
 
             _infoPopup = new InfoPopupForm("Info");
 
+            _infoPopupHideTimer = new Timer { Interval = 3000 };
+            _infoPopupHideTimer.Tick += delegate
+            {
+                _infoPopupHideTimer.Stop();
+                _infoPopup.Hide();
+            };
+
             BuildUi();
         }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && _infoPopup != null)
+            if (disposing)
             {
-                _infoPopup.Dispose();
-                _infoPopup = null;
+                if (_infoPopupHideTimer != null)
+                {
+                    _infoPopupHideTimer.Stop();
+                    _infoPopupHideTimer.Dispose();
+                    _infoPopupHideTimer = null;
+                }
+
+                if (_infoPopup != null)
+                {
+                    _infoPopup.Dispose();
+                    _infoPopup = null;
+                }
             }
 
             base.Dispose(disposing);
@@ -67,6 +85,16 @@ namespace CustomWFUI.Showcase
         // just recolor the existing controls in place.
         private void BuildUi()
         {
+            // AutoScrollPosition's getter returns the offset negated (a
+            // WinForms quirk - the setter expects it positive), and the old
+            // _scrollHost is about to be disposed, so this has to be read
+            // before teardown and reapplied after rebuild - otherwise every
+            // theme/accent switch jumped back to the top, losing whatever
+            // section you were actually looking at.
+            Point savedScroll = _scrollHost != null
+                ? new Point(-_scrollHost.AutoScrollPosition.X, -_scrollHost.AutoScrollPosition.Y)
+                : Point.Empty;
+
             ContentPanel.SuspendLayout();
             ContentPanel.Controls.Clear();
 
@@ -88,6 +116,8 @@ namespace CustomWFUI.Showcase
             ContentPanel.Controls.Add(_scrollHost);
             ContentPanel.Controls.Add(_toolbar);
             ContentPanel.ResumeLayout();
+
+            _scrollHost.AutoScrollPosition = savedScroll;
         }
 
         private Panel BuildToolbar()
@@ -449,6 +479,14 @@ namespace CustomWFUI.Showcase
             infoPopupButton.Click += delegate
             {
                 _infoPopup.ShowInfo("This is a sample InfoPopupForm.", infoPopupButton);
+
+                // InfoPopupForm is designed as a hover tooltip - real
+                // consumers show it on MouseEnter and hide it on MouseLeave.
+                // A click-to-preview button has no such pairing, so without
+                // this it would just stay open forever; restart the same
+                // timer on every click instead of leaking a new one each time.
+                _infoPopupHideTimer.Stop();
+                _infoPopupHideTimer.Start();
             };
 
             PlaceRow(card, "Trigger", 60, messageBoxButton, toastButton, infoPopupButton);
