@@ -23,6 +23,7 @@ namespace CustomWFUI.Showcase
             ("Red", UIAccentColors.Red),
             ("Orange", UIAccentColors.Orange),
             ("Amber", UIAccentColors.Amber),
+            ("Yellow", UIAccentColors.Yellow),
             ("Green", UIAccentColors.Green),
             ("Teal", UIAccentColors.Teal),
             ("Cyan", UIAccentColors.Cyan),
@@ -30,7 +31,9 @@ namespace CustomWFUI.Showcase
             ("Purple", UIAccentColors.Purple),
             ("Magenta", UIAccentColors.Magenta),
             ("Pink", UIAccentColors.Pink),
-            ("Gray", UIAccentColors.Gray)
+            ("Brown", UIAccentColors.Brown),
+            ("Gray", UIAccentColors.Gray),
+            ("White", UIAccentColors.White)
         };
 
         private const int CardWidth = 1020;
