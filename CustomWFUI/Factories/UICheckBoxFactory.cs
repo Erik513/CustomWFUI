@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Windows.Forms;
 using CustomWFUI.Styles;
 
@@ -137,22 +138,49 @@ namespace CustomWFUI.Factories
                 if (Width <= 0 || Height <= 0)
                     return;
 
-                using (Bitmap buffer = new Bitmap(Width, Height))
+                // The box/border/checkmark are painted onto a private
+                // per-call Bitmap first (see the constructor comment for
+                // why - avoids WinForms' shared BufferedGraphicsManager
+                // bleeding in a neighboring control's pixels), then blitted
+                // onto e.Graphics.
+                //
+                // The label TEXT is different: TextRenderer.DrawText uses
+                // GDI ClearType, which bakes in RGB sub-pixel color hinting
+                // calibrated to the REAL display's physical pixel grid.
+                // Rendering it onto an intermediate Bitmap and blitting that
+                // bitmap to the screen moves those sub-pixel-colored pixels
+                // to a target they were never calibrated for, showing up as
+                // soft/fringed, faintly-doubled-looking text - confirmed by
+                // the user directly on the live app, on EVERY checkbox's
+                // text (not just disabled ones, since low-contrast colors
+                // just make the artifact more visible, not more present).
+                // So text is drawn as a separate, final step straight onto
+                // e.Graphics - the actual on-screen surface - never through
+                // the intermediate bitmap.
+                using (Bitmap buffer = new Bitmap(Width, Height, PixelFormat.Format24bppRgb))
                 {
                     using (Graphics g = Graphics.FromImage(buffer))
-                        PaintTo(g);
+                        PaintShapes(g);
 
                     e.Graphics.DrawImageUnscaled(buffer, 0, 0);
                 }
+
+                PaintText(e.Graphics);
+
+                // Deliberately no base.OnPaint(e) call - see the class
+                // comment above.
             }
 
-            private void PaintTo(Graphics g)
+            private Color GetParentBackColor()
             {
-                Color parentBackColor = Parent != null
+                return Parent != null
                     ? Parent.BackColor
                     : UIColors.BackgroundMedium;
+            }
 
-                using (SolidBrush eraseBrush = new SolidBrush(parentBackColor))
+            private void PaintShapes(Graphics g)
+            {
+                using (SolidBrush eraseBrush = new SolidBrush(GetParentBackColor()))
                     g.FillRectangle(eraseBrush, new Rectangle(0, 0, Width, Height));
 
                 g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -195,39 +223,40 @@ namespace CustomWFUI.Factories
                     Color checkColor = UIColors.GetContrastingForeColor(fillColor);
                     DrawCheckmark(g, boxRect, checkColor);
                 }
+            }
 
-                if (hasText)
-                {
-                    Rectangle textArea = new Rectangle(
-                        GlyphColumnWidth, 0, Width - GlyphColumnWidth, Height);
+            private void PaintText(Graphics g)
+            {
+                if (string.IsNullOrEmpty(Text))
+                    return;
 
-                    // DisabledGray (120,120,120) is a fixed constant chosen
-                    // for the box/border/fill, which stay legible against it
-                    // regardless of theme since they're solid shapes. Fine
-                    // text is different: against Light theme's near-white
-                    // BackgroundLight, that same gray falls below a readable
-                    // contrast ratio (confirmed illegible in a live
-                    // screenshot, not just a theoretical contrast
-                    // calculation). Blend toward the ACTUAL background
-                    // instead - same technique buttons already use for
-                    // their disabled text - so contrast stays adequate in
-                    // both themes even though the literal color now differs
-                    // between them.
-                    Color textColor = Enabled
-                        ? UIColors.TextPrimary
-                        : BlendTowardColor(UIColors.GetContrastingForeColor(parentBackColor), parentBackColor, 0.35);
+                Rectangle textArea = new Rectangle(
+                    GlyphColumnWidth, 0, Width - GlyphColumnWidth, Height);
 
-                    TextRenderer.DrawText(
-                        g,
-                        Text,
-                        Font,
-                        textArea,
-                        textColor,
-                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-                }
+                // DisabledGray (120,120,120) is a fixed constant chosen
+                // for the box/border/fill, which stay legible against it
+                // regardless of theme since they're solid shapes. Fine
+                // text is different: against Light theme's near-white
+                // BackgroundLight, that same gray falls below a readable
+                // contrast ratio (confirmed illegible in a live
+                // screenshot, not just a theoretical contrast
+                // calculation). Blend toward the ACTUAL background
+                // instead - same technique buttons already use for
+                // their disabled text - so contrast stays adequate in
+                // both themes even though the literal color now differs
+                // between them.
+                Color parentBackColor = GetParentBackColor();
+                Color textColor = Enabled
+                    ? UIColors.TextPrimary
+                    : BlendTowardColor(UIColors.GetContrastingForeColor(parentBackColor), parentBackColor, 0.35);
 
-                // Deliberately no base.OnPaint(e) call - see the class
-                // comment above.
+                TextRenderer.DrawText(
+                    g,
+                    Text,
+                    Font,
+                    textArea,
+                    textColor,
+                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
             }
 
             private static void DrawCheckmark(Graphics g, Rectangle box, Color color)
