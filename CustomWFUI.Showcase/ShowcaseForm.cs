@@ -15,6 +15,13 @@ namespace CustomWFUI.Showcase
     // UIColors/accent at construction time (documented on SetAccent/ApplyTheme
     // themselves) - there's no supported way to retint an already-built
     // control short of recreating it.
+    //
+    // Laid out with a StyledPropertyTable instead of manually-positioned
+    // cards - it's a real CustomWFUI control too (dogfooding it here rather
+    // than a one-off layout scheme), it keeps every row's label/editor
+    // evenly aligned automatically, and it's exactly the kind of "several
+    // controls in a settings-panel-shaped list" layout the Showcase already
+    // needed.
     public class ShowcaseForm : StyledForm
     {
         private static readonly (string Name, Color Color)[] AccentPresets =
@@ -35,8 +42,6 @@ namespace CustomWFUI.Showcase
             ("Gray", UIAccentColors.Gray),
             ("White", UIAccentColors.White)
         };
-
-        private const int CardWidth = 1020;
 
         private Panel _toolbar;
         private Panel _scrollHost;
@@ -213,183 +218,173 @@ namespace CustomWFUI.Showcase
 
         private void BuildContent(Panel host)
         {
-            int y = 16;
+            StyledPropertyTable table = UIStyles.PropertyTables.Create();
+            table.Dock = DockStyle.Top;
 
-            y = AddButtonsCard(host, y);
-            y = AddCheckBoxesAndTogglesCard(host, y);
-            y = AddInputsCard(host, y);
-            y = AddProgressBarsCard(host, y);
-            y = AddLabelsCard(host, y);
-            y = AddPanelsCard(host, y);
-            y = AddListsCard(host, y);
-            y = AddPopupsCard(host, y);
+            AddButtonsSection(table);
+            AddCheckBoxesAndTogglesSection(table);
+            AddInputsSection(table);
+            AddProgressBarsSection(table);
+            AddLabelsSection(table);
+            AddPanelsSection(table);
+            AddListsSection(table);
+            AddPopupsSection(table);
+
+            host.Controls.Add(table);
         }
 
-        // --- Card helpers -----------------------------------------------
+        // Every "small control" row (everything but Lists, which keeps its
+        // own wider/taller layout) goes through this one helper so all rows
+        // share the same 3 equal-width editor columns - Variant 1 (standard
+        // state) | Variant 2 (another state, or empty) | Disabled. Equal
+        // Percent columns line up across rows because every row's editor
+        // area is the same overall width, not because the widths are
+        // absolute - see StyledPropertyTable.CreateEditorLayout.
+        private const float UniformColumnPercent = 100f / 3f;
 
-        private Panel StartCard(Panel host, int y, string title, int height)
+        private void AddUniformRow(
+            StyledPropertyTable table,
+            string labelText,
+            Control variant1,
+            Control variant2,
+            Control disabled)
         {
-            Panel card = UIStyles.Panels.CreateElevated();
-            card.Dock = DockStyle.None;
-            card.Location = new Point(16, y);
-            card.Size = new Size(CardWidth, height);
-
-            Label header = UIStyles.Labels.CreateTitle(title);
-            header.AutoSize = true;
-            header.Location = new Point(16, 12);
-            card.Controls.Add(header);
-
-            host.Controls.Add(card);
-            return card;
+            table.AddRow(
+                labelText,
+                UIColumn.Percent(variant1, UniformColumnPercent),
+                UIColumn.Percent(variant2, UniformColumnPercent),
+                UIColumn.Percent(disabled, UniformColumnPercent));
         }
 
-        private void PlaceRow(Panel card, string label, int rowY, params Control[] controls)
+        private void AddButtonsSection(StyledPropertyTable table)
         {
-            Label rowLabel = UIStyles.Labels.CreateNormal(label);
-            rowLabel.AutoSize = true;
-            rowLabel.Location = new Point(16, rowY + 6);
-            card.Controls.Add(rowLabel);
-
-            int x = 200;
-            foreach (Control control in controls)
-            {
-                control.Location = new Point(x, rowY);
-                card.Controls.Add(control);
-                x += control.Width + 12;
-            }
-        }
-
-        // --- Sections ------------------------------------------------------
-
-        private int AddButtonsCard(Panel host, int y)
-        {
-            const int height = 260;
-            Panel card = StartCard(host, y, "Buttons", height);
+            table.AddSection("Buttons");
 
             Size textButtonSize = new Size(110, 32);
 
             Button standard = UIStyles.Buttons.CreateStandard("Standard", size: textButtonSize);
             Button standardDisabled = UIStyles.Buttons.CreateStandard("Disabled", size: textButtonSize);
             standardDisabled.Enabled = false;
-            PlaceRow(card, "CreateStandard", 60, standard, standardDisabled);
+            AddUniformRow(table, "CreateStandard", standard, null, standardDisabled);
 
             Button primary = UIStyles.Buttons.CreatePrimary("Primary", size: textButtonSize);
             Button primaryDisabled = UIStyles.Buttons.CreatePrimary("Disabled", size: textButtonSize);
             primaryDisabled.Enabled = false;
-            PlaceRow(card, "CreatePrimary", 100, primary, primaryDisabled);
+            AddUniformRow(table, "CreatePrimary", primary, null, primaryDisabled);
 
             Button green = UIStyles.Buttons.CreateGreen("Confirm", size: textButtonSize);
             Button greenDisabled = UIStyles.Buttons.CreateGreen("Disabled", size: textButtonSize);
             greenDisabled.Enabled = false;
-            PlaceRow(card, "CreateGreen", 140, green, greenDisabled);
+            AddUniformRow(table, "CreateGreen", green, null, greenDisabled);
 
             Button danger = UIStyles.Buttons.CreateRed("Delete", size: textButtonSize);
             Button dangerDisabled = UIStyles.Buttons.CreateRed("Disabled", size: textButtonSize);
             dangerDisabled.Enabled = false;
-            PlaceRow(card, "CreateRed", 180, danger, dangerDisabled);
+            AddUniformRow(table, "CreateRed", danger, null, dangerDisabled);
 
             Button browse = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
+            Button icon = UIStyles.Buttons.CreateIconButton("★", 36);
             Button browseDisabled = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
             browseDisabled.Enabled = false;
-            Button icon = UIStyles.Buttons.CreateIconButton("★", 36);
-            PlaceRow(card, "Browse / Icon", 220, browse, browseDisabled, icon);
-
-            return y + height + 16;
+            AddUniformRow(table, "Browse / Icon", browse, icon, browseDisabled);
         }
 
-        private int AddCheckBoxesAndTogglesCard(Panel host, int y)
+        private void AddCheckBoxesAndTogglesSection(StyledPropertyTable table)
         {
-            const int height = 160;
-            Panel card = StartCard(host, y, "CheckBoxes / ToggleSwitches", height);
+            table.AddSection("CheckBoxes / ToggleSwitches");
 
             CheckBox checkedBox = UIStyles.CheckBoxes.CreateStandard("Checked", true);
             CheckBox uncheckedBox = UIStyles.CheckBoxes.CreateStandard("Unchecked", false);
             CheckBox disabledBox = UIStyles.CheckBoxes.CreateStandard("Disabled", true);
             disabledBox.Enabled = false;
-            CheckBox compactBox = UIStyles.CheckBoxes.CreateCompact(true);
-            PlaceRow(card, "CheckBoxes", 60, checkedBox, uncheckedBox, disabledBox, compactBox);
+            AddUniformRow(table, "CheckBoxes", checkedBox, uncheckedBox, disabledBox);
 
-            ToggleSwitch small = UIStyles.ToggleSwitches.CreateSmall(true);
-            ToggleSwitch standardToggle = UIStyles.ToggleSwitches.CreateStandard(true);
-            ToggleSwitch large = UIStyles.ToggleSwitches.CreateLarge(false);
+            CheckBox compactChecked = UIStyles.CheckBoxes.CreateCompact(true);
+            CheckBox compactUnchecked = UIStyles.CheckBoxes.CreateCompact(false);
+            CheckBox compactDisabled = UIStyles.CheckBoxes.CreateCompact(true);
+            compactDisabled.Enabled = false;
+            AddUniformRow(table, "CreateCompact", compactChecked, compactUnchecked, compactDisabled);
+
+            ToggleSwitch standardOn = UIStyles.ToggleSwitches.CreateStandard(true);
+            ToggleSwitch standardOff = UIStyles.ToggleSwitches.CreateStandard(false);
             ToggleSwitch disabledToggle = UIStyles.ToggleSwitches.CreateStandard(true);
             disabledToggle.Enabled = false;
-            PlaceRow(card, "ToggleSwitches", 110, small, standardToggle, large, disabledToggle);
+            AddUniformRow(table, "ToggleSwitches", standardOn, standardOff, disabledToggle);
 
-            return y + height + 16;
+            ToggleSwitch small = UIStyles.ToggleSwitches.CreateSmall(true);
+            ToggleSwitch large = UIStyles.ToggleSwitches.CreateLarge(true);
+            AddUniformRow(table, "Sizes (Small / Large)", small, large, null);
         }
 
-        private int AddInputsCard(Panel host, int y)
+        private void AddInputsSection(StyledPropertyTable table)
         {
-            const int height = 200;
-            Panel card = StartCard(host, y, "TextBoxes / ComboBox / NumericUpDown", height);
+            table.AddSection("TextBoxes / ComboBox / NumericUpDown");
 
             TextBox standardBox = UIStyles.TextBoxes.CreateStandard("", "Standard");
-            standardBox.Width = 180;
             TextBox borderless = UIStyles.TextBoxes.CreateBorderstyleNone("Borderless text", "");
-            borderless.Width = 180;
-            PlaceRow(card, "TextBoxes", 60, standardBox, borderless);
+            TextBox textDisabled = UIStyles.TextBoxes.CreateStandard("Disabled", "");
+            textDisabled.Enabled = false;
+            AddUniformRow(table, "TextBoxes", standardBox, borderless, textDisabled);
 
             ComboBox combo = UIStyles.ComboBoxes.CreateStandard();
-            combo.Width = 180;
             combo.Items.AddRange(new object[] { "Option A", "Option B", "Option C" });
             combo.SelectedIndex = 0;
-            PlaceRow(card, "ComboBox", 110, combo);
+            ComboBox comboDisabled = UIStyles.ComboBoxes.CreateStandard();
+            comboDisabled.Items.AddRange(new object[] { "Option A", "Option B", "Option C" });
+            comboDisabled.SelectedIndex = 0;
+            comboDisabled.Enabled = false;
+            AddUniformRow(table, "ComboBox", combo, null, comboDisabled);
 
             NumericUpDown numeric = UIStyles.NumericUpDowns.CreateStandard(0, 100, 1, 42);
-            numeric.Width = 100;
-            PlaceRow(card, "NumericUpDown", 160, numeric);
-
-            return y + height + 16;
+            NumericUpDown numericDisabled = UIStyles.NumericUpDowns.CreateStandard(0, 100, 1, 42);
+            numericDisabled.Enabled = false;
+            AddUniformRow(table, "NumericUpDown", numeric, null, numericDisabled);
         }
 
-        private int AddProgressBarsCard(Panel host, int y)
+        private void AddProgressBarsSection(StyledPropertyTable table)
         {
-            const int height = 160;
-            Panel card = StartCard(host, y, "ProgressBars", height);
+            table.AddSection("ProgressBars");
 
             ProgressBar standardBar = UIStyles.ProgressBars.CreateStandard();
-            standardBar.Size = new Size(300, 24);
             standardBar.Value = 65;
             ProgressBar disabledBar = UIStyles.ProgressBars.CreateStandard();
-            disabledBar.Size = new Size(300, 24);
             disabledBar.Value = 65;
             disabledBar.Enabled = false;
-            PlaceRow(card, "CreateStandard", 60, standardBar, disabledBar);
+            AddUniformRow(table, "CreateStandard", standardBar, null, disabledBar);
 
             ProgressBar transparentBar = UIStyles.ProgressBars.CreateTransparent();
-            transparentBar.Size = new Size(300, 24);
             transparentBar.Value = 40;
-            transparentBar.BackColor = card.BackColor;
-            PlaceRow(card, "CreateTransparent", 110, transparentBar);
-
-            return y + height + 16;
+            transparentBar.BackColor = UIColors.BackgroundLight;
+            ProgressBar transparentDisabled = UIStyles.ProgressBars.CreateTransparent();
+            transparentDisabled.Value = 40;
+            transparentDisabled.BackColor = UIColors.BackgroundLight;
+            transparentDisabled.Enabled = false;
+            AddUniformRow(table, "CreateTransparent", transparentBar, null, transparentDisabled);
         }
 
-        private int AddLabelsCard(Panel host, int y)
+        private void AddLabelsSection(StyledPropertyTable table)
         {
-            const int height = 140;
-            Panel card = StartCard(host, y, "Labels", height);
+            table.AddSection("Labels");
 
             Label title = UIStyles.Labels.CreateTitle("Title label");
-            title.AutoSize = true;
-            PlaceRow(card, "CreateTitle", 60, title);
+            Label titleDisabled = UIStyles.Labels.CreateTitle("Title label");
+            titleDisabled.Enabled = false;
+            AddUniformRow(table, "CreateTitle", title, null, titleDisabled);
 
             Label normal = UIStyles.Labels.CreateNormal("Normal body text");
-            normal.AutoSize = true;
-            PlaceRow(card, "CreateNormal", 90, normal);
+            Label normalDisabled = UIStyles.Labels.CreateNormal("Normal body text");
+            normalDisabled.Enabled = false;
+            AddUniformRow(table, "CreateNormal", normal, null, normalDisabled);
 
             Label muted = UIStyles.Labels.CreateMuted("Muted / de-emphasized text");
-            muted.AutoSize = true;
-            PlaceRow(card, "CreateMuted", 120, muted);
-
-            return y + height + 16;
+            Label mutedDisabled = UIStyles.Labels.CreateMuted("Muted / de-emphasized text");
+            mutedDisabled.Enabled = false;
+            AddUniformRow(table, "CreateMuted", muted, null, mutedDisabled);
         }
 
-        private int AddPanelsCard(Panel host, int y)
+        private void AddPanelsSection(StyledPropertyTable table)
         {
-            const int height = 130;
-            Panel card = StartCard(host, y, "Panels (background shades)", height);
+            table.AddSection("Panels (background shades)");
 
             (string Name, Panel Panel)[] swatches =
             {
@@ -399,45 +394,32 @@ namespace CustomWFUI.Showcase
                 ("Primary", UIStyles.Panels.CreatePrimary())
             };
 
-            int x = 16;
             foreach ((string name, Panel panel) in swatches)
             {
-                panel.Dock = DockStyle.None;
-                panel.Size = new Size(150, 60);
-                panel.Location = new Point(x, 60);
-
                 Label caption = UIStyles.Labels.CreateNormal(name);
                 caption.AutoSize = true;
                 caption.Location = new Point(6, 6);
                 caption.BackColor = Color.Transparent;
                 panel.Controls.Add(caption);
-
-                card.Controls.Add(panel);
-                x += 166;
             }
 
-            return y + height + 16;
+            AddUniformRow(table, "Shades 1", swatches[0].Panel, swatches[1].Panel, swatches[2].Panel);
+            AddUniformRow(table, "Shades 2", swatches[3].Panel, null, null);
         }
 
-        private int AddListsCard(Panel host, int y)
+        private void AddListsSection(StyledPropertyTable table)
         {
-            const int height = 320;
-            Panel card = StartCard(host, y, "StyledListBoxControl / StyledDataTable", height);
+            table.AddSection("StyledListBoxControl / StyledDataTable / StyledListView");
 
             StyledListBoxControl listBox = UIStyles.StyledListBoxControls.Create(
                 "Sample list",
                 allowReorder: true,
                 showEnumeration: true);
-            listBox.Location = new Point(16, 60);
-            listBox.Size = new Size(300, 240);
             listBox.Items.Add("First item");
             listBox.Items.Add("Second item");
             listBox.Items.Add("Third item (drag to reorder)");
-            card.Controls.Add(listBox);
 
             StyledDataTable dataTable = UIStyles.DataTables.Create();
-            dataTable.Location = new Point(340, 60);
-            dataTable.Size = new Size(300, 240);
             dataTable.SetColumns(new[] { "Name", "Value" }, new[] { 150, 130 });
             dataTable.SetRows(new[]
             {
@@ -445,30 +427,26 @@ namespace CustomWFUI.Showcase
                 new[] { "Theme", "Dark" },
                 new[] { "Version", "1.0" }
             });
-            card.Controls.Add(dataTable);
 
-            StyledListView listView = new StyledListView
-            {
-                Location = new Point(660, 60),
-                Size = new Size(300, 240),
-                View = View.Details
-            };
+            StyledListView listView = new StyledListView { View = View.Details };
             listView.Columns.Add("Item", 180);
             listView.Columns.Add("Status", 100);
             listView.Items.Add(new ListViewItem(new[] { "Row A", "OK" }));
             listView.Items.Add(new ListViewItem(new[] { "Row B", "Pending" }));
-            card.Controls.Add(listView);
 
-            return y + height + 16;
+            table.AddRow(
+                "Lists",
+                260,
+                UIColumn.Percent(listBox, 34),
+                UIColumn.Percent(dataTable, 33),
+                UIColumn.Percent(listView, 33));
         }
 
-        private int AddPopupsCard(Panel host, int y)
+        private void AddPopupsSection(StyledPropertyTable table)
         {
-            const int height = 100;
-            Panel card = StartCard(host, y, "Popups (CustomMessageBox / ToastForm / InfoPopupForm)", height);
+            table.AddSection("Popups (CustomMessageBox / ToastForm / InfoPopupForm)");
 
-            Button messageBoxButton = UIStyles.Buttons.CreateStandard("Show CustomMessageBox");
-            messageBoxButton.Width = 200;
+            Button messageBoxButton = UIStyles.Buttons.CreateStandard("Show CustomMessageBox", size: new Size(200, 32));
             messageBoxButton.Click += delegate
             {
                 CustomMessageBox.Show(
@@ -479,15 +457,13 @@ namespace CustomWFUI.Showcase
                     this);
             };
 
-            Button toastButton = UIStyles.Buttons.CreateStandard("Show ToastForm");
-            toastButton.Width = 160;
+            Button toastButton = UIStyles.Buttons.CreateStandard("Show ToastForm", size: new Size(160, 32));
             toastButton.Click += delegate
             {
                 ToastForm.ShowToast("Sample toast message", this);
             };
 
-            Button infoPopupButton = UIStyles.Buttons.CreateStandard("Show InfoPopupForm");
-            infoPopupButton.Width = 180;
+            Button infoPopupButton = UIStyles.Buttons.CreateStandard("Show InfoPopupForm", size: new Size(180, 32));
             infoPopupButton.Click += delegate
             {
                 _infoPopup.ShowInfo("This is a sample InfoPopupForm.", infoPopupButton);
@@ -501,9 +477,7 @@ namespace CustomWFUI.Showcase
                 _infoPopupHideTimer.Start();
             };
 
-            PlaceRow(card, "Trigger", 60, messageBoxButton, toastButton, infoPopupButton);
-
-            return y + height + 16;
+            table.AddRow("Trigger", messageBoxButton, toastButton, infoPopupButton);
         }
     }
 }
