@@ -11,14 +11,20 @@ namespace CustomWFUI.Factories
             string text = "",
             bool checkedState = true)
         {
-            return new OwnerDrawCheckBox
+            text = text ?? "";
+            Font font = UIFonts.Normal;
+
+            CheckBox checkBox = new OwnerDrawCheckBox
             {
-                Text = text ?? "",
+                Text = text,
                 Checked = checkedState,
-                BackColor = Color.Transparent,
-                Font = UIFonts.Normal,
-                FlatStyle = FlatStyle.Flat
+                Font = font,
+                FlatStyle = FlatStyle.Flat,
+                AutoSize = false,
+                Size = OwnerDrawCheckBox.ComputePreferredSize(text, font)
             };
+
+            return checkBox;
         }
 
         public static CheckBox CreateCompact(
@@ -60,24 +66,94 @@ namespace CustomWFUI.Factories
 
             public OwnerDrawCheckBox()
             {
+                // Deliberately NOT using ControlStyles.OptimizedDoubleBuffer/
+                // DoubleBuffered=true - both route through WinForms'
+                // process-wide BufferedGraphicsManager, which reuses ONE
+                // shared backing bitmap across every double-buffered control
+                // for efficiency. With several of these checkboxes (and
+                // other double-buffered controls, e.g. ToggleSwitch) all
+                // painting during the same layout/paint burst, that shared
+                // buffer got reused before being fully overwritten, and a
+                // neighboring control's leftover pixels (its text, or in one
+                // observed case a ToggleSwitch's blue knob) showed up baked
+                // into a checkbox's painted area on real screen captures
+                // (CopyFromScreen and PrintWindow both showed it - not a
+                // capture-tooling artifact). OnPaint below manages its own
+                // private per-call Bitmap instead, so no buffer is ever
+                // shared with any other control.
                 SetStyle(
-                    ControlStyles.OptimizedDoubleBuffer |
                     ControlStyles.AllPaintingInWmPaint |
                     ControlStyles.UserPaint,
                     true);
-                DoubleBuffered = true;
+            }
+
+            // Native CheckBox.AutoSize defaults to true and measures a
+            // preferred size for the SYSTEM checkbox glyph, which knows
+            // nothing about our custom 16px box/padding layout. Left
+            // enabled, this caused the real (already laid-out, resized,
+            // relaid-out) StyledPropertyTable instance to settle on
+            // different bounds than what a single fresh construction+paint
+            // produces - live screen captures (CopyFromScreen AND
+            // PrintWindow, i.e. not a capture-tooling artifact) showed
+            // leftover text fragments from neighboring rows/cells baked
+            // into the checkbox's painted area, while a throwaway
+            // freshly-constructed-then-immediately-DrawToBitmap probe never
+            // reproduced it - consistent with a layout-history-dependent
+            // bug, not a per-paint drawing bug. The factory now disables
+            // AutoSize and assigns an explicitly computed Size instead, so
+            // there is exactly one deterministic set of bounds regardless
+            // of how many real layout passes the control goes through.
+            internal static Size ComputePreferredSize(string text, Font font)
+            {
+                bool hasText = !string.IsNullOrEmpty(text);
+
+                int width = hasText
+                    ? GlyphColumnWidth + TextRenderer.MeasureText(text, font).Width + 4
+                    : BoxSize + BoxLeftMargin * 2;
+
+                int height = System.Math.Max(BoxSize + 8, font.Height + 8);
+
+                return new Size(width, height);
+            }
+
+            // BackColor=Transparent (the previous approach) makes WinForms
+            // route background painting through its "ask the parent to
+            // render what's behind me" fake-transparency path - inside a
+            // nested TableLayoutPanel (StyledPropertyTable's editor cells)
+            // that path picked up stale/sibling content (a neighboring
+            // checkbox's or the row label's text), showing through as
+            // ghosted text on real screen paints. DrawToBitmap didn't
+            // reproduce it (WM_PRINT paints each control directly, bypassing
+            // that compositing path), which is why it looked fine there.
+            // Overriding this as a no-op guarantees our own OnPaint (which
+            // already does a full manual erase to the parent's BackColor)
+            // is the only thing that ever paints this control's background.
+            protected override void OnPaintBackground(PaintEventArgs pevent)
+            {
             }
 
             protected override void OnPaint(PaintEventArgs e)
             {
-                Graphics g = e.Graphics;
+                if (Width <= 0 || Height <= 0)
+                    return;
 
+                using (Bitmap buffer = new Bitmap(Width, Height))
+                {
+                    using (Graphics g = Graphics.FromImage(buffer))
+                        PaintTo(g);
+
+                    e.Graphics.DrawImageUnscaled(buffer, 0, 0);
+                }
+            }
+
+            private void PaintTo(Graphics g)
+            {
                 Color parentBackColor = Parent != null
                     ? Parent.BackColor
                     : UIColors.BackgroundMedium;
 
                 using (SolidBrush eraseBrush = new SolidBrush(parentBackColor))
-                    g.FillRectangle(eraseBrush, ClientRectangle);
+                    g.FillRectangle(eraseBrush, new Rectangle(0, 0, Width, Height));
 
                 g.SmoothingMode = SmoothingMode.AntiAlias;
 

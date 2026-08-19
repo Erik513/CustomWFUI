@@ -128,6 +128,19 @@ namespace CustomWFUI.Controls
             return columns;
         }
 
+        // Every panel/TableLayoutPanel in this file used to have
+        // BackColor=Transparent, relying on WinForms' built-in "ask my
+        // parent to paint what's behind me" fake-transparency support to
+        // make them blend into their surroundings. With this many nested
+        // transparent layers (main layout > editor area > editor layout >
+        // wrapper, four levels deep for a single control), that mechanism
+        // showed real, reproducible ghosting on live screen captures
+        // (CopyFromScreen and PrintWindow both, so not a capture-tooling
+        // artifact): a control's neighbor - another row's label, or another
+        // control entirely - leaking into its painted area. Every layer now
+        // gets the same opaque color it would have resolved to anyway, so
+        // there is no "ask parent" indirection left for anything to get
+        // wrong.
         private TableLayoutPanel CreateMainLayout()
         {
             TableLayoutPanel layout = new TableLayoutPanel
@@ -136,7 +149,7 @@ namespace CustomWFUI.Controls
                 AutoSize = true,
                 ColumnCount = 2,
                 RowCount = 0,
-                BackColor = Color.Transparent,
+                BackColor = Colors.BackgroundMedium,
                 Padding = new Padding(0),
                 Margin = new Padding(0)
             };
@@ -165,7 +178,7 @@ namespace CustomWFUI.Controls
                 Dock = DockStyle.Fill,
                 ColumnCount = columnCount,
                 RowCount = 1,
-                BackColor = Color.Transparent,
+                BackColor = Colors.BackgroundMedium,
                 Padding = new Padding(0),
                 Margin = new Padding(0)
             };
@@ -210,7 +223,7 @@ namespace CustomWFUI.Controls
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 3,
-                BackColor = Color.Transparent,
+                BackColor = Colors.BackgroundLight,
                 Padding = new Padding(6, 0, 8, 0),
                 Margin = new Padding(0)
             };
@@ -254,7 +267,7 @@ namespace CustomWFUI.Controls
             label.TextAlign = ContentAlignment.MiddleLeft;
             label.Padding = new Padding(LabelLeftPadding, 0, 0, 0);
             label.Margin = new Padding(0);
-            label.BackColor = Color.Transparent;
+            label.BackColor = Colors.BackgroundMedium;
 
             return label;
         }
@@ -277,7 +290,7 @@ namespace CustomWFUI.Controls
             return new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.Transparent,
+                BackColor = Colors.BackgroundMedium,
                 Padding = new Padding(0),
                 Margin = new Padding(0)
             };
