@@ -201,7 +201,21 @@ namespace CustomWFUI.Factories
                     Rectangle textArea = new Rectangle(
                         GlyphColumnWidth, 0, Width - GlyphColumnWidth, Height);
 
-                    Color textColor = Enabled ? UIColors.TextPrimary : UIColors.DisabledGray;
+                    // DisabledGray (120,120,120) is a fixed constant chosen
+                    // for the box/border/fill, which stay legible against it
+                    // regardless of theme since they're solid shapes. Fine
+                    // text is different: against Light theme's near-white
+                    // BackgroundLight, that same gray falls below a readable
+                    // contrast ratio (confirmed illegible in a live
+                    // screenshot, not just a theoretical contrast
+                    // calculation). Blend toward the ACTUAL background
+                    // instead - same technique buttons already use for
+                    // their disabled text - so contrast stays adequate in
+                    // both themes even though the literal color now differs
+                    // between them.
+                    Color textColor = Enabled
+                        ? UIColors.TextPrimary
+                        : BlendTowardColor(UIColors.GetContrastingForeColor(parentBackColor), parentBackColor, 0.35);
 
                     TextRenderer.DrawText(
                         g,
@@ -244,6 +258,15 @@ namespace CustomWFUI.Factories
                 path.CloseFigure();
 
                 return path;
+            }
+
+            private static Color BlendTowardColor(Color color, Color target, double amount)
+            {
+                int r = (int)(color.R + (target.R - color.R) * amount);
+                int g = (int)(color.G + (target.G - color.G) * amount);
+                int b = (int)(color.B + (target.B - color.B) * amount);
+
+                return Color.FromArgb(r, g, b);
             }
         }
     }
