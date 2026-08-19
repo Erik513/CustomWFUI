@@ -101,7 +101,17 @@ namespace CustomWFUI.Factories
             bool isDisplayArea = (e.State & DrawItemState.ComboBoxEdit) != 0;
             bool isSelected = !isDisplayArea && (e.State & DrawItemState.Selected) != 0;
             Color backColor = isSelected ? UIColors.Primary : UIColors.BackgroundMedium;
-            Color textColor = isSelected ? UIColors.GetContrastingForeColor(backColor) : UIColors.TextPrimary;
+
+            // comboBox.Enabled wasn't checked at all here before - the closed
+            // box's own text always rendered as the full-brightness
+            // TextPrimary, with zero visual change when the control was
+            // disabled (confirmed by rendering both states and comparing
+            // pixels - they were identical).
+            Color textColor = !comboBox.Enabled
+                ? UIColors.TextDisabled
+                : isSelected
+                    ? UIColors.GetContrastingForeColor(backColor)
+                    : UIColors.TextPrimary;
 
             using (SolidBrush backBrush = new SolidBrush(backColor))
             {
