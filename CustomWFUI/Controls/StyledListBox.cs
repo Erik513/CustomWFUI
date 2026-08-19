@@ -37,7 +37,8 @@ namespace CustomWFUI.Controls
         private Color _selectedBackColor = UIColors.Primary;
         private Color _hoverBackColor = UIColors.BackgroundLight;
         private Color _dragHandleColor = UIColors.TextTertiary;
-        private Color _dragIndicatorColor = UIColors.PrimaryLight;
+        private Color _dragIndicatorColorOverride;
+        private bool _dragIndicatorColorIsOverridden;
         private Color _disabledForeColor = UIColors.TextDisabled;
         private Color _disabledBackColor = UIColors.BackgroundDarkElevated;
 
@@ -144,13 +145,23 @@ namespace CustomWFUI.Controls
             }
         }
 
-        /// <summary>Color of the horizontal line shown at the drop position while dragging an item to reorder it.</summary>
+        /// <summary>
+        /// Color of the horizontal line shown at the drop position while
+        /// dragging an item to reorder it. Follows the current accent
+        /// (PrimaryLight) live until explicitly set - it used to be a plain
+        /// field snapshotted once at construction, so an app that changed
+        /// its accent after building the list still saw the drag indicator
+        /// in whatever accent was active when the list was first created.
+        /// </summary>
         public Color DragIndicatorColor
         {
-            get => _dragIndicatorColor;
+            get => _dragIndicatorColorIsOverridden
+                ? _dragIndicatorColorOverride
+                : UIColors.PrimaryLight;
             set
             {
-                _dragIndicatorColor = value;
+                _dragIndicatorColorOverride = value;
+                _dragIndicatorColorIsOverridden = true;
                 Invalidate();
             }
         }
@@ -712,7 +723,7 @@ namespace CustomWFUI.Controls
 
         private void DrawIndicatorLine(Graphics graphics, int y)
         {
-            using (Pen pen = new Pen(_dragIndicatorColor, 3))
+            using (Pen pen = new Pen(DragIndicatorColor, 3))
             {
                 graphics.DrawLine(pen, 0, y, Width, y);
             }
