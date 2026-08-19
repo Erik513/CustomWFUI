@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using CustomWFUI.Styles;
@@ -6,9 +7,11 @@ namespace CustomWFUI.Factories
 {
     internal static class UIProgressBarFactory
     {
+        private const double DisabledColorFactor = 0.65;
+
         public static ProgressBar CreateStandard()
         {
-            return new BorderedProgressBar
+            ProgressBar progressBar = new BorderedProgressBar
             {
                 Minimum = 0,
                 Style = ProgressBarStyle.Continuous,
@@ -25,6 +28,44 @@ namespace CustomWFUI.Factories
                 BackColor = UIColors.BackgroundDark,
                 Margin = new Padding(0)
             };
+
+            SetEnabledStyle(progressBar);
+
+            return progressBar;
+        }
+
+        // Like UIButtonFactory/UICheckBoxFactory's SetEnabledStyle - restores
+        // whatever ForeColor was live right before Enabled went false, so a
+        // caller's manual fill-color override survives the round-trip.
+        // Previously ProgressBar had no disabled-state handling at all
+        // (confirmed identical pixels enabled vs. disabled via screenshot).
+        private static void SetEnabledStyle(ProgressBar progressBar)
+        {
+            Color restoreForeColor = progressBar.ForeColor;
+
+            progressBar.EnabledChanged += delegate
+            {
+                if (progressBar.Enabled)
+                {
+                    progressBar.ForeColor = restoreForeColor;
+                }
+                else
+                {
+                    restoreForeColor = progressBar.ForeColor;
+                    progressBar.ForeColor = Darken(restoreForeColor, DisabledColorFactor);
+                }
+            };
+        }
+
+        private static Color Darken(Color color, double factor)
+        {
+            factor = Math.Max(0, Math.Min(1, factor));
+
+            return Color.FromArgb(
+                color.A,
+                Math.Max(0, Math.Min(255, (int)(color.R * factor))),
+                Math.Max(0, Math.Min(255, (int)(color.G * factor))),
+                Math.Max(0, Math.Min(255, (int)(color.B * factor))));
         }
 
         // Draws a 1px border around the bar so its extent is still legible
