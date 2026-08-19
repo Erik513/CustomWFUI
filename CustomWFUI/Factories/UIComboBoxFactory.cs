@@ -108,7 +108,13 @@ namespace CustomWFUI.Factories
                 e.Graphics.FillRectangle(backBrush, e.Bounds);
             }
 
-            string text = comboBox.Items[e.Index]?.ToString() ?? "";
+            // GetItemText (not a raw .ToString() on the item) is what
+            // respects DisplayMember, matching how a native ComboBox
+            // renders its items - without this, binding a list of objects
+            // via DisplayMember rendered each row as the item's fully-
+            // qualified type name instead of the intended display text.
+            object item = e.Index >= 0 && e.Index < comboBox.Items.Count ? comboBox.Items[e.Index] : null;
+            string text = comboBox.GetItemText(item);
 
             TextRenderer.DrawText(
                 e.Graphics,
