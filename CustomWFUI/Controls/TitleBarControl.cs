@@ -163,10 +163,21 @@ namespace CustomWFUI.Controls
             _titleLabel.BackColor = UIColors.BackgroundBlack;
             _titleLabel.ForeColor = UIColors.TextPrimary;
 
+            // Matches every property CreateStandard itself sets (see
+            // UIButtonFactory.CreateStandard) - BackColor/ForeColor alone
+            // left FlatAppearance.BorderColor/MouseOverBackColor/
+            // MouseDownBackColor stuck on the OLD theme's values, so a
+            // button that used to be a barely-visible dark border on a dark
+            // background became a dark border on a now-light background -
+            // reported as "the minimize button's border looks thicker" and
+            // "the buttons look totally different from CustomMessageBox's".
             foreach (Button button in new[] { _minimizeButton, _maximizeButton, _closeButton })
             {
                 button.BackColor = UIColors.BackgroundMedium;
                 button.ForeColor = UIColors.TextPrimary;
+                button.FlatAppearance.BorderColor = UIColors.BorderDark;
+                button.FlatAppearance.MouseOverBackColor = UIColors.BackgroundLighter;
+                button.FlatAppearance.MouseDownBackColor = UIColors.Primary;
             }
         }
 
