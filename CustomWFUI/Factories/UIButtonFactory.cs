@@ -214,7 +214,13 @@ namespace CustomWFUI.Factories
         private static void SetEnabledStyle(Button button, Color enabledBackColor, Color enabledForeColor)
         {
             Color disabledBackColor = Darken(enabledBackColor, DisabledColorFactor);
-            Color disabledForeColor = UIColors.TextDisabled;
+
+            // Computed per button rather than a single fixed UIColors.TextDisabled
+            // gray - that read fine against most variants' darkened background
+            // by coincidence, but CreateBrowseInFolder's (Yellow darkened by
+            // DisabledColorFactor is still a fairly bright olive) landed at a
+            // contrast ratio of ~1.0 against it - i.e. functionally invisible.
+            Color disabledForeColor = UIColors.GetContrastingForeColor(disabledBackColor);
 
             Color restoreBackColor = enabledBackColor;
             Color restoreForeColor = enabledForeColor;
