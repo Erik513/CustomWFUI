@@ -262,15 +262,24 @@ namespace CustomWFUI.Controls
 
         private Rectangle GetKnobRectangle(Rectangle toggleRectangle)
         {
-            int knobSize = toggleRectangle.Height - 2;
+            // Margin applied on all four sides equally - it was previously
+            // only being subtracted from the height once (leaving the knob
+            // 2px short of the track) and then that same 2px slack applied
+            // only at the top, leaving the knob flush against the bottom
+            // with no gap there at all. KnobMargin here needs to match on
+            // both axes for the knob to actually sit centered vertically
+            // and inset symmetrically at each end horizontally.
+            const int KnobMargin = 2;
+
+            int knobSize = toggleRectangle.Height - KnobMargin * 2;
 
             int knobX = Checked
-                ? toggleRectangle.Right - knobSize - 2
-                : toggleRectangle.X + 2;
+                ? toggleRectangle.Right - knobSize - KnobMargin
+                : toggleRectangle.X + KnobMargin;
 
             return new Rectangle(
                 knobX,
-                toggleRectangle.Y + 2,
+                toggleRectangle.Y + KnobMargin,
                 knobSize,
                 knobSize);
         }
@@ -388,8 +397,14 @@ namespace CustomWFUI.Controls
             if (_isPressed)
                 return UIStyles.Colors.PrimaryLight;
 
+            // TextPrimary flips to near-black in Light theme (it's a theme
+            // role, not a fixed shade), which made a hovered knob go black
+            // there. The knob's own surface (like ToastForm/InfoPopupForm's
+            // backgrounds) doesn't follow the theme at all, so its hover
+            // tint shouldn't either - LightForeColor is the fixed light
+            // shade meant for exactly this kind of surface.
             if (_isHovered)
-                return UIStyles.Colors.TextPrimary;
+                return UIColors.LightForeColor;
 
             return UIStyles.Colors.White;
         }
