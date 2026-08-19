@@ -7,148 +7,18 @@ namespace CustomWFUI.Factories
 {
     internal static class UICheckBoxFactory
     {
-        private const int BoxSize = 16;
-        private const int BoxLeftMargin = 2;
-        private const int TextLeftPadding = 6;
-        private const int GlyphColumnWidth = BoxLeftMargin + BoxSize + TextLeftPadding;
-
         public static CheckBox CreateStandard(
             string text = "",
             bool checkedState = true)
         {
-            CheckBox checkBox = new CheckBox
+            return new OwnerDrawCheckBox
             {
                 Text = text ?? "",
                 Checked = checkedState,
-                ForeColor = UIColors.TextPrimary,
                 BackColor = Color.Transparent,
                 Font = UIFonts.Normal,
                 FlatStyle = FlatStyle.Flat
             };
-
-            // Fully owner-drawn (box, checkmark, and label) instead of
-            // trying to recolor pieces of the native glyph - three earlier
-            // attempts each fixed one problem and caused another:
-            // ForeColor drives the native checkmark's color too, so tuning
-            // it for label readability made the checkmark invisible against
-            // its own white box (and vice versa); the native glyph doesn't
-            // dim on Enabled at all; and erasing only a guessed-width text
-            // region left a sliver of the native glyph/text peeking out at
-            // the boundary (the reported "verbuggt" stray-character look).
-            // Painting everything ourselves sidesteps needing to know any
-            // of the native control's internal layout at all.
-            checkBox.Paint += OnCheckBoxPaint;
-            checkBox.EnabledChanged += delegate { checkBox.Invalidate(); };
-            checkBox.CheckedChanged += delegate { checkBox.Invalidate(); };
-
-            return checkBox;
-        }
-
-        private static void OnCheckBoxPaint(object sender, PaintEventArgs e)
-        {
-            CheckBox checkBox = (CheckBox)sender;
-            Graphics g = e.Graphics;
-
-            Color parentBackColor = checkBox.Parent != null
-                ? checkBox.Parent.BackColor
-                : UIColors.BackgroundMedium;
-
-            // Erase BEFORE switching to AntiAlias - a rectangle fill under
-            // antialiasing can leave a faint partial-coverage sliver right
-            // at the edge instead of a crisp full-opacity one, letting
-            // whatever the native paint drew there peek through as a thin
-            // vertical line down the control's left edge.
-            using (SolidBrush eraseBrush = new SolidBrush(parentBackColor))
-                g.FillRectangle(eraseBrush, checkBox.ClientRectangle);
-
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-
-            bool enabled = checkBox.Enabled;
-            bool isChecked = checkBox.Checked;
-            bool hasText = !string.IsNullOrEmpty(checkBox.Text);
-
-            int boxX = hasText
-                ? BoxLeftMargin
-                : (checkBox.Width - BoxSize) / 2;
-            int boxY = (checkBox.Height - BoxSize) / 2;
-            Rectangle boxRect = new Rectangle(boxX, boxY, BoxSize, BoxSize);
-
-            // Filled with the accent when checked (readable regardless of
-            // theme/accent - no more fighting over one color that has to
-            // work as both a checkmark stroke and a label color), outline
-            // only when unchecked. DisabledGray substitutes for both border
-            // and fill when disabled - a fixed mid-gray (unlike TextDisabled,
-            // which is a theme role that differs between Dark/Light), so a
-            // disabled checkbox looks identical in both themes, the same way
-            // a disabled ToggleSwitch/button does.
-            Color borderColor = enabled ? UIColors.BorderMedium : UIColors.DisabledGray;
-            Color fillColor = isChecked
-                ? (enabled ? UIColors.Primary : UIColors.DisabledGray)
-                : Color.Transparent;
-
-            using (GraphicsPath boxPath = CreateRoundedRectanglePath(boxRect, 3))
-            {
-                if (isChecked)
-                {
-                    using (SolidBrush fillBrush = new SolidBrush(fillColor))
-                        g.FillPath(fillBrush, boxPath);
-                }
-
-                using (Pen borderPen = new Pen(borderColor, 1.5f))
-                    g.DrawPath(borderPen, boxPath);
-            }
-
-            if (isChecked)
-            {
-                Color checkColor = UIColors.GetContrastingForeColor(fillColor);
-                DrawCheckmark(g, boxRect, checkColor);
-            }
-
-            if (hasText)
-            {
-                Rectangle textArea = new Rectangle(
-                    GlyphColumnWidth, 0, checkBox.Width - GlyphColumnWidth, checkBox.Height);
-
-                Color textColor = enabled ? UIColors.TextPrimary : UIColors.DisabledGray;
-
-                TextRenderer.DrawText(
-                    g,
-                    checkBox.Text,
-                    checkBox.Font,
-                    textArea,
-                    textColor,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
-            }
-        }
-
-        private static void DrawCheckmark(Graphics g, Rectangle box, Color color)
-        {
-            Point p1 = new Point(box.X + (int)(box.Width * 0.22), box.Y + (int)(box.Height * 0.52));
-            Point p2 = new Point(box.X + (int)(box.Width * 0.42), box.Y + (int)(box.Height * 0.74));
-            Point p3 = new Point(box.X + (int)(box.Width * 0.80), box.Y + (int)(box.Height * 0.26));
-
-            using (Pen pen = new Pen(color, 2f))
-            {
-                pen.StartCap = LineCap.Round;
-                pen.EndCap = LineCap.Round;
-                pen.LineJoin = LineJoin.Round;
-
-                g.DrawLines(pen, new[] { p1, p2, p3 });
-            }
-        }
-
-        private static GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int radius)
-        {
-            int diameter = radius * 2;
-            GraphicsPath path = new GraphicsPath();
-
-            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
-            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
-            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
-            path.CloseFigure();
-
-            return path;
         }
 
         public static CheckBox CreateCompact(
@@ -161,6 +31,144 @@ namespace CustomWFUI.Factories
             checkBox.Size = new Size(25, 25);
 
             return checkBox;
+        }
+
+        // Fully owner-drawn (box, checkmark, and label) instead of trying to
+        // recolor pieces of the native glyph - four earlier attempts each
+        // fixed one problem and caused another: ForeColor drives the native
+        // checkmark's color too, so tuning it for label readability made the
+        // checkmark invisible against its own white box (and vice versa);
+        // the native glyph doesn't dim on Enabled at all; erasing only a
+        // guessed-width text region left a sliver of the native glyph/text
+        // peeking out at the boundary; and even a full-rectangle erase in a
+        // plain CheckBox's Paint EVENT still let native ButtonBase text
+        // render underneath/after it in specific layouts (confirmed via a
+        // StyledPropertyTable row: a disabled or otherwise-repainted
+        // checkbox showed its label doubled, faintly offset - ButtonBase's
+        // own OnPaint drawing its default glyph/text using its own layout,
+        // with our Paint-event handler's drawing on top not fully hiding it
+        // depending on repaint timing). A real subclass that overrides
+        // OnPaint and never calls base.OnPaint prevents ButtonBase's native
+        // rendering from running at all, which is the only approach that
+        // eliminated the doubling in every case tested.
+        private sealed class OwnerDrawCheckBox : CheckBox
+        {
+            private const int BoxSize = 16;
+            private const int BoxLeftMargin = 2;
+            private const int TextLeftPadding = 6;
+            private const int GlyphColumnWidth = BoxLeftMargin + BoxSize + TextLeftPadding;
+
+            public OwnerDrawCheckBox()
+            {
+                SetStyle(
+                    ControlStyles.OptimizedDoubleBuffer |
+                    ControlStyles.AllPaintingInWmPaint |
+                    ControlStyles.UserPaint,
+                    true);
+                DoubleBuffered = true;
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                Graphics g = e.Graphics;
+
+                Color parentBackColor = Parent != null
+                    ? Parent.BackColor
+                    : UIColors.BackgroundMedium;
+
+                using (SolidBrush eraseBrush = new SolidBrush(parentBackColor))
+                    g.FillRectangle(eraseBrush, ClientRectangle);
+
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                bool hasText = !string.IsNullOrEmpty(Text);
+
+                int boxX = hasText
+                    ? BoxLeftMargin
+                    : (Width - BoxSize) / 2;
+                int boxY = (Height - BoxSize) / 2;
+                Rectangle boxRect = new Rectangle(boxX, boxY, BoxSize, BoxSize);
+
+                // Filled with the accent when checked (readable regardless of
+                // theme/accent - no more fighting over one color that has to
+                // work as both a checkmark stroke and a label color), outline
+                // only when unchecked. DisabledGray substitutes for both
+                // border and fill when disabled - a fixed mid-gray (unlike
+                // TextDisabled, which is a theme role that differs between
+                // Dark/Light), so a disabled checkbox looks identical in both
+                // themes, the same way a disabled ToggleSwitch/button does.
+                Color borderColor = Enabled ? UIColors.BorderMedium : UIColors.DisabledGray;
+                Color fillColor = Checked
+                    ? (Enabled ? UIColors.Primary : UIColors.DisabledGray)
+                    : Color.Transparent;
+
+                using (GraphicsPath boxPath = CreateRoundedRectanglePath(boxRect, 3))
+                {
+                    if (Checked)
+                    {
+                        using (SolidBrush fillBrush = new SolidBrush(fillColor))
+                            g.FillPath(fillBrush, boxPath);
+                    }
+
+                    using (Pen borderPen = new Pen(borderColor, 1.5f))
+                        g.DrawPath(borderPen, boxPath);
+                }
+
+                if (Checked)
+                {
+                    Color checkColor = UIColors.GetContrastingForeColor(fillColor);
+                    DrawCheckmark(g, boxRect, checkColor);
+                }
+
+                if (hasText)
+                {
+                    Rectangle textArea = new Rectangle(
+                        GlyphColumnWidth, 0, Width - GlyphColumnWidth, Height);
+
+                    Color textColor = Enabled ? UIColors.TextPrimary : UIColors.DisabledGray;
+
+                    TextRenderer.DrawText(
+                        g,
+                        Text,
+                        Font,
+                        textArea,
+                        textColor,
+                        TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                }
+
+                // Deliberately no base.OnPaint(e) call - see the class
+                // comment above.
+            }
+
+            private static void DrawCheckmark(Graphics g, Rectangle box, Color color)
+            {
+                Point p1 = new Point(box.X + (int)(box.Width * 0.22), box.Y + (int)(box.Height * 0.52));
+                Point p2 = new Point(box.X + (int)(box.Width * 0.42), box.Y + (int)(box.Height * 0.74));
+                Point p3 = new Point(box.X + (int)(box.Width * 0.80), box.Y + (int)(box.Height * 0.26));
+
+                using (Pen pen = new Pen(color, 2f))
+                {
+                    pen.StartCap = LineCap.Round;
+                    pen.EndCap = LineCap.Round;
+                    pen.LineJoin = LineJoin.Round;
+
+                    g.DrawLines(pen, new[] { p1, p2, p3 });
+                }
+            }
+
+            private static GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int radius)
+            {
+                int diameter = radius * 2;
+                GraphicsPath path = new GraphicsPath();
+
+                path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
+                path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
+                path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+                path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
+                path.CloseFigure();
+
+                return path;
+            }
         }
     }
 }

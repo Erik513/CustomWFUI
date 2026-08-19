@@ -312,6 +312,19 @@ namespace CustomWFUI.Controls
                 return;
             }
 
+            // A checkbox's box+label has a natural, fixed preferred size -
+            // stretching it to Fill this row's whole (often much wider)
+            // cell doesn't gain anything, so it gets the same left-anchored
+            // treatment as ToggleSwitch/Button instead of the Fill every
+            // other control type gets by default below.
+            if (control is CheckBox)
+            {
+                control.Dock = DockStyle.None;
+                control.Anchor = AnchorStyles.Left;
+                control.Margin = new Padding(0);
+                return;
+            }
+
             if (control is TextBox)
             {
                 TextBox textBox = (TextBox)control;
