@@ -10,7 +10,7 @@ namespace CustomWFUI.Factories
             string text = "",
             bool checkedState = true)
         {
-            return new CheckBox
+            CheckBox checkBox = new CheckBox
             {
                 Text = text ?? "",
                 Checked = checkedState,
@@ -18,6 +18,34 @@ namespace CustomWFUI.Factories
                 BackColor = Color.Transparent,
                 Font = UIFonts.Normal,
                 FlatStyle = FlatStyle.Flat
+            };
+
+            SetEnabledStyle(checkBox);
+
+            return checkBox;
+        }
+
+        // Unlike Button/ComboBox, a FlatStyle.Flat CheckBox's native rendering
+        // doesn't dim its text at all when disabled - confirmed by rendering
+        // both states and comparing pixels, they were identical. Same
+        // restore-last-live-value pattern as UIButtonFactory's
+        // SetEnabledStyle, so a manual ForeColor override survives an
+        // Enabled round-trip instead of resetting to the factory default.
+        private static void SetEnabledStyle(CheckBox checkBox)
+        {
+            Color restoreForeColor = checkBox.ForeColor;
+
+            checkBox.EnabledChanged += delegate
+            {
+                if (checkBox.Enabled)
+                {
+                    checkBox.ForeColor = restoreForeColor;
+                }
+                else
+                {
+                    restoreForeColor = checkBox.ForeColor;
+                    checkBox.ForeColor = UIColors.TextDisabled;
+                }
             };
         }
 
