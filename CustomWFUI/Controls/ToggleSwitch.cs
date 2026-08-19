@@ -356,7 +356,16 @@ namespace CustomWFUI.Controls
             if (!Enabled)
                 return UIStyles.Colors.BorderDark;
 
-            if (_isHovered && !Checked)
+            // Matches the fill exactly - CheckedBackColor if that instance
+            // has its own override, otherwise the app-wide accent
+            // (BorderPrimary tracks SetAccent the same way Primary/
+            // PrimaryDark/etc. do), so a checked switch always reads as one
+            // consistent color instead of an accent-filled center with a
+            // leftover neutral-gray outline.
+            if (Checked)
+                return CheckedBackColor ?? UIStyles.Colors.BorderPrimary;
+
+            if (_isHovered)
                 return UIStyles.Colors.Primary;
 
             return UIStyles.Colors.BorderMedium;
