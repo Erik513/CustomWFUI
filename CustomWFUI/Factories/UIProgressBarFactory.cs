@@ -16,16 +16,19 @@ namespace CustomWFUI.Factories
                 Minimum = 0,
                 Style = ProgressBarStyle.Continuous,
                 ForeColor = UIColors.Green,
-                // BackgroundDark rather than BackgroundLight - a progress
+                // BackgroundMedium rather than BackgroundLight - a progress
                 // bar's track needs to read as a recessed surface, not
                 // whatever shade the caller's panel happens to use (several
                 // consumers set their panel BackColor to BackgroundLight too,
                 // which made the track invisible - the fill looked like it
-                // was floating on transparent background). BackgroundDark is
-                // the one shade lower than every panel role
-                // (Medium/Light/Lighter/Elevated), so it stays visibly
-                // recessed regardless of which of those the caller used.
-                BackColor = UIColors.BackgroundDark,
+                // was floating on transparent background). BackgroundDark
+                // fixed that but read as near-black, harsher than the rest
+                // of the library's dark grays; BackgroundMedium is still
+                // reliably a shade below the common panel roles
+                // (Light/Lighter/Elevated) without going that dark, and the
+                // border below covers the remaining edge case where a panel
+                // is BackgroundMedium too.
+                BackColor = UIColors.BackgroundMedium,
                 Margin = new Padding(0)
             };
 
