@@ -377,7 +377,14 @@ namespace CustomWFUI.Controls
             if (Checked)
                 return CheckedBackColor ?? UIStyles.Colors.Primary;
 
-            return UncheckedBackColor ?? UIStyles.Colors.BackgroundMedium;
+            // BackgroundMedium is pure white in Light theme, so an
+            // unchecked track was indistinguishable from its own
+            // surroundings there ("der Hintergrund... ist komplett weiß,
+            // sie sollte ganz leicht grau sein"). BackgroundLight is a
+            // step up from Medium in both themes (subtly lighter in Dark,
+            // a visible light gray - not white - in Light), giving the
+            // track a visible pill shape against either background.
+            return UncheckedBackColor ?? UIStyles.Colors.BackgroundLight;
         }
 
         private Color GetBorderColor()
