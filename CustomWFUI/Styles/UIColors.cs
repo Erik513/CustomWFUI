@@ -175,36 +175,29 @@ namespace CustomWFUI.Styles
             AccentForeColor = GetContrastingForeColor(accent);
         }
 
+        // Above this, background is bright enough that dark text wins;
+        // at/below it, light text wins. Deliberately above a literal 50%
+        // midpoint (not just "which one contrasts more") - button press
+        // colors like PrimaryLight/GreenLight sit right around 50% and
+        // read better with light text by UI convention (light text on a
+        // saturated blue/green button), even on the rare background where
+        // dark text would technically score a marginally higher contrast
+        // ratio. Still comfortably below genuinely bright colors like
+        // Yellow (~0.58) and YellowLighter (~0.81), which correctly keep
+        // dark text.
+        private const double LightBackgroundThreshold = 0.55;
+
         /// <summary>
         /// White or near-black, whichever reads better on top of the given
         /// background - e.g. white text is unreadable on a bright yellow
-        /// accent even though it's fine on the default dark blue. Picks
-        /// whichever of the two fixed DarkForeColor/LightForeColor shades
-        /// gives the higher contrast ratio against the background, rather
-        /// than a simple "is the background above/below 50% brightness"
-        /// threshold - for a mid-brightness background (e.g. a button's
-        /// pressed-state color, which is often a lighter-but-still-mid-tone
-        /// shade of its idle color), a plain 50% cutoff can pick the color
-        /// that reads WORSE, since neither black nor white contrasts
-        /// strongly against a middling gray. Not the current theme's
-        /// TextPrimary - callers use this specifically for surfaces
-        /// (accent/semantic colors) that don't follow the base theme, so
-        /// the answer must not depend on it either.
+        /// accent even though it's fine on the default dark blue. Not the
+        /// current theme's TextPrimary - callers use this specifically for
+        /// surfaces (accent/semantic colors) that don't follow the base
+        /// theme, so the answer must not depend on it either.
         /// </summary>
         public static Color GetContrastingForeColor(Color background)
         {
-            double contrastWithDark = ContrastRatio(background, DarkForeColor);
-            double contrastWithLight = ContrastRatio(background, LightForeColor);
-
-            return contrastWithDark >= contrastWithLight ? DarkForeColor : LightForeColor;
-        }
-
-        private static double ContrastRatio(Color a, Color b)
-        {
-            double luminanceA = RelativeLuminance(a) + 0.05;
-            double luminanceB = RelativeLuminance(b) + 0.05;
-
-            return luminanceA > luminanceB ? luminanceA / luminanceB : luminanceB / luminanceA;
+            return RelativeLuminance(background) > LightBackgroundThreshold ? DarkForeColor : LightForeColor;
         }
 
         private static double RelativeLuminance(Color color)
