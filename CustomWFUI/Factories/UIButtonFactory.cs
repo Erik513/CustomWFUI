@@ -274,11 +274,15 @@ namespace CustomWFUI.Factories
             // "looks the same as enabled". The blend keeps it clearly
             // readable (it's blending toward an already-darkened background,
             // not toward black) while actually looking muted.
-            // fixedForeColor buttons (CreateBrowseInFolder) skip this entirely -
-            // their fore color is a fixed part of their look, same as their
-            // background, so it stays put across the enabled/disabled toggle too.
+            // fixedForeColor buttons (CreateBrowseInFolder) skip the contrast
+            // computation - their idle fore color is a fixed part of their
+            // look, not something GetContrastingForeColor should be picking
+            // for them - but still get the same muting blend applied to it
+            // for disabled. Every control's disabled state should read as
+            // visibly grayed out regardless of what's otherwise fixed about
+            // its look.
             Color disabledForeColor = fixedForeColor
-                ? enabledForeColor
+                ? BlendTowardColor(enabledForeColor, disabledBackColor, 0.35)
                 : BlendTowardColor(UIColors.GetContrastingForeColor(disabledBackColor), disabledBackColor, 0.35);
 
             Color restoreBackColor = enabledBackColor;
