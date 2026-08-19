@@ -279,7 +279,7 @@ namespace CustomWFUI.Forms
                 AutoSize = true,
                 Text = text,
                 Font = UIFonts.Title,
-                ForeColor = UIColors.TextPrimary,
+                ForeColor = GetForeColor(),
                 BackColor = Color.Transparent,
                 Margin = new Padding(0, 6, 0, 3),
                 MaximumSize = new Size(MaxTextWidth, 0)
@@ -293,11 +293,40 @@ namespace CustomWFUI.Forms
                 AutoSize = true,
                 Text = text,
                 Font = UIFonts.Normal,
-                ForeColor = UIColors.TextPrimaryDim,
+                ForeColor = GetDimForeColor(),
                 BackColor = Color.Transparent,
                 Margin = new Padding(0, 0, 0, 4),
                 MaximumSize = new Size(MaxTextWidth, 0)
             };
+        }
+
+        // TextPrimary/TextPrimaryDim are theme-dependent (near-white in Dark,
+        // near-black in Light), but this popup's BackColor is PrimaryDark -
+        // an accent shade that stays the same regardless of theme. Reading
+        // TextPrimary directly meant Light theme rendered near-black text on
+        // a still-dark accent background, unreadable. Same principle as
+        // ToastForm/button press text: contrast has to be computed against
+        // the actual background, not assumed from the theme.
+        private static Color GetForeColor()
+        {
+            return UIColors.GetContrastingForeColor(UIColors.PrimaryDark);
+        }
+
+        // TextPrimaryDim's role (de-emphasized body text under a bold title)
+        // doesn't have a fixed-background equivalent in UIColors, so this
+        // blends the contrast-computed fore color partway toward the
+        // background itself - keeps the same "quieter than the title" effect
+        // regardless of which accent/theme combination is active.
+        private static Color GetDimForeColor()
+        {
+            const double blendTowardBackground = 0.35;
+            Color fore = GetForeColor();
+            Color back = UIColors.PrimaryDark;
+
+            return Color.FromArgb(
+                fore.R + (int)((back.R - fore.R) * blendTowardBackground),
+                fore.G + (int)((back.G - fore.G) * blendTowardBackground),
+                fore.B + (int)((back.B - fore.B) * blendTowardBackground));
         }
         private void ConfigureForm()
         {
@@ -333,7 +362,7 @@ namespace CustomWFUI.Forms
                 AutoSize = true,
                 Text = title,
                 Font = UIFonts.Title,
-                ForeColor = UIColors.TextPrimary,
+                ForeColor = GetForeColor(),
                 BackColor = Color.Transparent,
                 Margin = new Padding(0, 0, 0, 6)
             };
@@ -346,7 +375,7 @@ namespace CustomWFUI.Forms
                 AutoSize = true,
                 MaximumSize = new Size(MaxTextWidth, 0),
                 Font = UIFonts.Normal,
-                ForeColor = UIColors.TextPrimaryDim,
+                ForeColor = GetDimForeColor(),
                 BackColor = Color.Transparent,
                 Margin = new Padding(0)
             };
