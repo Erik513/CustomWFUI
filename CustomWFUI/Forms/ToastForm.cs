@@ -86,7 +86,10 @@ namespace CustomWFUI.Forms
             FormBorderStyle = FormBorderStyle.None;
             StartPosition = FormStartPosition.Manual;
             Size = new Size(ToastWidth, ToastHeight);
-            BackColor = UIColors.Primary;
+            // A shade darker than the raw accent (PrimaryDark, the same
+            // shade CreatePrimary buttons use as their idle background) -
+            // the toast used to be the accent itself, unchanged.
+            BackColor = UIColors.PrimaryDark;
             TopMost = true;
             ShowInTaskbar = false;
             Opacity = 0.90;
@@ -120,7 +123,12 @@ namespace CustomWFUI.Forms
             return new Label
             {
                 Text = "✓",
-                ForeColor = UIColors.AccentForeColor,
+                // AccentForeColor is computed against the raw accent
+                // (Primary), not the darker PrimaryDark this form actually
+                // uses as its background - contrast has to be computed
+                // against the real background, same principle as button
+                // text throughout this library.
+                ForeColor = UIColors.GetContrastingForeColor(UIColors.PrimaryDark),
                 Font = UIFonts.Icon,
                 Size = new Size(30, 30),
                 Location = new Point(10, 25),
@@ -134,7 +142,7 @@ namespace CustomWFUI.Forms
             return new Label
             {
                 Text = "",
-                ForeColor = UIColors.AccentForeColor,
+                ForeColor = UIColors.GetContrastingForeColor(UIColors.PrimaryDark),
                 Font = UIFonts.Normal,
                 TextAlign = ContentAlignment.MiddleLeft,
                 BackColor = Color.Transparent,
