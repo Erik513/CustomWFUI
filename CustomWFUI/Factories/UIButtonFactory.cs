@@ -116,18 +116,20 @@ namespace CustomWFUI.Factories
             button.FlatAppearance.MouseDownBackColor = mouseDownBackColor;
 
             SetEnabledStyle(button, backColor, foreColor);
-            SetPressedForeColor(button, foreColor);
+            SetPressedForeColor(button, foreColor, mouseDownBackColor);
             AddToolTip(button, tooltip);
 
             return button;
         }
 
-        // Every button's mouse-down background (the *Light/*Lighter colors
-        // passed as mouseDownBackColor in CreateStyledButton) is a
-        // lighter/brighter shade than its idle one - so pressed text
-        // always goes dark, unconditionally, regardless of hue.
         // FlatAppearance only lets a button swap its BACKGROUND per mouse
-        // state, not its text/icon color, so this has to be done by hand.
+        // state, not its text/icon color, so pressed text has to be
+        // recolored by hand to stay readable against mouseDownBackColor -
+        // that's NOT always a light shade of the idle color (e.g.
+        // CreateStandard's press color is the app's accent, which is a dark
+        // blue by default), so this computes the correct contrast for that
+        // specific background rather than assuming dark text is always
+        // right.
         //
         // MouseLeave fires on every plain hover-then-move-away too, not
         // just after a press - so this must only touch ForeColor if a
@@ -136,9 +138,9 @@ namespace CustomWFUI.Factories
         // color captured at construction time), since callers are free
         // to recolor a button after creation (e.g. DealOrNoDeal's price
         // buttons set ForeColor = Black on top of this factory's default).
-        private static void SetPressedForeColor(Button button, Color idleForeColor)
+        private static void SetPressedForeColor(Button button, Color idleForeColor, Color pressedBackColor)
         {
-            Color pressedForeColor = UIColors.DarkForeColor;
+            Color pressedForeColor = UIColors.GetContrastingForeColor(pressedBackColor);
             bool isPressed = false;
             Color restoreForeColor = idleForeColor;
 

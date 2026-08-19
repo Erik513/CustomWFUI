@@ -178,16 +178,38 @@ namespace CustomWFUI.Styles
         /// <summary>
         /// White or near-black, whichever reads better on top of the given
         /// background - e.g. white text is unreadable on a bright yellow
-        /// accent even though it's fine on the default dark blue. Always
-        /// picks between the two fixed DarkForeColor/LightForeColor shades,
-        /// not the current theme's TextPrimary - callers use this
-        /// specifically for surfaces (accent/semantic colors) that don't
-        /// follow the base theme, so the answer must not depend on it either.
+        /// accent even though it's fine on the default dark blue. Picks
+        /// whichever of the two fixed DarkForeColor/LightForeColor shades
+        /// gives the higher contrast ratio against the background, rather
+        /// than a simple "is the background above/below 50% brightness"
+        /// threshold - for a mid-brightness background (e.g. a button's
+        /// pressed-state color, which is often a lighter-but-still-mid-tone
+        /// shade of its idle color), a plain 50% cutoff can pick the color
+        /// that reads WORSE, since neither black nor white contrasts
+        /// strongly against a middling gray. Not the current theme's
+        /// TextPrimary - callers use this specifically for surfaces
+        /// (accent/semantic colors) that don't follow the base theme, so
+        /// the answer must not depend on it either.
         /// </summary>
         public static Color GetContrastingForeColor(Color background)
         {
-            double luminance = (0.299 * background.R + 0.587 * background.G + 0.114 * background.B) / 255.0;
-            return luminance > 0.5 ? DarkForeColor : LightForeColor;
+            double contrastWithDark = ContrastRatio(background, DarkForeColor);
+            double contrastWithLight = ContrastRatio(background, LightForeColor);
+
+            return contrastWithDark >= contrastWithLight ? DarkForeColor : LightForeColor;
+        }
+
+        private static double ContrastRatio(Color a, Color b)
+        {
+            double luminanceA = RelativeLuminance(a) + 0.05;
+            double luminanceB = RelativeLuminance(b) + 0.05;
+
+            return luminanceA > luminanceB ? luminanceA / luminanceB : luminanceB / luminanceA;
+        }
+
+        private static double RelativeLuminance(Color color)
+        {
+            return (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0;
         }
 
         private static Color Darken(Color color, double amount)
