@@ -265,12 +265,21 @@ namespace CustomWFUI.Factories
             // by coincidence, but CreateBrowseInFolder's (Yellow darkened by
             // DisabledColorFactor is still a fairly bright olive) landed at a
             // contrast ratio of ~1.0 against it - i.e. functionally invisible.
+            // Blended 35% toward the disabled background rather than used at
+            // full brightness - GetContrastingForeColor alone picks the same
+            // white/near-black constant an enabled button would also land on
+            // (darkening the background rarely flips which side of the
+            // threshold it's on), so disabled text read exactly as crisp/
+            // bright as enabled text once OnButtonPaint fixed its visibility -
+            // "looks the same as enabled". The blend keeps it clearly
+            // readable (it's blending toward an already-darkened background,
+            // not toward black) while actually looking muted.
             // fixedForeColor buttons (CreateBrowseInFolder) skip this entirely -
             // their fore color is a fixed part of their look, same as their
             // background, so it stays put across the enabled/disabled toggle too.
             Color disabledForeColor = fixedForeColor
                 ? enabledForeColor
-                : UIColors.GetContrastingForeColor(disabledBackColor);
+                : BlendTowardColor(UIColors.GetContrastingForeColor(disabledBackColor), disabledBackColor, 0.35);
 
             Color restoreBackColor = enabledBackColor;
             Color restoreForeColor = enabledForeColor;
@@ -301,6 +310,17 @@ namespace CustomWFUI.Factories
                 Math.Max(0, Math.Min(255, (int)(color.R * factor))),
                 Math.Max(0, Math.Min(255, (int)(color.G * factor))),
                 Math.Max(0, Math.Min(255, (int)(color.B * factor))));
+        }
+
+        private static Color BlendTowardColor(Color color, Color target, double amount)
+        {
+            amount = Math.Max(0, Math.Min(1, amount));
+
+            return Color.FromArgb(
+                color.A,
+                color.R + (int)((target.R - color.R) * amount),
+                color.G + (int)((target.G - color.G) * amount),
+                color.B + (int)((target.B - color.B) * amount));
         }
 
         private static void OnRoundIconButtonResize(object sender, EventArgs e)
