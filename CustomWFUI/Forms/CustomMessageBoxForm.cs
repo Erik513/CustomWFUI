@@ -313,7 +313,7 @@ namespace CustomWFUI.Forms
                 return UIButtonFactory.CreateGreen(text, "", size);
 
             if (result == DialogResult.No)
-                return UIButtonFactory.CreateDanger(text, "", size);
+                return UIButtonFactory.CreateRed(text, "", size);
 
             return UIButtonFactory.CreateStandard(text, "", size);
         }

@@ -137,7 +137,7 @@ namespace CustomWFUI
             public static Font Emoji { get { return UIFonts.Emoji; } }
         }
 
-        /// <summary>Flat, themed <see cref="Button"/>s in a few preset colors (<see cref="CreateStandard"/>, <see cref="CreatePrimary"/>, <see cref="CreateGreen"/>, <see cref="CreateDanger"/>) plus a couple of special-purpose ones.</summary>
+        /// <summary>Flat, themed <see cref="Button"/>s in a few preset colors (<see cref="CreateStandard"/>, <see cref="CreatePrimary"/>, <see cref="CreateGreen"/>, <see cref="CreateRed"/>) plus a couple of special-purpose ones.</summary>
         public static class Buttons
         {
             public static Button CreateStandard(
@@ -179,13 +179,13 @@ namespace CustomWFUI
                     isIcon);
             }
 
-            public static Button CreateDanger(
+            public static Button CreateRed(
                 string text = "",
                 string tooltip = "",
                 Size? size = null,
                 bool isIcon = false)
             {
-                return UIButtonFactory.CreateDanger(
+                return UIButtonFactory.CreateRed(
                     text,
                     tooltip,
                     size,

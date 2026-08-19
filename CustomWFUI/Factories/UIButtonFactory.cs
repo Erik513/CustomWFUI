@@ -40,7 +40,7 @@ namespace CustomWFUI.Factories
                 UIColors.Green, UIColors.GreenLight);
         }
 
-        public static Button CreateDanger(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
+        public static Button CreateRed(string text = "", string tooltip = "", Size? size = null, bool isIcon = false)
         {
             return CreateStyledButton(text, tooltip, size, isIcon,
                 UIColors.RedDark, UIColors.GetContrastingForeColor(UIColors.RedDark), UIColors.BorderDark, 1,
@@ -130,7 +130,39 @@ namespace CustomWFUI.Factories
             SetPressedForeColor(button, foreColor, mouseDownBackColor, fixedForeColor);
             AddToolTip(button, tooltip);
 
+            button.Paint += OnButtonPaint;
+
             return button;
+        }
+
+        // WinForms' built-in disabled-Button rendering ignores ForeColor
+        // entirely - confirmed by reading it back as exactly the light color
+        // SetEnabledStyle assigns, while the actually-rendered pixels were a
+        // barely-readable dark-on-dark blend (an embossed light/dark pair
+        // the framework derives from BackColor, not ForeColor). The Paint
+        // event fires after the button's own internal painting finishes, so
+        // repainting the text here overrides it with the color we actually
+        // computed. Only touches disabled buttons - enabled ones render
+        // correctly on their own.
+        private static void OnButtonPaint(object sender, PaintEventArgs e)
+        {
+            Button button = (Button)sender;
+
+            if (button.Enabled || string.IsNullOrEmpty(button.Text))
+                return;
+
+            Rectangle textArea = Rectangle.Inflate(button.ClientRectangle, -2, -2);
+
+            using (SolidBrush backBrush = new SolidBrush(button.BackColor))
+                e.Graphics.FillRectangle(backBrush, textArea);
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                button.Text,
+                button.Font,
+                button.ClientRectangle,
+                button.ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
 
         // FlatAppearance only lets a button swap its BACKGROUND per mouse
