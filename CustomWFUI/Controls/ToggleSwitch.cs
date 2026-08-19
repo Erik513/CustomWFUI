@@ -352,15 +352,18 @@ namespace CustomWFUI.Controls
 
         private Color GetBackgroundColor()
         {
-            // TextDisabled rather than BackgroundDark - BackgroundDark is a
-            // theme role (near-black in Dark, near-WHITE in Light), so a
-            // disabled switch's track went white-on-white against a Light
-            // theme page and read as not there at all, not just "muted".
-            // TextDisabled stays a mid-gray in both themes (100/170), so the
-            // track keeps a visible outline against either theme's page
-            // background instead of collapsing into it.
+            // DisabledGray rather than BackgroundDark or TextDisabled - both
+            // are theme roles (BackgroundDark near-black in Dark, near-WHITE
+            // in Light; TextDisabled 100 vs 170), so a disabled switch's
+            // track came out a different shade of gray - or, with
+            // BackgroundDark, invisible white-on-white - depending on which
+            // theme was active. Disabled buttons already look identical in
+            // both themes (CreatePrimary/CreateGreen/CreateRed's disabled
+            // color derives from the theme-independent accent, not a theme
+            // role); DisabledGray gives ToggleSwitch the same
+            // theme-independent uniformity.
             if (!Enabled)
-                return UIColors.TextDisabled;
+                return UIColors.DisabledGray;
 
             if (Checked)
                 return CheckedBackColor ?? UIStyles.Colors.Primary;
@@ -370,11 +373,11 @@ namespace CustomWFUI.Controls
 
         private Color GetBorderColor()
         {
-            // Same fixed mid-gray as the fill, for the same reason - a
-            // uniformly muted pill rather than a separate (also
-            // theme-collapsing) BorderDark outline around it.
+            // Same fixed gray as the fill, for the same reason - a
+            // uniformly muted pill that looks the same in both themes,
+            // rather than a separate (also theme-varying) outline.
             if (!Enabled)
-                return UIColors.TextDisabled;
+                return UIColors.DisabledGray;
 
             // Matches the fill exactly - CheckedBackColor if that instance
             // has its own override, otherwise the app-wide accent
@@ -394,19 +397,17 @@ namespace CustomWFUI.Controls
         private Color GetKnobColor()
         {
             // Computed against the disabled track color (GetBackgroundColor's
-            // own !Enabled case, now TextDisabled) so the knob still
-            // contrasts against whatever the track actually renders as - but
-            // blended 35% toward that same track color rather than used at
-            // full strength, same as disabled button/browse-icon text.
-            // GetContrastingForeColor alone is a binary black/white pick, so
-            // in Light theme (TextDisabled reads as the "light background"
-            // side of the threshold) the knob came out solid black - visibly
-            // disabled from the track's dimming, sure, but the knob itself
-            // looked exactly as bold/undimmed as an enabled one. Every
-            // control's disabled state should read as grayed out, no
-            // exceptions.
+            // own !Enabled case, now the fixed DisabledGray) so the knob
+            // still contrasts against whatever the track actually renders
+            // as, blended 35% toward that same track color rather than used
+            // at full strength (GetContrastingForeColor alone is a binary
+            // black/white pick - at full strength the knob looked exactly as
+            // bold/undimmed as an enabled one). Using the same fixed
+            // DisabledGray the track itself now uses means this - and
+            // therefore the whole disabled switch - renders identically in
+            // both themes, matching disabled buttons.
             if (!Enabled)
-                return BlendTowardColor(UIColors.GetContrastingForeColor(UIColors.TextDisabled), UIColors.TextDisabled, 0.35);
+                return BlendTowardColor(UIColors.GetContrastingForeColor(UIColors.DisabledGray), UIColors.DisabledGray, 0.35);
 
             if (KnobColor.HasValue)
                 return KnobColor.Value;

@@ -69,6 +69,18 @@ namespace CustomWFUI.Styles
         // regardless of which base theme happens to be active.
         public static readonly Color DarkForeColor = Color.FromArgb(20, 20, 20);
         public static readonly Color LightForeColor = Color.FromArgb(240, 240, 240);
+
+        // Same idea as the two above, but for a whole disabled CONTROL
+        // surface rather than just text on one - TextDisabled/BorderDark are
+        // theme roles (100/170 and 50/220 respectively), so a disabled
+        // ToggleSwitch's track came out a visibly different gray depending
+        // on which theme was active, even though "disabled" is supposed to
+        // look the same everywhere, the same way a disabled CreatePrimary/
+        // CreateGreen/CreateRed button already does (their disabled color
+        // derives from the theme-independent accent, not a theme role). A
+        // true middle gray reads with reasonable contrast against both a
+        // near-black Dark background and a near-white Light one.
+        public static readonly Color DisabledGray = Color.FromArgb(120, 120, 120);
         public static Color TextPrimaryDim { get; set; } = Color.FromArgb(220, 220, 220);
         public static Color TextSecondary { get; set; } = Color.FromArgb(180, 180, 180);
         public static Color TextTertiary { get; set; } = Color.FromArgb(140, 140, 140);

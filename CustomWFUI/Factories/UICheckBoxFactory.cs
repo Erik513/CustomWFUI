@@ -76,15 +76,14 @@ namespace CustomWFUI.Factories
             // Filled with the accent when checked (readable regardless of
             // theme/accent - no more fighting over one color that has to
             // work as both a checkmark stroke and a label color), outline
-            // only when unchecked. TextDisabled substitutes for both border
-            // and fill when disabled - it's a mid-gray in both themes
-            // (never collapses to near-white/near-black the way BackgroundDark
-            // or BorderDark can), so a disabled checkbox reads as muted
-            // against either theme's page background instead of disappearing
-            // into it.
-            Color borderColor = enabled ? UIColors.BorderMedium : UIColors.TextDisabled;
+            // only when unchecked. DisabledGray substitutes for both border
+            // and fill when disabled - a fixed mid-gray (unlike TextDisabled,
+            // which is a theme role that differs between Dark/Light), so a
+            // disabled checkbox looks identical in both themes, the same way
+            // a disabled ToggleSwitch/button does.
+            Color borderColor = enabled ? UIColors.BorderMedium : UIColors.DisabledGray;
             Color fillColor = isChecked
-                ? (enabled ? UIColors.Primary : UIColors.TextDisabled)
+                ? (enabled ? UIColors.Primary : UIColors.DisabledGray)
                 : Color.Transparent;
 
             using (GraphicsPath boxPath = CreateRoundedRectanglePath(boxRect, 3))
@@ -110,7 +109,7 @@ namespace CustomWFUI.Factories
                 Rectangle textArea = new Rectangle(
                     GlyphColumnWidth, 0, checkBox.Width - GlyphColumnWidth, checkBox.Height);
 
-                Color textColor = enabled ? UIColors.TextPrimary : UIColors.TextDisabled;
+                Color textColor = enabled ? UIColors.TextPrimary : UIColors.DisabledGray;
 
                 TextRenderer.DrawText(
                     g,
