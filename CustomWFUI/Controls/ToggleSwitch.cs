@@ -338,7 +338,16 @@ namespace CustomWFUI.Controls
 
         private void DrawKnobBorder(Graphics graphics, Rectangle rectangle)
         {
-            Pen pen = new Pen(UIStyles.Colors.BorderMedium, BorderThickness);
+            // Was unconditionally BorderMedium regardless of Enabled - a
+            // theme role (70 in Dark, 200 in Light), so even after the
+            // fill/track/border were all made theme-independent for
+            // disabled, the knob's outline alone still visibly differed
+            // between themes ("the knob's outline is darker in dark mode").
+            Color borderColor = Enabled
+                ? UIStyles.Colors.BorderMedium
+                : UIColors.DisabledGray;
+
+            Pen pen = new Pen(borderColor, BorderThickness);
 
             try
             {
