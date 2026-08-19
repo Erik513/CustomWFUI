@@ -53,9 +53,19 @@ namespace CustomWFUI.Factories
             // 512x512 raster image downscaled to button size looks blurry and
             // clashes with this button's own yellow, unlike the flat-color
             // glyphs used by the other icon buttons.
+            //
+            // fixedForeColor: true - white regardless of computed contrast.
+            // Yellow's background is itself a fixed, non-computed look (this
+            // button doesn't follow the theme or accent), so the glyph color
+            // should be equally fixed rather than flipping to black just
+            // because Yellow happens to sit above the light/dark text
+            // threshold - a deliberate, requested exception, not an
+            // oversight the way the pre-fix "always black" button/disabled
+            // text bugs earlier this session were.
             return CreateStyledButton("📁", tooltip, size, isIcon,
-                UIColors.Yellow, UIColors.GetContrastingForeColor(UIColors.Yellow), UIColors.BorderDark, 1,
-                UIColors.YellowLight, UIColors.YellowLighter);
+                UIColors.Yellow, UIColors.White, UIColors.BorderDark, 1,
+                UIColors.YellowLight, UIColors.YellowLighter,
+                fixedForeColor: true);
         }
 
         public static Button CreateIconButton(string text, int size = 32)
@@ -93,7 +103,8 @@ namespace CustomWFUI.Factories
             Color borderColor,
             int borderSize,
             Color mouseOverBackColor,
-            Color mouseDownBackColor)
+            Color mouseDownBackColor,
+            bool fixedForeColor = false)
         {
             Button button = new Button
             {
@@ -115,8 +126,8 @@ namespace CustomWFUI.Factories
             button.FlatAppearance.MouseOverBackColor = mouseOverBackColor;
             button.FlatAppearance.MouseDownBackColor = mouseDownBackColor;
 
-            SetEnabledStyle(button, backColor, foreColor);
-            SetPressedForeColor(button, foreColor, mouseDownBackColor);
+            SetEnabledStyle(button, backColor, foreColor, fixedForeColor);
+            SetPressedForeColor(button, foreColor, mouseDownBackColor, fixedForeColor);
             AddToolTip(button, tooltip);
 
             return button;
@@ -138,9 +149,11 @@ namespace CustomWFUI.Factories
         // color captured at construction time), since callers are free
         // to recolor a button after creation (e.g. DealOrNoDeal's price
         // buttons set ForeColor = Black on top of this factory's default).
-        private static void SetPressedForeColor(Button button, Color idleForeColor, Color pressedBackColor)
+        private static void SetPressedForeColor(Button button, Color idleForeColor, Color pressedBackColor, bool fixedForeColor)
         {
-            Color pressedForeColor = UIColors.GetContrastingForeColor(pressedBackColor);
+            Color pressedForeColor = fixedForeColor
+                ? idleForeColor
+                : UIColors.GetContrastingForeColor(pressedBackColor);
             bool isPressed = false;
             Color restoreForeColor = idleForeColor;
 
@@ -211,7 +224,7 @@ namespace CustomWFUI.Factories
         // (button.BackColor = ... after creation) survives an Enabled
         // round-trip instead of silently snapping back to the factory
         // default the next time the button re-enables.
-        private static void SetEnabledStyle(Button button, Color enabledBackColor, Color enabledForeColor)
+        private static void SetEnabledStyle(Button button, Color enabledBackColor, Color enabledForeColor, bool fixedForeColor)
         {
             Color disabledBackColor = Darken(enabledBackColor, DisabledColorFactor);
 
@@ -220,7 +233,12 @@ namespace CustomWFUI.Factories
             // by coincidence, but CreateBrowseInFolder's (Yellow darkened by
             // DisabledColorFactor is still a fairly bright olive) landed at a
             // contrast ratio of ~1.0 against it - i.e. functionally invisible.
-            Color disabledForeColor = UIColors.GetContrastingForeColor(disabledBackColor);
+            // fixedForeColor buttons (CreateBrowseInFolder) skip this entirely -
+            // their fore color is a fixed part of their look, same as their
+            // background, so it stays put across the enabled/disabled toggle too.
+            Color disabledForeColor = fixedForeColor
+                ? enabledForeColor
+                : UIColors.GetContrastingForeColor(disabledBackColor);
 
             Color restoreBackColor = enabledBackColor;
             Color restoreForeColor = enabledForeColor;
