@@ -11,7 +11,7 @@ namespace CustomWFUI.Factories
 
         public static ProgressBar CreateStandard()
         {
-            ProgressBar progressBar = new BorderedProgressBar
+            ProgressBar progressBar = new BorderedProgressBar(drawBorder: true)
             {
                 Minimum = 0,
                 Style = ProgressBarStyle.Continuous,
@@ -28,6 +28,30 @@ namespace CustomWFUI.Factories
                 // (Light/Lighter/Elevated) without going that dark, and the
                 // border below covers the remaining edge case where a panel
                 // is BackgroundMedium too.
+                BackColor = UIColors.BackgroundMedium,
+                Margin = new Padding(0)
+            };
+
+            SetEnabledStyle(progressBar);
+
+            return progressBar;
+        }
+
+        // No border, and BackColor deliberately left as whatever the caller
+        // sets - ProgressBar.BackColor throws on Color.Transparent (there is
+        // no real transparency for this control), so the only way to get the
+        // "blends into its container" look some callers actually want is to
+        // match BackColor to the surrounding panel by hand, e.g.
+        // progressBar.BackColor = UIStyles.Colors.BackgroundLight to match a
+        // BackgroundLight panel. CreateStandard's opinionated, always-visible
+        // track/border stays the default; this is the explicit opt-out.
+        public static ProgressBar CreateTransparent()
+        {
+            ProgressBar progressBar = new BorderedProgressBar(drawBorder: false)
+            {
+                Minimum = 0,
+                Style = ProgressBarStyle.Continuous,
+                ForeColor = UIColors.Green,
                 BackColor = UIColors.BackgroundMedium,
                 Margin = new Padding(0)
             };
@@ -73,15 +97,18 @@ namespace CustomWFUI.Factories
 
         // Draws a 1px border around the bar so its extent is still legible
         // even in the rare case a caller's panel happens to also be
-        // BackgroundDark - relying on BackColor contrast alone isn't
+        // BackgroundMedium - relying on BackColor contrast alone isn't
         // guaranteed the way it is for bordered buttons/textboxes.
         // ProgressBar is natively drawn (WM_PAINT bypasses .NET's owner-draw
         // pipeline, so Paint never fires for it - confirmed by testing),
         // hence painting straight onto the HWND after the base paint instead
-        // of overriding OnPaint.
+        // of overriding OnPaint. drawBorder lets CreateTransparent skip this
+        // entirely for callers who want the bar to blend into its container.
         private sealed class BorderedProgressBar : ProgressBar
         {
             private const int WM_PAINT = 0x000F;
+
+            private readonly bool _drawBorder;
 
             [System.Runtime.InteropServices.DllImport("uxtheme.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
             private static extern int SetWindowTheme(
@@ -89,8 +116,10 @@ namespace CustomWFUI.Factories
                 string pszSubAppName,
                 string pszSubIdList);
 
-            public BorderedProgressBar()
+            public BorderedProgressBar(bool drawBorder)
             {
+                _drawBorder = drawBorder;
+
                 // With visual styles enabled, the native ProgressBar ignores
                 // ForeColor/BackColor entirely and always shows the system
                 // green bar. SetWindowTheme("", "") opts just this control
@@ -103,7 +132,7 @@ namespace CustomWFUI.Factories
             {
                 base.WndProc(ref m);
 
-                if (m.Msg == WM_PAINT)
+                if (_drawBorder && m.Msg == WM_PAINT)
                 {
                     using (Graphics g = Graphics.FromHwnd(Handle))
                     using (Pen pen = new Pen(UIColors.BorderMedium))

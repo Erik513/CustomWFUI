@@ -476,6 +476,12 @@ namespace CustomWFUI
             {
                 return UIProgressBarFactory.CreateStandard();
             }
+
+            /// <summary>Like <see cref="CreateStandard"/> but without the border, and BackColor left for you to match your own panel - the closest a ProgressBar can get to a transparent background.</summary>
+            public static ProgressBar CreateTransparent()
+            {
+                return UIProgressBarFactory.CreateTransparent();
+            }
         }
 
         /// <summary>
