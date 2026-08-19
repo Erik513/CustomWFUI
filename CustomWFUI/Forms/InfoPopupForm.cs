@@ -62,6 +62,8 @@ namespace CustomWFUI.Forms
             if (owner == null || owner.IsDisposed)
                 return;
 
+            RefreshColors();
+
             _textLabel.Text = string.IsNullOrWhiteSpace(text)
                 ? UIStrings.Get("InfoPopup.None")
                 : text;
@@ -105,6 +107,8 @@ namespace CustomWFUI.Forms
         {
             if (owner == null || owner.IsDisposed)
                 return;
+
+            RefreshColors();
 
             _textLabel.Text =
                 string.IsNullOrWhiteSpace(text)
@@ -152,6 +156,8 @@ namespace CustomWFUI.Forms
         {
             if (owner == null || owner.IsDisposed)
                 return;
+
+            RefreshColors();
 
             _layout.Controls.Clear();
 
@@ -223,6 +229,8 @@ namespace CustomWFUI.Forms
         {
             if (owner == null || owner.IsDisposed)
                 return;
+
+            RefreshColors();
 
             string contentKey = BuildSectionContentKey(sections);
 
@@ -328,6 +336,34 @@ namespace CustomWFUI.Forms
                 fore.G + (int)((back.G - fore.G) * blendTowardBackground),
                 fore.B + (int)((back.B - fore.B) * blendTowardBackground));
         }
+
+        // Docs recommend reusing a single InfoPopupForm across many show
+        // calls rather than creating a new one each time, which is exactly
+        // why the color fix above wasn't enough on its own: BackColor/the
+        // label colors were still only ever set once, at construction time -
+        // so an app that switches accent/theme after building this popup
+        // (or, in CustomWFUI.Showcase's case, after every single accent
+        // swatch click) kept showing whatever color was live when `new
+        // InfoPopupForm(...)` first ran. Called at the top of every Show*
+        // method so each call re-reads the current accent, the same way a
+        // freshly-constructed ToastForm/CustomMessageBox naturally would.
+        private void RefreshColors()
+        {
+            BackColor = UIColors.PrimaryDark;
+
+            Color foreColor = GetForeColor();
+            Color dimForeColor = GetDimForeColor();
+
+            foreach (Control control in _layout.Controls)
+            {
+                Label label = control as Label;
+                if (label == null)
+                    continue;
+
+                label.ForeColor = UIFonts.Title.Equals(label.Font) ? foreColor : dimForeColor;
+            }
+        }
+
         private void ConfigureForm()
         {
             FormBorderStyle = FormBorderStyle.None;
