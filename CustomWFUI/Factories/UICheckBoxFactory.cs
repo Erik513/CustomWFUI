@@ -48,14 +48,20 @@ namespace CustomWFUI.Factories
         {
             CheckBox checkBox = (CheckBox)sender;
             Graphics g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
 
             Color parentBackColor = checkBox.Parent != null
                 ? checkBox.Parent.BackColor
                 : UIColors.BackgroundMedium;
 
+            // Erase BEFORE switching to AntiAlias - a rectangle fill under
+            // antialiasing can leave a faint partial-coverage sliver right
+            // at the edge instead of a crisp full-opacity one, letting
+            // whatever the native paint drew there peek through as a thin
+            // vertical line down the control's left edge.
             using (SolidBrush eraseBrush = new SolidBrush(parentBackColor))
                 g.FillRectangle(eraseBrush, checkBox.ClientRectangle);
+
+            g.SmoothingMode = SmoothingMode.AntiAlias;
 
             bool enabled = checkBox.Enabled;
             bool isChecked = checkBox.Checked;
