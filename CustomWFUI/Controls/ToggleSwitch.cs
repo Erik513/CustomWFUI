@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using CustomWFUI.Styles;
 
 namespace CustomWFUI.Controls
 {
@@ -373,8 +374,13 @@ namespace CustomWFUI.Controls
 
         private Color GetKnobColor()
         {
+            // Computed against the disabled track color (GetBackgroundColor's
+            // own !Enabled case) rather than the fixed TextDisabled gray -
+            // that read fine in Dark theme (where BackgroundDark is itself
+            // dark) but gave a ~1.5 contrast ratio in Light theme, where
+            // BackgroundDark is white and TextDisabled is a light gray too.
             if (!Enabled)
-                return UIStyles.Colors.TextDisabled;
+                return UIColors.GetContrastingForeColor(UIStyles.Colors.BackgroundDark);
 
             if (KnobColor.HasValue)
                 return KnobColor.Value;
