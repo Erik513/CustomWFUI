@@ -395,9 +395,18 @@ namespace CustomWFUI.Controls
         {
             // Computed against the disabled track color (GetBackgroundColor's
             // own !Enabled case, now TextDisabled) so the knob still
-            // contrasts against whatever the track actually renders as.
+            // contrasts against whatever the track actually renders as - but
+            // blended 35% toward that same track color rather than used at
+            // full strength, same as disabled button/browse-icon text.
+            // GetContrastingForeColor alone is a binary black/white pick, so
+            // in Light theme (TextDisabled reads as the "light background"
+            // side of the threshold) the knob came out solid black - visibly
+            // disabled from the track's dimming, sure, but the knob itself
+            // looked exactly as bold/undimmed as an enabled one. Every
+            // control's disabled state should read as grayed out, no
+            // exceptions.
             if (!Enabled)
-                return UIColors.GetContrastingForeColor(UIColors.TextDisabled);
+                return BlendTowardColor(UIColors.GetContrastingForeColor(UIColors.TextDisabled), UIColors.TextDisabled, 0.35);
 
             if (KnobColor.HasValue)
                 return KnobColor.Value;
@@ -415,6 +424,17 @@ namespace CustomWFUI.Controls
                 return UIColors.LightForeColor;
 
             return UIStyles.Colors.White;
+        }
+
+        private static Color BlendTowardColor(Color color, Color target, double amount)
+        {
+            amount = Math.Max(0, Math.Min(1, amount));
+
+            return Color.FromArgb(
+                color.A,
+                color.R + (int)((target.R - color.R) * amount),
+                color.G + (int)((target.G - color.G) * amount),
+                color.B + (int)((target.B - color.B) * amount));
         }
 
         private GraphicsPath CreateRoundedRectanglePath(
