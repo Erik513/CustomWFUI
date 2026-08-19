@@ -98,6 +98,15 @@ namespace CustomWFUI.Showcase
                 ? new Point(-_scrollHost.AutoScrollPosition.X, -_scrollHost.AutoScrollPosition.Y)
                 : Point.Empty;
 
+            // StyledForm/TitleBarControl only read theme colors once, at
+            // construction - this window itself is never recreated (only its
+            // content is, which is why the rest of BuildUi exists at all),
+            // so without this the title bar stayed on whatever theme was
+            // active when the app first launched, regardless of later
+            // Dark/Light switches.
+            BackColor = UIColors.BackgroundBlack;
+            TitleBar.RefreshTheme();
+
             ContentPanel.SuspendLayout();
             ContentPanel.Controls.Clear();
 
@@ -274,10 +283,10 @@ namespace CustomWFUI.Showcase
             greenDisabled.Enabled = false;
             PlaceRow(card, "CreateGreen", 140, green, greenDisabled);
 
-            Button danger = UIStyles.Buttons.CreateDanger("Delete", size: textButtonSize);
-            Button dangerDisabled = UIStyles.Buttons.CreateDanger("Disabled", size: textButtonSize);
+            Button danger = UIStyles.Buttons.CreateRed("Delete", size: textButtonSize);
+            Button dangerDisabled = UIStyles.Buttons.CreateRed("Disabled", size: textButtonSize);
             dangerDisabled.Enabled = false;
-            PlaceRow(card, "CreateDanger", 180, danger, dangerDisabled);
+            PlaceRow(card, "CreateRed", 180, danger, dangerDisabled);
 
             Button browse = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
             Button browseDisabled = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
