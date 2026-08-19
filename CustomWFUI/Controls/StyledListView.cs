@@ -61,7 +61,8 @@ namespace CustomWFUI.Controls
         private Color _rowBackColor = UIColors.BackgroundMedium;
         private Color _alternateRowBackColor;
         private Color _rowForeColor = UIColors.TextPrimary;
-        private Color _selectionOverlayColor = UIColors.Selection;
+        private Color _selectionOverlayColorOverride;
+        private bool _selectionOverlayColorIsOverridden;
         private Color _headerBackColor = UIColors.BackgroundDarkElevated;
         private Color _headerForeColor = UIColors.TextTertiary;
         private int _minimumColumnWidth = DefaultMinimumColumnWidth;
@@ -126,13 +127,19 @@ namespace CustomWFUI.Controls
         /// replacing it outright - <see cref="UIColors.Selection"/> is a
         /// translucent blue for exactly this, so the row's own (e.g.
         /// severity) color still shows through underneath a selection.
+        /// Follows the current accent live until explicitly set - it used to
+        /// be a plain field snapshotted once at construction (like
+        /// StyledListBox's DragIndicatorColor before the same fix), so an
+        /// app that changed its accent after building the list still showed
+        /// the default blue regardless.
         /// </summary>
         public Color SelectionOverlayColor
         {
-            get { return _selectionOverlayColor; }
+            get { return _selectionOverlayColorIsOverridden ? _selectionOverlayColorOverride : UIColors.Selection; }
             set
             {
-                _selectionOverlayColor = value;
+                _selectionOverlayColorOverride = value;
+                _selectionOverlayColorIsOverridden = true;
                 Invalidate();
             }
         }
@@ -531,18 +538,23 @@ namespace CustomWFUI.Controls
 
         private void OnDrawSubItem(object sender, DrawListViewSubItemEventArgs e)
         {
-            // The visually leftmost column (DisplayIndex 0 - not
-            // necessarily data index 0, once columns can be reordered) has
-            // a known ownerdraw quirk in the native ListView: with
-            // FullRowSelect on, e.Bounds for it is sometimes reported as
-            // the width of the WHOLE row instead of just that column,
-            // which paints over every other column's content and
-            // misplaces the selection overlay/text. Its real bounds always
-            // start at the item's own left edge and are exactly as wide as
-            // that column actually is, regardless of what e.Bounds reports.
-            var bounds = Columns[e.ColumnIndex].DisplayIndex == 0
-                ? new Rectangle(e.Item.Bounds.Left, e.Bounds.Top, Columns[e.ColumnIndex].Width, e.Bounds.Height)
-                : e.Bounds;
+            // e.Bounds is only reliable for whichever column the native
+            // control drew FIRST in a given paint pass (normally the
+            // visually leftmost one) - for every other column, once columns
+            // have been reordered at least once, e.Bounds can report stale
+            // position/size left over from a previous layout. Confirmed by
+            // instrumenting every draw call after swapping two columns: text
+            // itself (e.SubItem / e.Item.SubItems[e.ColumnIndex]) was always
+            // correct, but relying on e.Bounds for the non-leftmost swapped
+            // column drew it somewhere invisible - the reported symptom
+            // wasn't wrong data, it was a blank cell. So bounds are computed
+            // from scratch here for every column - left edge is the item's
+            // own left edge plus the width of every column with a smaller
+            // DisplayIndex, exactly mirroring GetColumnIndexAtX's model of
+            // the current visual layout - rather than trusted from the event
+            // at all; only e.Bounds.Top/.Height (unaffected by column order)
+            // are still used.
+            var bounds = GetSubItemBounds(e.Item, Columns[e.ColumnIndex], e.Bounds);
 
             var baseBackColor = e.ItemIndex % 2 == 0 ? _rowBackColor : _alternateRowBackColor;
             using (var background = new SolidBrush(baseBackColor))
@@ -552,19 +564,40 @@ namespace CustomWFUI.Controls
 
             if (IsCellSelected(e.ItemIndex, e.ColumnIndex))
             {
-                using (var overlay = new SolidBrush(_selectionOverlayColor))
+                using (var overlay = new SolidBrush(SelectionOverlayColor))
                 {
                     e.Graphics.FillRectangle(overlay, bounds);
                 }
             }
 
+            var text = e.ColumnIndex < e.Item.SubItems.Count ? e.Item.SubItems[e.ColumnIndex].Text : string.Empty;
+
             TextRenderer.DrawText(
                 e.Graphics,
-                e.SubItem.Text,
+                text,
                 e.Item.Font ?? Font,
                 new Rectangle(bounds.X + 6, bounds.Y, Math.Max(0, bounds.Width - 9), bounds.Height),
                 e.Item.ForeColor,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        }
+
+        // The item's own left edge is always correct regardless of column
+        // order (it's the row's bounds, not any one column's) - from there,
+        // every column with a smaller DisplayIndex than the target column
+        // contributes its full width, giving the target's true current
+        // on-screen left edge without depending on e.Bounds at all.
+        private Rectangle GetSubItemBounds(ListViewItem item, ColumnHeader column, Rectangle fallbackVerticalBounds)
+        {
+            var left = item.Bounds.Left;
+            foreach (ColumnHeader other in Columns)
+            {
+                if (other.DisplayIndex < column.DisplayIndex)
+                {
+                    left += other.Width;
+                }
+            }
+
+            return new Rectangle(left, fallbackVerticalBounds.Top, column.Width, fallbackVerticalBounds.Height);
         }
 
         // _anchorColumn/_activeColumn are tracked in DISPLAY order (visual
