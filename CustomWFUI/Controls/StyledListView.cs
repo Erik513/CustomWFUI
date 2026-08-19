@@ -10,6 +10,17 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Controls
 {
+    /// <summary>How <see cref="StyledListView"/> confirms a Ctrl+C/Ctrl+Shift+C copy.</summary>
+    public enum CopyConfirmationStyle
+    {
+        /// <summary>A <see cref="Forms.ToastForm"/> popup (the original, default behavior).</summary>
+        Toast,
+        /// <summary>A brief standard <see cref="ToolTip"/> instead - for apps that don't want ToastForm's separate popup window.</summary>
+        ToolTip,
+        /// <summary>No visual confirmation at all - the copy still happens, just silently.</summary>
+        None
+    }
+
     /// <summary>
     /// A dark-themed, multi-column ListView (Details view) with genuine,
     /// spreadsheet-like cell-range selection instead of the native
@@ -68,6 +79,9 @@ namespace CustomWFUI.Controls
             get { return _minimumColumnWidth; }
             set { _minimumColumnWidth = Math.Max(1, value); }
         }
+
+        /// <summary>How a Ctrl+C/Ctrl+Shift+C copy is confirmed. Defaults to <see cref="CopyConfirmationStyle.Toast"/> (unchanged from before this existed).</summary>
+        public CopyConfirmationStyle CopyConfirmation { get; set; } = CopyConfirmationStyle.Toast;
 
         /// <summary>
         /// Which column stretches to fill any leftover width. -1 (the
@@ -1055,10 +1069,25 @@ namespace CustomWFUI.Controls
 
         private void ShowCopyToast(string message)
         {
-            var owner = FindForm();
-            if (owner != null)
+            switch (CopyConfirmation)
             {
-                ToastForm.ShowToast(message, owner);
+                case CopyConfirmationStyle.None:
+                    return;
+
+                case CopyConfirmationStyle.ToolTip:
+                    // Reuses the same ToolTip instance already used for
+                    // overflow-text hover previews elsewhere in this class,
+                    // rather than owning a second ToolTip component.
+                    _cellToolTip.Show(message, this, 12, 12, 2000);
+                    return;
+
+                default:
+                    var owner = FindForm();
+                    if (owner != null)
+                    {
+                        ToastForm.ShowToast(message, owner);
+                    }
+                    return;
             }
         }
 
