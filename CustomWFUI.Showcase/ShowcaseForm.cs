@@ -283,10 +283,9 @@ namespace CustomWFUI.Showcase
             AddUniformRow(table, "CreateRed", danger, null, dangerDisabled);
 
             Button browse = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
-            Button icon = UIStyles.Buttons.CreateIconButton("★", 36);
             Button browseDisabled = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
             browseDisabled.Enabled = false;
-            AddUniformRow(table, "Browse / Icon", browse, icon, browseDisabled);
+            AddUniformRow(table, "Browse", browse, null, browseDisabled);
         }
 
         private void AddCheckBoxesAndTogglesSection(StyledPropertyTable table)
