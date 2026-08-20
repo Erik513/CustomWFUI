@@ -138,29 +138,26 @@ namespace CustomWFUI.Factories
                 if (m.Msg != WM_PAINT)
                     return;
 
-                if (_drawBorder)
-                {
-                    using (Graphics g = Graphics.FromHwnd(Handle))
-                    using (Pen pen = new Pen(UIColors.BorderMedium))
-                        g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-
-                    return;
-                }
-
-                // CreateTransparent (drawBorder: false) wants this control
-                // to blend seamlessly into its container - no border at
-                // all. The classic (unthemed) native ProgressBar can still
-                // show a 1px 3D sunken-edge frame independent of
-                // SetWindowTheme above - confirmed only after a real
-                // theme/accent-triggered rebuild (constructed while its
-                // parent hierarchy was already visible), never on a fresh
-                // construction. Painting over it via the CLIENT dc
-                // (Graphics.FromHwnd, i.e. GetDC) had no effect at all,
-                // which points at this edge being drawn into the window's
+                // The classic (unthemed) native ProgressBar can show a 1px
+                // 3D sunken-edge frame independent of SetWindowTheme above -
+                // confirmed only after a real theme/accent-triggered
+                // rebuild (constructed while its parent hierarchy was
+                // already visible), never on a fresh construction. This
+                // affects BOTH variants - CreateStandard just masked it
+                // before, since our own BorderMedium border (drawn below)
+                // sits close enough in color/position to blend with the
+                // native edge instead of standing out as a separate line
+                // the way it did against CreateTransparent's plain
+                // BackColor fill. Painting over it via the CLIENT dc
+                // (Graphics.FromHwnd/GetDC) had no effect at all, which
+                // points at this edge being drawn into the window's
                 // NON-CLIENT area specifically. GetWindowDC (unlike GetDC)
                 // gives access to the full window surface, non-client area
-                // included, so painting the outer edge there reaches pixels
-                // the client dc structurally never could.
+                // included, so painting the outer ring there reaches pixels
+                // the client dc structurally never could - done first and
+                // unconditionally, so CreateStandard's own border (drawn
+                // after, on the client dc) always ends up on a clean edge
+                // instead of layered on top of a stray native one.
                 System.IntPtr windowDc = GetWindowDC(Handle);
 
                 if (windowDc != System.IntPtr.Zero)
@@ -175,6 +172,13 @@ namespace CustomWFUI.Factories
                     {
                         ReleaseDC(Handle, windowDc);
                     }
+                }
+
+                if (_drawBorder)
+                {
+                    using (Graphics g = Graphics.FromHwnd(Handle))
+                    using (Pen pen = new Pen(UIColors.BorderMedium))
+                        g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
                 }
             }
         }
