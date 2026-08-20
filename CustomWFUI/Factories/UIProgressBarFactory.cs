@@ -7,7 +7,15 @@ namespace CustomWFUI.Factories
 {
     internal static class UIProgressBarFactory
     {
-        public static ProgressBar CreateStandard()
+        // Named by color, matching UIButtonFactory's CreateStandard/
+        // CreatePrimary/CreateGreen/CreateRed convention - "Transparent" is
+        // a uniform suffix for the no-border/blend-in variant of each
+        // color, rather than something only the green bar has. Previously
+        // this was CreateStandard/CreateTransparent, which meant "Standard"
+        // silently meant "green" here while meaning "neutral gray" for
+        // buttons - the same word, two different colors depending on which
+        // factory you were looking at.
+        public static ProgressBar CreateGreen()
         {
             return Create(UIColors.Green, drawBorder: true);
         }
@@ -18,14 +26,14 @@ namespace CustomWFUI.Factories
         // "blends into its container" look some callers actually want is to
         // match BackColor to the surrounding panel by hand, e.g.
         // progressBar.BackColor = UIStyles.Colors.BackgroundLight to match a
-        // BackgroundLight panel. CreateStandard's opinionated, always-visible
+        // BackgroundLight panel. CreateGreen's opinionated, always-visible
         // track/border stays the default; this is the explicit opt-out.
-        public static ProgressBar CreateTransparent()
+        public static ProgressBar CreateGreenTransparent()
         {
             return Create(UIColors.Green, drawBorder: false);
         }
 
-        // Same as CreateStandard, but the fill follows the app-wide accent
+        // Same as CreateGreen, but the fill follows the app-wide accent
         // (UIColors.Primary, the same color CreatePrimary buttons use)
         // instead of the fixed green - for progress bars that should read
         // as "this app's own accent", not "success/in-progress" specifically.
@@ -34,7 +42,7 @@ namespace CustomWFUI.Factories
             return Create(UIColors.Primary, drawBorder: true);
         }
 
-        // CreatePrimary's accent-following fill, with CreateTransparent's
+        // CreatePrimary's accent-following fill, with CreateGreenTransparent's
         // no-border/blend-in look.
         public static ProgressBar CreatePrimaryTransparent()
         {
@@ -111,8 +119,9 @@ namespace CustomWFUI.Factories
         // ProgressBar is natively drawn (WM_PAINT bypasses .NET's owner-draw
         // pipeline, so Paint never fires for it - confirmed by testing),
         // hence painting straight onto the HWND after the base paint instead
-        // of overriding OnPaint. drawBorder lets CreateTransparent skip this
-        // entirely for callers who want the bar to blend into its container.
+        // of overriding OnPaint. drawBorder lets the *Transparent variants
+        // skip this entirely for callers who want the bar to blend into
+        // its container.
         private sealed class BorderedProgressBar : ProgressBar
         {
             private const int WM_PAINT = 0x000F;
@@ -163,9 +172,9 @@ namespace CustomWFUI.Factories
                 // included, so painting there reaches pixels the client dc
                 // structurally never could.
                 //
-                // Erasing on the window dc first and then drawing
-                // CreateStandard's own border separately on the client dc
-                // (two draws, two device contexts) left a second, visibly
+                // Erasing on the window dc first and then drawing a bordered
+                // variant's own border separately on the client dc (two
+                // draws, two device contexts) left a second, visibly
                 // different-colored ring of its own: the erase used
                 // BackColor (BackgroundMedium, this control's own recessed
                 // track shade), one pixel further out than the border drawn
@@ -173,8 +182,8 @@ namespace CustomWFUI.Factories
                 // surrounding background - so instead of one clean border,
                 // there were two concentric rings in different colors,
                 // which is likely the "line" the user spotted. Drawing the
-                // final, correct color (the border color for
-                // CreateStandard, or just BackColor for CreateTransparent)
+                // final, correct color (the border color for a bordered
+                // variant, or just BackColor for a *Transparent one)
                 // directly on the window dc in one single pass avoids that
                 // entirely - there's no separate erase step to leave a
                 // mismatched trace behind.

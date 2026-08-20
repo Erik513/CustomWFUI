@@ -472,24 +472,24 @@ namespace CustomWFUI
         /// <summary>A themed <see cref="ProgressBar"/> (continuous style, not the native blocky one).</summary>
         public static class ProgressBars
         {
-            public static ProgressBar CreateStandard()
+            public static ProgressBar CreateGreen()
             {
-                return UIProgressBarFactory.CreateStandard();
+                return UIProgressBarFactory.CreateGreen();
             }
 
-            /// <summary>Like <see cref="CreateStandard"/> but without the border, and BackColor left for you to match your own panel - the closest a ProgressBar can get to a transparent background.</summary>
-            public static ProgressBar CreateTransparent()
+            /// <summary>Like <see cref="CreateGreen"/> but without the border, and BackColor left for you to match your own panel - the closest a ProgressBar can get to a transparent background.</summary>
+            public static ProgressBar CreateGreenTransparent()
             {
-                return UIProgressBarFactory.CreateTransparent();
+                return UIProgressBarFactory.CreateGreenTransparent();
             }
 
-            /// <summary>Like <see cref="CreateStandard"/> but the fill follows the app-wide accent instead of the fixed green.</summary>
+            /// <summary>Like <see cref="CreateGreen"/> but the fill follows the app-wide accent instead of the fixed green.</summary>
             public static ProgressBar CreatePrimary()
             {
                 return UIProgressBarFactory.CreatePrimary();
             }
 
-            /// <summary>Like <see cref="CreatePrimary"/> but without the border, and BackColor left for you to match your own panel - the accent-following equivalent of <see cref="CreateTransparent"/>.</summary>
+            /// <summary>Like <see cref="CreatePrimary"/> but without the border, and BackColor left for you to match your own panel - the accent-following equivalent of <see cref="CreateGreenTransparent"/>.</summary>
             public static ProgressBar CreatePrimaryTransparent()
             {
                 return UIProgressBarFactory.CreatePrimaryTransparent();

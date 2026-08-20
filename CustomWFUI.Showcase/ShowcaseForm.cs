@@ -344,21 +344,21 @@ namespace CustomWFUI.Showcase
         {
             table.AddSection("ProgressBars");
 
-            ProgressBar standardBar = UIStyles.ProgressBars.CreateStandard();
+            ProgressBar standardBar = UIStyles.ProgressBars.CreateGreen();
             standardBar.Value = 65;
-            ProgressBar disabledBar = UIStyles.ProgressBars.CreateStandard();
+            ProgressBar disabledBar = UIStyles.ProgressBars.CreateGreen();
             disabledBar.Value = 65;
             disabledBar.Enabled = false;
-            AddUniformRow(table, "CreateStandard", standardBar, null, disabledBar);
+            AddUniformRow(table, "CreateGreen", standardBar, null, disabledBar);
 
-            ProgressBar transparentBar = UIStyles.ProgressBars.CreateTransparent();
+            ProgressBar transparentBar = UIStyles.ProgressBars.CreateGreenTransparent();
             transparentBar.Value = 40;
             transparentBar.BackColor = UIColors.BackgroundLight;
-            ProgressBar transparentDisabled = UIStyles.ProgressBars.CreateTransparent();
+            ProgressBar transparentDisabled = UIStyles.ProgressBars.CreateGreenTransparent();
             transparentDisabled.Value = 40;
             transparentDisabled.BackColor = UIColors.BackgroundLight;
             transparentDisabled.Enabled = false;
-            AddUniformRow(table, "CreateTransparent", transparentBar, null, transparentDisabled);
+            AddUniformRow(table, "CreateGreenTransparent", transparentBar, null, transparentDisabled);
 
             ProgressBar primaryBar = UIStyles.ProgressBars.CreatePrimary();
             primaryBar.Value = 65;
