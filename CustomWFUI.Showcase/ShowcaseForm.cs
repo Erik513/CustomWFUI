@@ -379,15 +379,17 @@ namespace CustomWFUI.Showcase
             disabledToggle.Enabled = false;
             AddUniformRow(table, "CreateStandard", standardOn, standardOff, disabledToggle);
 
-            ToggleSwitch small = UIStyles.ToggleSwitches.CreateSmall(true);
+            ToggleSwitch smallOn = UIStyles.ToggleSwitches.CreateSmall(true);
+            ToggleSwitch smallOff = UIStyles.ToggleSwitches.CreateSmall(false);
             ToggleSwitch smallDisabled = UIStyles.ToggleSwitches.CreateSmall(true);
             smallDisabled.Enabled = false;
-            AddTwoColumnRow(table, "CreateSmall", small, smallDisabled);
+            AddUniformRow(table, "CreateSmall", smallOn, smallOff, smallDisabled);
 
-            ToggleSwitch large = UIStyles.ToggleSwitches.CreateLarge(true);
+            ToggleSwitch largeOn = UIStyles.ToggleSwitches.CreateLarge(true);
+            ToggleSwitch largeOff = UIStyles.ToggleSwitches.CreateLarge(false);
             ToggleSwitch largeDisabled = UIStyles.ToggleSwitches.CreateLarge(true);
             largeDisabled.Enabled = false;
-            AddTwoColumnRow(table, "CreateLarge", large, largeDisabled);
+            AddUniformRow(table, "CreateLarge", largeOn, largeOff, largeDisabled);
         }
 
         private void AddInputsSection(PropertyTable table)
@@ -413,14 +415,14 @@ namespace CustomWFUI.Showcase
             comboDisabled.Items.AddRange(new object[] { "Option A", "Option B", "Option C" });
             comboDisabled.SelectedIndex = 0;
             comboDisabled.Enabled = false;
-            AddUniformRow(table, "CreateStandard", combo, null, comboDisabled);
+            AddTwoColumnRow(table, "CreateStandard", combo, comboDisabled);
 
             table.AddSection("NumericUpDowns");
 
             NumericUpDown numeric = UIStyles.NumericUpDowns.CreateStandard(0, 100, 1, 42);
             NumericUpDown numericDisabled = UIStyles.NumericUpDowns.CreateStandard(0, 100, 1, 42);
             numericDisabled.Enabled = false;
-            AddUniformRow(table, "CreateStandard", numeric, null, numericDisabled);
+            AddTwoColumnRow(table, "CreateStandard", numeric, numericDisabled);
         }
 
         private void AddProgressBarsSection(PropertyTable table)
