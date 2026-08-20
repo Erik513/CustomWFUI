@@ -192,12 +192,12 @@ namespace CustomWFUI
                     isIcon);
             }
 
-            public static Button CreateBrowseInFolder(
+            public static Button CreateBrowse(
                 string tooltip = "",
                 Size? size = null,
                 bool isIcon = true)
             {
-                return UIButtonFactory.CreateBrowseInFolder(
+                return UIButtonFactory.CreateBrowse(
                     tooltip,
                     size,
                     isIcon);
@@ -397,6 +397,15 @@ namespace CustomWFUI
                 string text = "")
             {
                 return UIToolTipFactory.CreateToolTip(text);
+            }
+        }
+
+        /// <summary>A dark-themed, multi-column <see cref="Controls.ListView"/> (Details view) with spreadsheet-style cell-range selection, hand-rolled column reordering/resizing, and Ctrl+C/Ctrl+Shift+C copy - see the class itself for the full behavior.</summary>
+        public static class ListViews
+        {
+            public static System.Windows.Forms.ListView CreateStandard()
+            {
+                return UIListViewFactory.CreateStandard();
             }
         }
 

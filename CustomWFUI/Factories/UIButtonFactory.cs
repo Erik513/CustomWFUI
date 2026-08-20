@@ -47,7 +47,7 @@ namespace CustomWFUI.Factories
                 UIColors.Red, UIColors.RedLight);
         }
 
-        public static Button CreateBrowseInFolder(string tooltip = "", Size? size = null, bool isIcon = true)
+        public static Button CreateBrowse(string tooltip = "", Size? size = null, bool isIcon = true)
         {
             // Deliberately a font glyph instead of the OpenFolder PNG icon: a
             // 512x512 raster image downscaled to button size looks blurry and
@@ -262,7 +262,7 @@ namespace CustomWFUI.Factories
 
             // Computed per button rather than a single fixed UIColors.TextDisabled
             // gray - that read fine against most variants' darkened background
-            // by coincidence, but CreateBrowseInFolder's (Yellow darkened by
+            // by coincidence, but CreateBrowse's (Yellow darkened by
             // DisabledColorFactor is still a fairly bright olive) landed at a
             // contrast ratio of ~1.0 against it - i.e. functionally invisible.
             // Blended 35% toward the disabled background rather than used at
@@ -274,7 +274,7 @@ namespace CustomWFUI.Factories
             // "looks the same as enabled". The blend keeps it clearly
             // readable (it's blending toward an already-darkened background,
             // not toward black) while actually looking muted.
-            // fixedForeColor buttons (CreateBrowseInFolder) skip the contrast
+            // fixedForeColor buttons (CreateBrowse) skip the contrast
             // computation - their idle fore color is a fixed part of their
             // look, not something GetContrastingForeColor should be picking
             // for them - but still get the same muting blend applied to it

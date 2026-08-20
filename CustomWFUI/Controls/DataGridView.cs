@@ -10,12 +10,12 @@ namespace CustomWFUI.Controls
     /// A themed <see cref="System.Windows.Forms.DataGridView"/> for displaying
     /// data bound via <see cref="System.Windows.Forms.DataGridView.DataSource"/>
     /// (a DataTable, a List&lt;T&gt;, a BindingSource, ...). Unlike
-    /// <see cref="StyledListView"/> - a plain native ListView has no
+    /// <see cref="ListView"/> - a plain native ListView has no
     /// data-binding support at all, and neither does anything built on top
     /// of it - this is the control to reach for when rows come from a bound
     /// source rather than being added by hand. A genuine WinForms control
     /// (not a thin wrapper around a native Win32 common control the way
-    /// ListView is), so unlike StyledListView this needs none of that
+    /// ListView is), so unlike ListView this needs none of that
     /// header-subclassing/WM_PAINT-interception - every visual it has is
     /// reachable through its own style properties.
     /// </summary>
@@ -75,7 +75,7 @@ namespace CustomWFUI.Controls
         /// <summary>
         /// Background color of a selected cell/row. Follows the current
         /// accent (<see cref="UIColors.Primary"/>) live until explicitly
-        /// set - same pattern as StyledListView's SelectionOverlayColor.
+        /// set - same pattern as ListView's SelectionOverlayColor.
         /// </summary>
         public Color SelectionBackColor
         {
@@ -146,7 +146,7 @@ namespace CustomWFUI.Controls
         {
             // Flat gray when disabled - every control in this library mutes
             // this same way, no exceptions for a control's own fixed/
-            // accent colors (see StyledListView's SetEnabledStyle-style
+            // accent colors (see ListView's SetEnabledStyle-style
             // handling, and UIProgressBarFactory's disabled fill).
             Color rowForeColor = Enabled ? _rowForeColor : UIColors.DisabledGray;
             Color headerForeColor = Enabled ? _headerForeColor : UIColors.DisabledGray;

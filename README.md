@@ -44,7 +44,7 @@ one-line summary of what it's for.
   directly. Everything below is effectively an implementation detail behind
   it.
 - **`Controls/`** - the actual custom controls (`ListBox`,
-  `StyledListView`, `ToggleSwitch`, `TitleBarControl`, ...), for when you
+  `ListView`, `ToggleSwitch`, `TitleBarControl`, ...), for when you
   need to reach past what a factory method gives you (e.g. subscribing to
   an event, or a property `UIStyles` doesn't proxy).
 - **`Forms/`** - `StyledForm` (the base every CustomWFUI window builds on),

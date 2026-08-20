@@ -349,21 +349,21 @@ namespace CustomWFUI.Showcase
             dangerDisabled.Enabled = false;
             AddTwoColumnRow(table, "CreateRed", danger, dangerDisabled);
 
-            Button browse = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
-            Button browseDisabled = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
+            Button browse = UIStyles.Buttons.CreateBrowse("Browse", new Size(36, 30));
+            Button browseDisabled = UIStyles.Buttons.CreateBrowse("Browse", new Size(36, 30));
             browseDisabled.Enabled = false;
-            AddTwoColumnRow(table, "Browse", browse, browseDisabled);
+            AddTwoColumnRow(table, "CreateBrowse", browse, browseDisabled);
         }
 
         private void AddCheckBoxesAndTogglesSection(PropertyTable table)
         {
-            table.AddSection("CheckBoxes / ToggleSwitches");
+            table.AddSection("CheckBoxes");
 
             CheckBox checkedBox = UIStyles.CheckBoxes.CreateStandard("Checked", true);
             CheckBox uncheckedBox = UIStyles.CheckBoxes.CreateStandard("Unchecked", false);
             CheckBox disabledBox = UIStyles.CheckBoxes.CreateStandard("Disabled", true);
             disabledBox.Enabled = false;
-            AddUniformRow(table, "CheckBoxes", checkedBox, uncheckedBox, disabledBox);
+            AddUniformRow(table, "CreateStandard", checkedBox, uncheckedBox, disabledBox);
 
             CheckBox compactChecked = UIStyles.CheckBoxes.CreateCompact(true);
             CheckBox compactUnchecked = UIStyles.CheckBoxes.CreateCompact(false);
@@ -371,26 +371,40 @@ namespace CustomWFUI.Showcase
             compactDisabled.Enabled = false;
             AddUniformRow(table, "CreateCompact", compactChecked, compactUnchecked, compactDisabled);
 
+            table.AddSection("ToggleSwitches");
+
             ToggleSwitch standardOn = UIStyles.ToggleSwitches.CreateStandard(true);
             ToggleSwitch standardOff = UIStyles.ToggleSwitches.CreateStandard(false);
             ToggleSwitch disabledToggle = UIStyles.ToggleSwitches.CreateStandard(true);
             disabledToggle.Enabled = false;
-            AddUniformRow(table, "ToggleSwitches", standardOn, standardOff, disabledToggle);
+            AddUniformRow(table, "CreateStandard", standardOn, standardOff, disabledToggle);
 
             ToggleSwitch small = UIStyles.ToggleSwitches.CreateSmall(true);
+            ToggleSwitch smallDisabled = UIStyles.ToggleSwitches.CreateSmall(true);
+            smallDisabled.Enabled = false;
+            AddTwoColumnRow(table, "CreateSmall", small, smallDisabled);
+
             ToggleSwitch large = UIStyles.ToggleSwitches.CreateLarge(true);
-            AddUniformRow(table, "Sizes (Small / Large)", small, large, null);
+            ToggleSwitch largeDisabled = UIStyles.ToggleSwitches.CreateLarge(true);
+            largeDisabled.Enabled = false;
+            AddTwoColumnRow(table, "CreateLarge", large, largeDisabled);
         }
 
         private void AddInputsSection(PropertyTable table)
         {
-            table.AddSection("TextBoxes / ComboBox / NumericUpDown");
+            table.AddSection("TextBoxes");
 
             TextBox standardBox = UIStyles.TextBoxes.CreateStandard("", "Standard");
-            TextBox borderless = UIStyles.TextBoxes.CreateBorderstyleNone("Borderless text", "");
             TextBox textDisabled = UIStyles.TextBoxes.CreateStandard("Disabled", "");
             textDisabled.Enabled = false;
-            AddUniformRow(table, "TextBoxes", standardBox, borderless, textDisabled);
+            AddTwoColumnRow(table, "CreateStandard", standardBox, textDisabled);
+
+            TextBox borderless = UIStyles.TextBoxes.CreateBorderstyleNone("Borderless text", "");
+            TextBox borderlessDisabled = UIStyles.TextBoxes.CreateBorderstyleNone("Disabled", "");
+            borderlessDisabled.Enabled = false;
+            AddTwoColumnRow(table, "CreateBorderstyleNone", borderless, borderlessDisabled);
+
+            table.AddSection("ComboBoxes");
 
             ComboBox combo = UIStyles.ComboBoxes.CreateStandard();
             combo.Items.AddRange(new object[] { "Option A", "Option B", "Option C" });
@@ -399,12 +413,14 @@ namespace CustomWFUI.Showcase
             comboDisabled.Items.AddRange(new object[] { "Option A", "Option B", "Option C" });
             comboDisabled.SelectedIndex = 0;
             comboDisabled.Enabled = false;
-            AddUniformRow(table, "ComboBox", combo, null, comboDisabled);
+            AddUniformRow(table, "CreateStandard", combo, null, comboDisabled);
+
+            table.AddSection("NumericUpDowns");
 
             NumericUpDown numeric = UIStyles.NumericUpDowns.CreateStandard(0, 100, 1, 42);
             NumericUpDown numericDisabled = UIStyles.NumericUpDowns.CreateStandard(0, 100, 1, 42);
             numericDisabled.Enabled = false;
-            AddUniformRow(table, "NumericUpDown", numeric, null, numericDisabled);
+            AddUniformRow(table, "CreateStandard", numeric, null, numericDisabled);
         }
 
         private void AddProgressBarsSection(PropertyTable table)
@@ -466,31 +482,28 @@ namespace CustomWFUI.Showcase
             statusTransparentDisabled.Enabled = false;
             AddTwoColumnRow(table, "CreateStatusTransparent", statusTransparentBar, statusTransparentDisabled);
 
-            // Slim variants grouped together below the normal ones, rather
-            // than interleaved row-by-row, so the section reads as two
-            // clear groups (full-size bars, then the slim strip style)
-            // instead of alternating between two visually different
-            // control shapes every other row.
+            table.AddSection("SlimProgressBars");
+
             SlimProgressBar slimGreenBar = UIStyles.SlimProgressBars.CreateGreen();
             AnimateProgressBar(v => slimGreenBar.Value = v);
             SlimProgressBar slimGreenDisabled = UIStyles.SlimProgressBars.CreateGreen();
             slimGreenDisabled.Value = 65;
             slimGreenDisabled.Enabled = false;
-            AddTwoColumnRow(table, "Slim.CreateGreen", slimGreenBar, slimGreenDisabled);
+            AddTwoColumnRow(table, "CreateGreen", slimGreenBar, slimGreenDisabled);
 
             SlimProgressBar slimPrimaryBar = UIStyles.SlimProgressBars.CreatePrimary();
             AnimateProgressBar(v => slimPrimaryBar.Value = v);
             SlimProgressBar slimPrimaryDisabled = UIStyles.SlimProgressBars.CreatePrimary();
             slimPrimaryDisabled.Value = 40;
             slimPrimaryDisabled.Enabled = false;
-            AddTwoColumnRow(table, "Slim.CreatePrimary", slimPrimaryBar, slimPrimaryDisabled);
+            AddTwoColumnRow(table, "CreatePrimary", slimPrimaryBar, slimPrimaryDisabled);
 
             SlimProgressBar slimStatusBar = UIStyles.SlimProgressBars.CreateStatus();
             AnimateProgressBar(v => slimStatusBar.Value = v);
             SlimProgressBar slimStatusDisabled = UIStyles.SlimProgressBars.CreateStatus();
             slimStatusDisabled.Value = 40;
             slimStatusDisabled.Enabled = false;
-            AddTwoColumnRow(table, "Slim.CreateStatus", slimStatusBar, slimStatusDisabled);
+            AddTwoColumnRow(table, "CreateStatus", slimStatusBar, slimStatusDisabled);
         }
 
         // Applies the current animation percentage immediately (so the bar
@@ -543,13 +556,15 @@ namespace CustomWFUI.Showcase
                 panel.Controls.Add(caption);
             }
 
-            AddUniformRow(table, "Shades 1", swatches[0].Panel, swatches[1].Panel, swatches[2].Panel);
-            AddUniformRow(table, "Shades 2", swatches[3].Panel, null, null);
+            table.AddRow("CreateDark", swatches[0].Panel);
+            table.AddRow("CreateMedium", swatches[1].Panel);
+            table.AddRow("CreateElevated", swatches[2].Panel);
+            table.AddRow("CreatePrimary", swatches[3].Panel);
         }
 
         private void AddListsSection(PropertyTable table)
         {
-            table.AddSection("ListBoxControl / StyledListView");
+            table.AddSection("ListBoxControl");
 
             ListBoxControl listBox = UIStyles.ListBoxControls.CreateStandard(
                 "Sample list",
@@ -559,17 +574,17 @@ namespace CustomWFUI.Showcase
             listBox.Items.Add("Second item");
             listBox.Items.Add("Third item (drag to reorder)");
 
-            StyledListView listView = new StyledListView { View = View.Details };
+            table.AddRow("CreateStandard", 260, listBox);
+
+            table.AddSection("ListView");
+
+            var listView = UIStyles.ListViews.CreateStandard();
             listView.Columns.Add("Item", 180);
             listView.Columns.Add("Status", 100);
             listView.Items.Add(new ListViewItem(new[] { "Row A", "OK" }));
             listView.Items.Add(new ListViewItem(new[] { "Row B", "Pending" }));
 
-            table.AddRow(
-                "Lists",
-                260,
-                UIColumn.Percent(listBox, 50),
-                UIColumn.Percent(listView, 50));
+            table.AddRow("CreateStandard", 260, listView);
         }
 
         private void AddDataGridSection(PropertyTable table)
@@ -578,7 +593,7 @@ namespace CustomWFUI.Showcase
 
             // Demonstrates actual DataSource binding - the one thing a
             // plain ListView (and anything built on it, like
-            // StyledListView) simply cannot do at all.
+            // ListView) simply cannot do at all.
             var source = new DataTable();
             source.Columns.Add("Track");
             source.Columns.Add("Artist");
@@ -595,7 +610,7 @@ namespace CustomWFUI.Showcase
             disabledGrid.Enabled = false;
 
             table.AddRow(
-                "DataGridView",
+                "CreateStandard",
                 180,
                 UIColumn.Percent(grid, 50),
                 UIColumn.Percent(disabledGrid, 50));

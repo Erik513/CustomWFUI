@@ -10,7 +10,7 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Controls
 {
-    /// <summary>How <see cref="StyledListView"/> confirms a Ctrl+C/Ctrl+Shift+C copy.</summary>
+    /// <summary>How <see cref="Controls.ListView"/> confirms a Ctrl+C/Ctrl+Shift+C copy.</summary>
     public enum CopyConfirmationStyle
     {
         /// <summary>A <see cref="Forms.ToastForm"/> popup (the original, default behavior).</summary>
@@ -47,7 +47,13 @@ namespace CustomWFUI.Controls
     /// the plain action again plus "As table". Every copy is confirmed with
     /// a <see cref="Forms.ToastForm"/>.
     /// </summary>
-    public class StyledListView : ListView
+    /// <remarks>
+    /// Named the same as its own base class, same as
+    /// <see cref="Controls.DataGridView"/> and <see cref="Controls.ListBox"/>
+    /// - the base type reference below stays fully qualified so the class
+    /// doesn't try to inherit from itself.
+    /// </remarks>
+    public class ListView : System.Windows.Forms.ListView
     {
         private const int DefaultMinimumColumnWidth = 40;
 
@@ -167,7 +173,7 @@ namespace CustomWFUI.Controls
         /// being dragged to reorder it. Follows the current accent live
         /// until explicitly set, same as <see cref="SelectionOverlayColor"/>.
         /// Column reordering is fully hand-rolled (see the mouse handlers
-        /// below) rather than using <see cref="ListView.AllowColumnReorder"/>
+        /// below) rather than using <see cref="System.Windows.Forms.ListView.AllowColumnReorder"/>
         /// - that hands the whole drag to the native Win32 header control
         /// (comctl32), which draws its own insertion line as native chrome
         /// with no public API to recolor, and (confirmed by instrumenting a
@@ -208,7 +214,7 @@ namespace CustomWFUI.Controls
             }
         }
 
-        public StyledListView()
+        public ListView()
         {
             View = View.Details;
             FullRowSelect = true;
@@ -1800,7 +1806,7 @@ namespace CustomWFUI.Controls
         // on the ListView itself, confirmed the hard way: this control's
         // own MouseDown/MouseMove events never fired for a header click at
         // all. Once the drag threshold is exceeded, this hands off
-        // entirely to StyledListView.BeginColumnDragDrop (WinForms'
+        // entirely to ListView.BeginColumnDragDrop (WinForms'
         // DoDragDrop/OnDragOver/OnDragDrop, the same mechanism
         // ListBox already uses for its own item-reorder drag) rather
         // than continuing to track raw mouse messages here - an earlier
@@ -1816,7 +1822,7 @@ namespace CustomWFUI.Controls
             private const int LVM_FIRST = 0x1000;
             private const int LVM_GETHEADER = LVM_FIRST + 31;
 
-            private readonly StyledListView _owner;
+            private readonly ListView _owner;
             private int _pendingColumnIndex = -1;
             private int _pendingStartX;
 
@@ -1830,7 +1836,7 @@ namespace CustomWFUI.Controls
             [System.Runtime.InteropServices.DllImport("user32.dll")]
             private static extern bool RedrawWindow(System.IntPtr hWnd, System.IntPtr lprcUpdate, System.IntPtr hrgnUpdate, uint flags);
 
-            public HeaderInputSubclass(StyledListView owner)
+            public HeaderInputSubclass(ListView owner)
             {
                 _owner = owner;
             }
