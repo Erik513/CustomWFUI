@@ -675,7 +675,9 @@ namespace CustomWFUI.Showcase
                 _infoPopupHideTimer.Start();
             };
 
-            table.AddRow("Trigger", messageBoxButton, toastButton, infoPopupButton);
+            table.AddRow("CustomMessageBox", messageBoxButton);
+            table.AddRow("ToastForm", toastButton);
+            table.AddRow("InfoPopupForm", infoPopupButton);
         }
     }
 }
