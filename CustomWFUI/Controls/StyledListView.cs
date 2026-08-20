@@ -71,7 +71,10 @@ namespace CustomWFUI.Controls
         private readonly HashSet<int> _nonReorderableColumns = new HashSet<int>();
         private Color _columnReorderIndicatorColorOverride;
         private bool _columnReorderIndicatorColorIsOverridden;
-        private HeaderDragLineSubclass _headerDragLineSubclass;
+        private bool _isDraggingColumn;
+        private int _dragColumnIndex = -1;
+        private int _dragInsertBeforeDisplayIndex = -1;
+        private HeaderInputSubclass _headerInputSubclass;
 
         private readonly ToolTip _cellToolTip = new ToolTip { InitialDelay = 400, ReshowDelay = 100, AutoPopDelay = 8000, ShowAlways = true };
         private int _toolTipRow = -1;
@@ -151,17 +154,15 @@ namespace CustomWFUI.Controls
         /// Color of the vertical line the header shows while a column is
         /// being dragged to reorder it. Follows the current accent live
         /// until explicitly set, same as <see cref="SelectionOverlayColor"/>.
-        /// Unlike that property, this line isn't drawn by CustomWFUI at all -
-        /// <see cref="ListView.AllowColumnReorder"/> hands the whole drag
-        /// gesture to the native Win32 header control (comctl32), which
-        /// paints its own fixed light-blue insertion line with no public API
-        /// to recolor it. <see cref="HeaderDragLineSubclass"/> lets the
-        /// native line draw as normal and then repaints just those pixels
-        /// (matched by their known fixed color, RGB 128/179/230, confirmed
-        /// by sampling an actual drag) in this color instead - the same
-        /// "let native draw, then paint over the exact pixels" approach
-        /// <see cref="Factories.UIProgressBarFactory"/>'s non-client-border
-        /// fix used, applied to a native child window instead of a border.
+        /// Column reordering is fully hand-rolled (see the mouse handlers
+        /// below) rather than using <see cref="ListView.AllowColumnReorder"/>
+        /// - that hands the whole drag to the native Win32 header control
+        /// (comctl32), which draws its own insertion line as native chrome
+        /// with no public API to recolor, and (confirmed by instrumenting a
+        /// live drag) draws it in a way that isn't reliably interceptable by
+        /// subclassing at all. Owning the whole gesture means this line is
+        /// just an ordinary part of <see cref="OnDrawColumnHeader"/>'s
+        /// existing owner-draw painting - no native chrome involved.
         /// </summary>
         public Color ColumnReorderIndicatorColor
         {
@@ -201,7 +202,13 @@ namespace CustomWFUI.Controls
             FullRowSelect = true;
             HideSelection = true;
             MultiSelect = false;
-            AllowColumnReorder = true;
+            // Column reordering is hand-rolled (see HeaderInputSubclass and
+            // OnDragOver/OnDragDrop below) instead of using the native
+            // drag - see ColumnReorderIndicatorColor's doc comment for why.
+            // AllowDrop is this control's own DoDragDrop-based reorder, not
+            // an app-facing external drag-and-drop target.
+            AllowColumnReorder = false;
+            AllowDrop = true;
             BorderStyle = BorderStyle.None;
             BackColor = UIColors.BackgroundDark;
             ForeColor = _rowForeColor;
@@ -230,7 +237,6 @@ namespace CustomWFUI.Controls
             KeyDown += OnListViewKeyDown;
             ColumnWidthChanging += OnColumnWidthChanging;
             ColumnWidthChanged += OnColumnWidthChanged;
-            ColumnReordered += OnColumnReordered;
 
             ContextMenuStrip = BuildContextMenu();
         }
@@ -333,21 +339,22 @@ namespace CustomWFUI.Controls
 
             // The header is a separate native child window (class
             // "SysHeader32"), recreated along with the ListView's own handle -
-            // re-attach the subclass every time rather than once in the
-            // constructor.
-            _headerDragLineSubclass?.ReleaseHandle();
-            System.IntPtr headerHandle = HeaderDragLineSubclass.GetHeaderHandle(Handle);
+            // re-attach every time rather than once in the constructor. See
+            // HeaderInputSubclass for why column-reorder dragging is hooked
+            // here instead of this control's own mouse events.
+            _headerInputSubclass?.ReleaseHandle();
+            System.IntPtr headerHandle = HeaderInputSubclass.GetHeaderHandle(Handle);
             if (headerHandle != System.IntPtr.Zero)
             {
-                _headerDragLineSubclass = new HeaderDragLineSubclass(this);
-                _headerDragLineSubclass.AssignHandle(headerHandle);
+                _headerInputSubclass = new HeaderInputSubclass(this);
+                _headerInputSubclass.AssignHandle(headerHandle);
             }
         }
 
         protected override void OnHandleDestroyed(EventArgs e)
         {
-            _headerDragLineSubclass?.ReleaseHandle();
-            _headerDragLineSubclass = null;
+            _headerInputSubclass?.ReleaseHandle();
+            _headerInputSubclass = null;
 
             base.OnHandleDestroyed(e);
         }
@@ -410,21 +417,6 @@ namespace CustomWFUI.Controls
             {
                 ApplyFillColumn();
             }
-        }
-
-        private void OnColumnReordered(object sender, ColumnReorderedEventArgs e)
-        {
-            if (_nonReorderableColumns.Contains(e.Header.Index))
-            {
-                e.Cancel = true;
-                return;
-            }
-
-            // The native drag-reorder hasn't necessarily finished updating
-            // every column's DisplayIndex yet at the moment this fires -
-            // deferring one tick keeps "which column is now rightmost"
-            // (see GetEffectiveFillColumnIndex) accurate.
-            BeginInvoke(new MethodInvoker(ApplyFillColumn));
         }
 
         // The column that fills leftover space is "whichever is last" by
@@ -578,6 +570,36 @@ namespace CustomWFUI.Controls
                     _headerForeColor,
                     TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
             }
+
+            DrawColumnDragInsertionLine(e);
+        }
+
+        // Drawn as part of the same owner-draw pass as the header cell
+        // itself (rather than as a separate overlay) so it's fully in our
+        // own hands, unlike the native AllowColumnReorder line this
+        // replaced - see ColumnReorderIndicatorColor's doc comment. Exactly
+        // one header cell's left edge lines up with
+        // _dragInsertBeforeDisplayIndex (or, for "insert after the last
+        // column", the last cell's right edge), so at most one of these two
+        // checks ever draws anything per call.
+        private void DrawColumnDragInsertionLine(DrawListViewColumnHeaderEventArgs e)
+        {
+            if (!_isDraggingColumn || _dragInsertBeforeDisplayIndex < 0)
+            {
+                return;
+            }
+
+            using (var pen = new Pen(ColumnReorderIndicatorColor, 2))
+            {
+                if (e.Header.DisplayIndex == _dragInsertBeforeDisplayIndex)
+                {
+                    e.Graphics.DrawLine(pen, e.Bounds.Left, e.Bounds.Top, e.Bounds.Left, e.Bounds.Bottom);
+                }
+                else if (_dragInsertBeforeDisplayIndex == Columns.Count && e.Header.DisplayIndex == Columns.Count - 1)
+                {
+                    e.Graphics.DrawLine(pen, e.Bounds.Right - 1, e.Bounds.Top, e.Bounds.Right - 1, e.Bounds.Bottom);
+                }
+            }
         }
 
         private static void OnDrawItem(object sender, DrawListViewItemEventArgs e)
@@ -679,17 +701,18 @@ namespace CustomWFUI.Controls
 
             // Require an actual item hit here (not the clamped fallback
             // GetRowIndexAtY uses for an in-progress drag) - a click that
-            // isn't over a real row is most often the column header, e.g.
-            // starting an AllowColumnReorder drag, and must never start or
-            // disturb a cell selection.
+            // isn't over a real row is most often the column header (whose
+            // own drag-reorder tracking lives entirely in
+            // HeaderInputSubclass, since header clicks land on that
+            // separate native child window and never reach this handler at
+            // all) and must never disturb a cell selection.
             var hitTest = HitTest(e.Location);
             if (hitTest.Item == null)
             {
                 // Clicking below the last row (empty space in the list) clears
                 // the current selection, same as clicking outside a selection
                 // in a spreadsheet. A click in the header area (above the
-                // first row, or when there are no rows at all) is left alone
-                // so it doesn't interfere with starting a column-reorder drag.
+                // first row, or when there are no rows at all) is left alone.
                 if (Items.Count > 0 && e.Location.Y > Items[Items.Count - 1].Bounds.Bottom)
                 {
                     ClearSelection();
@@ -779,6 +802,166 @@ namespace CustomWFUI.Controls
         private void OnListViewMouseUp(object sender, MouseEventArgs e)
         {
             _isDragSelecting = false;
+        }
+
+        // Called from HeaderInputSubclass once a header click has moved
+        // past the drag threshold - a header click lands on the header's
+        // own native child window, not on this control, so detecting the
+        // click/threshold has to happen there (see HeaderInputSubclass).
+        // From here on, though, tracking the rest of the drag is handed
+        // off to WinForms' own DoDragDrop/OnDragOver/OnDragDrop, the same
+        // mechanism StyledListBox already uses successfully for its own
+        // item-reorder drag - it runs as a native OLE drag-drop operation
+        // independent of which specific child window the cursor happens to
+        // be over, sidestepping the whole header-hwnd-ownership problem
+        // that made hand-rolled WM_MOUSEMOVE/SetCapture tracking (an
+        // earlier attempt here) unreliable.
+        private void BeginColumnDragDrop(int columnIndex)
+        {
+            _dragColumnIndex = columnIndex;
+            _isDraggingColumn = true;
+            _dragInsertBeforeDisplayIndex = -1;
+
+            try
+            {
+                DoDragDrop(columnIndex, DragDropEffects.Move);
+            }
+            finally
+            {
+                // Covers every way the drag can end, including a cancelled
+                // drag (Escape, or dropped somewhere OnDragDrop never
+                // fires) - OnDragDrop itself only needs to perform the
+                // actual move, not reset this shared state.
+                _isDraggingColumn = false;
+                _dragColumnIndex = -1;
+                _dragInsertBeforeDisplayIndex = -1;
+                InvalidateHeader();
+            }
+        }
+
+        // Invalidate() alone only reaches this control's own client area -
+        // the header is a distinct native child window (see
+        // HeaderInputSubclass), so without this the drag insertion line
+        // never actually gets painted (OnDrawColumnHeader simply wouldn't
+        // be called again) even though the underlying drag/drop tracking
+        // itself works fine.
+        private void InvalidateHeader()
+        {
+            Invalidate();
+            _headerInputSubclass?.InvalidateHeaderNow();
+        }
+
+        protected override void OnDragOver(DragEventArgs drgevent)
+        {
+            var point = PointToClient(new Point(drgevent.X, drgevent.Y));
+            var insertBefore = GetColumnDropInsertionIndex(point.X);
+
+            drgevent.Effect = DragDropEffects.Move;
+
+            if (insertBefore != _dragInsertBeforeDisplayIndex)
+            {
+                _dragInsertBeforeDisplayIndex = insertBefore;
+                InvalidateHeader();
+            }
+
+            base.OnDragOver(drgevent);
+        }
+
+        protected override void OnDragDrop(DragEventArgs drgevent)
+        {
+            if (_dragColumnIndex >= 0 && _dragInsertBeforeDisplayIndex >= 0)
+            {
+                MoveColumnToDisplayIndex(_dragColumnIndex, _dragInsertBeforeDisplayIndex);
+            }
+
+            base.OnDragDrop(drgevent);
+        }
+
+        protected override void OnGiveFeedback(GiveFeedbackEventArgs gfbevent)
+        {
+            gfbevent.UseDefaultCursors = false;
+            Cursor.Current = Cursors.SizeWE;
+
+            base.OnGiveFeedback(gfbevent);
+        }
+
+        // insertBeforeDisplayIndex is expressed in the ORIGINAL display
+        // order (before the dragged column is removed from its old slot) -
+        // the standard "move to before index P" -> "target index" adjustment
+        // (subtract one if P is past the column's own current position) is
+        // needed because DisplayIndex's setter moves the column to an
+        // absolute position, and removing it from its old slot first would
+        // shift everything after that slot left by one.
+        private void MoveColumnToDisplayIndex(int columnIndex, int insertBeforeDisplayIndex)
+        {
+            if (columnIndex < 0 || columnIndex >= Columns.Count)
+            {
+                return;
+            }
+
+            var column = Columns[columnIndex];
+            var originalDisplayIndex = column.DisplayIndex;
+            var targetDisplayIndex = insertBeforeDisplayIndex > originalDisplayIndex
+                ? insertBeforeDisplayIndex - 1
+                : insertBeforeDisplayIndex;
+
+            if (targetDisplayIndex == originalDisplayIndex)
+            {
+                return;
+            }
+
+            column.DisplayIndex = targetDisplayIndex;
+
+            // Mirrors the native ColumnReordered handler this replaced -
+            // deferring one tick keeps "which column is now rightmost" (see
+            // GetEffectiveFillColumnIndex) accurate once DisplayIndex has
+            // actually settled.
+            BeginInvoke(new MethodInvoker(ApplyFillColumn));
+        }
+
+        // The resize grip (a few pixels either side of a column boundary)
+        // is left entirely to the native header - only clicks clearly
+        // inside a column's body start our own reorder drag, so resizing
+        // (still native, unaffected by AllowColumnReorder) isn't
+        // accidentally hijacked into a reorder attempt.
+        private bool IsNearColumnBorder(int x)
+        {
+            const int resizeGripWidth = 5;
+            var cumulativeWidth = 0;
+            foreach (var column in GetColumnsInDisplayOrder())
+            {
+                cumulativeWidth += column.Width;
+                if (Math.Abs(x - cumulativeWidth) <= resizeGripWidth)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Where a column dropped at x would be inserted, expressed as
+        // "insert before this display index" - the boundary flips at each
+        // column's midpoint rather than its edges, so the insertion line
+        // snaps to whichever side of the hovered column the cursor is
+        // actually closer to (matching the feel of the native drag this
+        // replaced), not just "whichever column the cursor is over".
+        private int GetColumnDropInsertionIndex(int x)
+        {
+            var orderedColumns = GetColumnsInDisplayOrder();
+            var cumulativeWidth = 0;
+            for (var displayIndex = 0; displayIndex < orderedColumns.Count; displayIndex++)
+            {
+                var columnWidth = orderedColumns[displayIndex].Width;
+                if (x < cumulativeWidth + columnWidth / 2)
+                {
+                    return displayIndex;
+                }
+
+                cumulativeWidth += columnWidth;
+            }
+
+            return orderedColumns.Count;
         }
 
         // Shows the full cell text on hover whenever OnDrawSubItem would
@@ -1182,55 +1365,42 @@ namespace CustomWFUI.Controls
         }
 
         // Subclasses the ListView's own header child window (class
-        // "SysHeader32") purely to recolor the native column-reorder drag
-        // line - see ColumnReorderIndicatorColor's doc comment for why this
-        // exists instead of an owner-draw hook. Everything else about the
-        // header (background, text, the resize cursor, etc.) is untouched;
-        // this only ever runs extra work during WM_PAINT, and only when the
-        // native line's exact color is actually found on screen.
-        private sealed class HeaderDragLineSubclass : NativeWindow
+        // "SysHeader32") purely to notice a click/drag START in the header
+        // - a click there lands on this separate native child window, not
+        // on the ListView itself, confirmed the hard way: this control's
+        // own MouseDown/MouseMove events never fired for a header click at
+        // all. Once the drag threshold is exceeded, this hands off
+        // entirely to StyledListView.BeginColumnDragDrop (WinForms'
+        // DoDragDrop/OnDragOver/OnDragDrop, the same mechanism
+        // StyledListBox already uses for its own item-reorder drag) rather
+        // than continuing to track raw mouse messages here - an earlier
+        // attempt at hand-rolled SetCapture-based tracking fought a losing
+        // battle against the native header repeatedly releasing capture on
+        // its own initiative. Everything else about the header (background,
+        // text, resizing, owner-draw) is untouched.
+        private sealed class HeaderInputSubclass : NativeWindow
         {
-            private const int WM_PAINT = 0x000F;
+            private const int WM_LBUTTONDOWN = 0x0201;
             private const int WM_MOUSEMOVE = 0x0200;
+            private const int WM_LBUTTONUP = 0x0202;
             private const int LVM_FIRST = 0x1000;
             private const int LVM_GETHEADER = LVM_FIRST + 31;
 
-            // The native insertion line's fixed color, confirmed by pixel-
-            // sampling an actual drag in the Showcase (RGB 128/179/230) -
-            // not a documented constant, just what comctl32 happens to draw.
-            // A tolerance is used rather than an exact match since minor
-            // rendering differences (DPI, Windows version) could shift it
-            // slightly; the header's other content (dark background, gray/
-            // white text, the gray drop-target highlight) is far enough away
-            // in color that a generous tolerance still can't mistake it for
-            // any of those.
-            private static readonly Color NativeLineColor = Color.FromArgb(128, 179, 230);
-            private const int ColorTolerance = 30;
-
             private readonly StyledListView _owner;
+            private int _pendingColumnIndex = -1;
+            private int _pendingStartX;
+
+            private const uint RDW_INVALIDATE = 0x0001;
+            private const uint RDW_ERASE = 0x0004;
+            private const uint RDW_UPDATENOW = 0x0100;
 
             [System.Runtime.InteropServices.DllImport("user32.dll")]
             private static extern System.IntPtr SendMessage(System.IntPtr hWnd, int msg, System.IntPtr wParam, System.IntPtr lParam);
 
             [System.Runtime.InteropServices.DllImport("user32.dll")]
-            private static extern bool GetWindowRect(System.IntPtr hWnd, out RECT lpRect);
+            private static extern bool RedrawWindow(System.IntPtr hWnd, System.IntPtr lprcUpdate, System.IntPtr hrgnUpdate, uint flags);
 
-            [System.Runtime.InteropServices.DllImport("user32.dll")]
-            private static extern System.IntPtr GetWindowDC(System.IntPtr hWnd);
-
-            [System.Runtime.InteropServices.DllImport("user32.dll")]
-            private static extern int ReleaseDC(System.IntPtr hWnd, System.IntPtr hDC);
-
-            [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-            private struct RECT
-            {
-                public int Left;
-                public int Top;
-                public int Right;
-                public int Bottom;
-            }
-
-            public HeaderDragLineSubclass(StyledListView owner)
+            public HeaderInputSubclass(StyledListView owner)
             {
                 _owner = owner;
             }
@@ -1240,90 +1410,94 @@ namespace CustomWFUI.Controls
                 return SendMessage(listViewHandle, LVM_GETHEADER, System.IntPtr.Zero, System.IntPtr.Zero);
             }
 
+            // The header is a separate native child window - this
+            // control's own Invalidate() only schedules a repaint for the
+            // ListView's own client area, which doesn't reach a distinct
+            // child hwnd, so it alone never gets OnDrawColumnHeader (and
+            // therefore the drag insertion line) to actually redraw during
+            // a drag. RedrawWindow with RDW_UPDATENOW forces the header to
+            // repaint immediately rather than just marking it dirty for
+            // whenever it next happens to paint on its own.
+            public void InvalidateHeaderNow()
+            {
+                RedrawWindow(Handle, System.IntPtr.Zero, System.IntPtr.Zero, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+            }
+
             protected override void WndProc(ref Message m)
             {
                 base.WndProc(ref m);
 
-                if (m.Msg == WM_PAINT || m.Msg == WM_MOUSEMOVE)
-                    RecolorNativeLine();
-            }
-
-            // Lets the header draw as normal first (including the native
-            // line, if a drag is in progress), then reads back a single row
-            // of already-rendered pixels via CopyFromScreen (the header has
-            // definitely finished drawing to the screen by the time
-            // base.WndProc returns) to find where that line landed, and
-            // repaints just those columns of pixels in
-            // ColumnReorderIndicatorColor directly on the window dc. A
-            // no-op whenever no matching pixel is found, which is every
-            // call except during an actual drag.
-            //
-            // Hooked off WM_MOUSEMOVE as well as WM_PAINT - confirmed by
-            // instrumenting WndProc during a live drag that the header
-            // never sends itself a WM_PAINT while the line is moving; it
-            // draws the line straight onto its own DC from inside its
-            // WM_MOUSEMOVE handling instead (classic old-style drag
-            // feedback, bypassing the normal invalidate/paint cycle
-            // entirely for this one visual). WM_PAINT alone left the line
-            // permanently native blue - it only ever fired before/after the
-            // drag, when there was no line to find yet.
-            private void RecolorNativeLine()
-            {
-                RECT rect;
-                if (!GetWindowRect(Handle, out rect))
-                    return;
-
-                int width = rect.Right - rect.Left;
-                int height = rect.Bottom - rect.Top;
-
-                if (width <= 0 || height <= 0)
-                    return;
-
-                int sampleY = rect.Top + height / 2;
-
-                List<int> matchedColumns = new List<int>();
-
-                using (Bitmap row = new Bitmap(width, 1))
+                switch (m.Msg)
                 {
-                    using (Graphics g = Graphics.FromImage(row))
-                        g.CopyFromScreen(rect.Left, sampleY, 0, 0, new Size(width, 1));
+                    case WM_LBUTTONDOWN:
+                        OnMouseDown(GetX(m.LParam));
+                        break;
 
-                    for (int x = 0; x < width; x++)
-                    {
-                        if (IsNativeLineColor(row.GetPixel(x, 0)))
-                            matchedColumns.Add(x);
-                    }
-                }
+                    case WM_MOUSEMOVE:
+                        OnMouseMove(GetX(m.LParam));
+                        break;
 
-                if (matchedColumns.Count == 0)
-                    return;
-
-                System.IntPtr windowDc = GetWindowDC(Handle);
-                if (windowDc == System.IntPtr.Zero)
-                    return;
-
-                try
-                {
-                    using (Graphics g = Graphics.FromHdc(windowDc))
-                    using (Pen pen = new Pen(_owner.ColumnReorderIndicatorColor))
-                    {
-                        foreach (int x in matchedColumns)
-                            g.DrawLine(pen, x, 0, x, height);
-                    }
-                }
-                finally
-                {
-                    ReleaseDC(Handle, windowDc);
+                    case WM_LBUTTONUP:
+                        // A plain click (never exceeded the threshold) just
+                        // clears the pending state - nothing to reorder,
+                        // nothing to undo, since BeginColumnDragDrop is
+                        // only ever called after OnMouseMove sees the
+                        // threshold exceeded.
+                        _pendingColumnIndex = -1;
+                        break;
                 }
             }
 
-            private static bool IsNativeLineColor(Color c)
+            private static int GetX(System.IntPtr lParam)
             {
-                int dr = c.R - NativeLineColor.R;
-                int dg = c.G - NativeLineColor.G;
-                int db = c.B - NativeLineColor.B;
+                return unchecked((short)((long)lParam & 0xFFFF));
+            }
 
-                return (dr * dr + dg * dg + db * db) <= ColorTolerance * ColorTolerance;
+            private void OnMouseDown(int x)
+            {
+                _pendingColumnIndex = -1;
+
+                if (_owner.Columns.Count == 0 || _owner.IsNearColumnBorder(x))
+                {
+                    return;
+                }
+
+                var displayIndex = _owner.GetColumnIndexAtX(x);
+                var orderedColumns = _owner.GetColumnsInDisplayOrder();
+                if (displayIndex < 0 || displayIndex >= orderedColumns.Count)
+                {
+                    return;
+                }
+
+                var clickedColumn = orderedColumns[displayIndex];
+                if (!_owner.IsColumnReorderable(clickedColumn.Index))
+                {
+                    return;
+                }
+
+                _pendingColumnIndex = clickedColumn.Index;
+                _pendingStartX = x;
+            }
+
+            private void OnMouseMove(int x)
+            {
+                if (_pendingColumnIndex < 0 || _owner._isDraggingColumn)
+                {
+                    return;
+                }
+
+                if (Math.Abs(x - _pendingStartX) < SystemInformation.DragSize.Width)
+                {
+                    return;
+                }
+
+                var columnIndex = _pendingColumnIndex;
+                _pendingColumnIndex = -1;
+
+                // DoDragDrop blocks for the duration of the drag, running
+                // its own internal message loop - this call doesn't return
+                // until the drag ends one way or another.
+                _owner.BeginColumnDragDrop(columnIndex);
             }
         }
     }
