@@ -425,6 +425,27 @@ namespace CustomWFUI.Showcase
             primaryTransparentDisabled.Enabled = false;
             AddUniformRow(table, "CreatePrimaryTransparent", primaryTransparentBar, null, primaryTransparentDisabled);
 
+            ProgressBar statusBar = UIStyles.ProgressBars.CreateStatus();
+            AnimateProgressBar(v => statusBar.Value = v);
+            ProgressBar statusDisabled = UIStyles.ProgressBars.CreateStatus();
+            statusDisabled.Value = 65;
+            statusDisabled.Enabled = false;
+            AddUniformRow(table, "CreateStatus", statusBar, null, statusDisabled);
+
+            ProgressBar statusTransparentBar = UIStyles.ProgressBars.CreateStatusTransparent();
+            statusTransparentBar.BackColor = UIColors.BackgroundLight;
+            AnimateProgressBar(v => statusTransparentBar.Value = v);
+            ProgressBar statusTransparentDisabled = UIStyles.ProgressBars.CreateStatusTransparent();
+            statusTransparentDisabled.Value = 40;
+            statusTransparentDisabled.BackColor = UIColors.BackgroundLight;
+            statusTransparentDisabled.Enabled = false;
+            AddUniformRow(table, "CreateStatusTransparent", statusTransparentBar, null, statusTransparentDisabled);
+
+            // Slim variants grouped together below the normal ones, rather
+            // than interleaved row-by-row, so the section reads as two
+            // clear groups (full-size bars, then the slim strip style)
+            // instead of alternating between two visually different
+            // control shapes every other row.
             SlimProgressBar slimGreenBar = UIStyles.SlimProgressBars.CreateGreen();
             AnimateProgressBar(v => slimGreenBar.Value = v);
             SlimProgressBar slimGreenDisabled = UIStyles.SlimProgressBars.CreateGreen();
@@ -438,13 +459,6 @@ namespace CustomWFUI.Showcase
             slimPrimaryDisabled.Value = 40;
             slimPrimaryDisabled.Enabled = false;
             AddUniformRow(table, "Slim.CreatePrimary", slimPrimaryBar, null, slimPrimaryDisabled);
-
-            ProgressBar statusBar = UIStyles.ProgressBars.CreateStatus();
-            AnimateProgressBar(v => statusBar.Value = v);
-            ProgressBar statusDisabled = UIStyles.ProgressBars.CreateStatus();
-            statusDisabled.Value = 65;
-            statusDisabled.Enabled = false;
-            AddUniformRow(table, "CreateStatus", statusBar, null, statusDisabled);
 
             SlimProgressBar slimStatusBar = UIStyles.SlimProgressBars.CreateStatus();
             AnimateProgressBar(v => slimStatusBar.Value = v);

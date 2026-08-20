@@ -59,7 +59,19 @@ namespace CustomWFUI.Factories
         // save and restore.
         public static ProgressBar CreateStatus()
         {
-            ProgressBar progressBar = new BorderedProgressBar(drawBorder: true, useStatusGradient: true)
+            return CreateStatusBar(drawBorder: true);
+        }
+
+        // CreateStatus's Value-driven fill, with CreateGreenTransparent's
+        // no-border/blend-in look.
+        public static ProgressBar CreateStatusTransparent()
+        {
+            return CreateStatusBar(drawBorder: false);
+        }
+
+        private static ProgressBar CreateStatusBar(bool drawBorder)
+        {
+            return new BorderedProgressBar(drawBorder, useStatusGradient: true)
             {
                 Minimum = 0,
                 Maximum = 100,
@@ -67,8 +79,6 @@ namespace CustomWFUI.Factories
                 BackColor = UIColors.BackgroundMedium,
                 Margin = new Padding(0)
             };
-
-            return progressBar;
         }
 
         private static ProgressBar Create(Color foreColor, bool drawBorder)

@@ -500,6 +500,12 @@ namespace CustomWFUI
             {
                 return UIProgressBarFactory.CreateStatus();
             }
+
+            /// <summary>Like <see cref="CreateStatus"/> but without the border, and BackColor left for you to match your own panel - the status-gradient equivalent of <see cref="CreateGreenTransparent"/>.</summary>
+            public static ProgressBar CreateStatusTransparent()
+            {
+                return UIProgressBarFactory.CreateStatusTransparent();
+            }
         }
 
         /// <summary>
