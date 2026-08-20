@@ -62,13 +62,13 @@ namespace CustomWFUI.Forms
 
                     if (outcome == UpdateOutcome.Failed)
                     {
-                        CustomMessageBox.Show(
+                        MessageBox.Show(
                             UIStrings.Get("Update.DownloadFailedMessage"),
                             UIStrings.Get("Update.Title"),
-                            CustomMessageBoxButtons.OK,
-                            CustomMessageBoxIcon.Warning,
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning,
                             owner,
-                            CustomMessageBoxSize.Small);
+                            MessageBoxSize.Small);
 
                         OpenReleasePage(result.ReleaseUrl);
                     }

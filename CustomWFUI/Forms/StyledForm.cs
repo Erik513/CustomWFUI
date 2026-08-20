@@ -13,7 +13,7 @@ namespace CustomWFUI.Forms
     /// window is built on - either use it directly (<c>new StyledForm(title)</c>
     /// for a quick window, or the <see cref="StyledFormOptions"/> constructor
     /// for full control), or derive from it the way
-    /// <see cref="CustomMessageBoxForm"/> and <see cref="UpdateAvailableForm"/>
+    /// <see cref="MessageBoxForm"/> and <see cref="UpdateAvailableForm"/>
     /// do. Add your own controls to <see cref="ContentPanel"/>, not directly
     /// to the form - the title bar already occupies the top of the form's
     /// own <see cref="Control.Controls"/> collection.

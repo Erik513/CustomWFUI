@@ -6,8 +6,8 @@ using CustomWFUI.Styles;
 
 namespace CustomWFUI.Forms
 {
-    /// <summary>Which buttons a <see cref="CustomMessageBox"/> shows.</summary>
-    public enum CustomMessageBoxButtons
+    /// <summary>Which buttons a <see cref="MessageBox"/> shows.</summary>
+    public enum MessageBoxButtons
     {
         OK,
         OKCancel,
@@ -15,8 +15,8 @@ namespace CustomWFUI.Forms
         YesNoCancel
     }
 
-    /// <summary>Which icon a <see cref="CustomMessageBox"/> shows in its title bar.</summary>
-    public enum CustomMessageBoxIcon
+    /// <summary>Which icon a <see cref="MessageBox"/> shows in its title bar.</summary>
+    public enum MessageBoxIcon
     {
         None,
         Info,
@@ -26,27 +26,37 @@ namespace CustomWFUI.Forms
         Success
     }
 
-    /// <summary>Overall size preset for a <see cref="CustomMessageBox"/>.</summary>
-    public enum CustomMessageBoxSize
+    /// <summary>Overall size preset for a <see cref="MessageBox"/>.</summary>
+    public enum MessageBoxSize
     {
         Small,
         Medium,
         Large
     }
 
-    /// <summary>CustomWFUI's themed replacement for <see cref="MessageBox"/> - call <see cref="Show"/>.</summary>
-    public static class CustomMessageBox
+    /// <summary>
+    /// CustomWFUI's themed replacement for
+    /// <see cref="System.Windows.Forms.MessageBox"/> - call <see cref="Show"/>.
+    /// </summary>
+    /// <remarks>
+    /// Named the same as the native dialog it replaces, same as
+    /// <see cref="Controls.ListView"/> and friends - callers never need to
+    /// spell out <c>CustomWFUI.Forms.MessageBox</c> themselves as long as
+    /// they don't also have <c>using System.Windows.Forms;</c> in scope
+    /// wherever they call <see cref="Show"/>.
+    /// </remarks>
+    public static class MessageBox
     {
         /// <summary>Shows the dialog modally and returns which button was clicked (or the safe default - Cancel/No/OK - if the dialog is closed without clicking one).</summary>
         public static DialogResult Show(
             string message,
             string title = "Notice",
-            CustomMessageBoxButtons buttons = CustomMessageBoxButtons.OK,
-            CustomMessageBoxIcon icon = CustomMessageBoxIcon.Info,
+            MessageBoxButtons buttons = MessageBoxButtons.OK,
+            MessageBoxIcon icon = MessageBoxIcon.Info,
             Form owner = null,
-            CustomMessageBoxSize size = CustomMessageBoxSize.Medium)
+            MessageBoxSize size = MessageBoxSize.Medium)
         {
-            CustomMessageBoxForm form = new CustomMessageBoxForm(
+            MessageBoxForm form = new MessageBoxForm(
                 message,
                 title,
                 buttons,
@@ -73,11 +83,11 @@ namespace CustomWFUI.Forms
         }
     }
 
-    public class CustomMessageBoxForm : StyledForm
+    public class MessageBoxForm : StyledForm
     {
         private readonly string _message;
-        private readonly CustomMessageBoxButtons _buttons;
-        private readonly CustomMessageBoxSize _size;
+        private readonly MessageBoxButtons _buttons;
+        private readonly MessageBoxSize _size;
 
         private sealed class MessageBoxPreset
         {
@@ -90,12 +100,12 @@ namespace CustomWFUI.Forms
             public Padding ButtonPanelPadding { get; set; }
         }
 
-        public CustomMessageBoxForm(
+        public MessageBoxForm(
             string message,
             string title,
-            CustomMessageBoxButtons buttons,
-            CustomMessageBoxIcon icon,
-            CustomMessageBoxSize size = CustomMessageBoxSize.Medium)
+            MessageBoxButtons buttons,
+            MessageBoxIcon icon,
+            MessageBoxSize size = MessageBoxSize.Medium)
             : base(StyledFormOptions.CreateDialog(
                 title: title,
                 titleTextAlign: ContentAlignment.MiddleLeft,
@@ -134,7 +144,7 @@ namespace CustomWFUI.Forms
         {
             switch (_size)
             {
-                case CustomMessageBoxSize.Small:
+                case MessageBoxSize.Small:
                     return new MessageBoxPreset
                     {
                         FormSize = new Size(380, 160),
@@ -146,7 +156,7 @@ namespace CustomWFUI.Forms
                         ButtonPanelPadding = new Padding(8, 8, 18, 12)
                     };
 
-                case CustomMessageBoxSize.Large:
+                case MessageBoxSize.Large:
                     return new MessageBoxPreset
                     {
                         FormSize = new Size(700, 320),
@@ -342,27 +352,27 @@ namespace CustomWFUI.Forms
         {
             switch (_buttons)
             {
-                case CustomMessageBoxButtons.OK:
+                case MessageBoxButtons.OK:
                     return new[]
                     {
                         new DialogButtonInfo("✓", DialogResult.OK)
                     };
 
-                case CustomMessageBoxButtons.OKCancel:
+                case MessageBoxButtons.OKCancel:
                     return new[]
                     {
                         new DialogButtonInfo("✓", DialogResult.OK),
                         new DialogButtonInfo(UIStrings.Get("MessageBox.Cancel"), DialogResult.Cancel)
                     };
 
-                case CustomMessageBoxButtons.YesNo:
+                case MessageBoxButtons.YesNo:
                     return new[]
                     {
                         new DialogButtonInfo("✓", DialogResult.Yes),
                         new DialogButtonInfo("✖", DialogResult.No)
                     };
 
-                case CustomMessageBoxButtons.YesNoCancel:
+                case MessageBoxButtons.YesNoCancel:
                     return new[]
                     {
                         new DialogButtonInfo("✓", DialogResult.Yes),
@@ -390,11 +400,11 @@ namespace CustomWFUI.Forms
         {
             switch (_buttons)
             {
-                case CustomMessageBoxButtons.OKCancel:
-                case CustomMessageBoxButtons.YesNoCancel:
+                case MessageBoxButtons.OKCancel:
+                case MessageBoxButtons.YesNoCancel:
                     return DialogResult.Cancel;
 
-                case CustomMessageBoxButtons.YesNo:
+                case MessageBoxButtons.YesNo:
                     return DialogResult.No;
 
                 default:
@@ -402,23 +412,23 @@ namespace CustomWFUI.Forms
             }
         }
 
-        private static Image GetTitleBarIcon(CustomMessageBoxIcon icon)
+        private static Image GetTitleBarIcon(MessageBoxIcon icon)
         {
             switch (icon)
             {
-                case CustomMessageBoxIcon.Info:
+                case MessageBoxIcon.Info:
                     return SystemIcons.Information.ToBitmap();
 
-                case CustomMessageBoxIcon.Warning:
+                case MessageBoxIcon.Warning:
                     return SystemIcons.Warning.ToBitmap();
 
-                case CustomMessageBoxIcon.Error:
+                case MessageBoxIcon.Error:
                     return SystemIcons.Error.ToBitmap();
 
-                case CustomMessageBoxIcon.Question:
+                case MessageBoxIcon.Question:
                     return SystemIcons.Question.ToBitmap();
 
-                case CustomMessageBoxIcon.Success:
+                case MessageBoxIcon.Success:
                     return SystemIcons.Shield.ToBitmap();
 
                 default:

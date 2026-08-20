@@ -6,6 +6,9 @@ using System.Windows.Forms;
 using CustomWFUI.Controls;
 using CustomWFUI.Forms;
 using CustomWFUI.Styles;
+using MessageBox = CustomWFUI.Forms.MessageBox;
+using MessageBoxButtons = CustomWFUI.Forms.MessageBoxButtons;
+using MessageBoxIcon = CustomWFUI.Forms.MessageBoxIcon;
 
 namespace CustomWFUI.Showcase
 {
@@ -642,16 +645,16 @@ namespace CustomWFUI.Showcase
 
         private void AddPopupsSection(PropertyTable table)
         {
-            table.AddSection("Popups (CustomMessageBox / ToastForm / InfoPopupForm)");
+            table.AddSection("Popups (MessageBox / ToastForm / InfoPopupForm)");
 
-            Button messageBoxButton = UIStyles.Buttons.CreateStandard("Show CustomMessageBox", size: new Size(200, 32));
+            Button messageBoxButton = UIStyles.Buttons.CreateStandard("Show MessageBox", size: new Size(200, 32));
             messageBoxButton.Click += delegate
             {
-                CustomMessageBox.Show(
-                    "This is a sample CustomMessageBox.",
+                MessageBox.Show(
+                    "This is a sample MessageBox.",
                     "Sample",
-                    CustomMessageBoxButtons.YesNo,
-                    CustomMessageBoxIcon.Question,
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
                     this);
             };
 
@@ -675,7 +678,7 @@ namespace CustomWFUI.Showcase
                 _infoPopupHideTimer.Start();
             };
 
-            table.AddRow("CustomMessageBox", messageBoxButton);
+            table.AddRow("MessageBox", messageBoxButton);
             table.AddRow("ToastForm", toastButton);
             table.AddRow("InfoPopupForm", infoPopupButton);
         }

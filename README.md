@@ -48,7 +48,7 @@ one-line summary of what it's for.
   need to reach past what a factory method gives you (e.g. subscribing to
   an event, or a property `UIStyles` doesn't proxy).
 - **`Forms/`** - `StyledForm` (the base every CustomWFUI window builds on),
-  plus ready-made dialogs (`CustomMessageBoxForm`, `InfoPopupForm`,
+  plus ready-made dialogs (`MessageBoxForm`, `InfoPopupForm`,
   `UpdateAvailableForm`, `StyledOptionsForm`).
 - **`Factories/`** - internal. `UIStyles` is the only supported public
   entry point to these; if you're referencing anything under

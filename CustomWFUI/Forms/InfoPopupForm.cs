@@ -346,7 +346,7 @@ namespace CustomWFUI.Forms
         // swatch click) kept showing whatever color was live when `new
         // InfoPopupForm(...)` first ran. Called at the top of every Show*
         // method so each call re-reads the current accent, the same way a
-        // freshly-constructed ToastForm/CustomMessageBox naturally would.
+        // freshly-constructed ToastForm/MessageBox naturally would.
         private void RefreshColors()
         {
             BackColor = UIColors.PrimaryDark;
