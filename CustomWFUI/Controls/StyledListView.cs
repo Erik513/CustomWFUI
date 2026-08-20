@@ -147,7 +147,7 @@ namespace CustomWFUI.Controls
         /// severity) color still shows through underneath a selection.
         /// Follows the current accent live until explicitly set - it used to
         /// be a plain field snapshotted once at construction (like
-        /// StyledListBox's DragIndicatorColor before the same fix), so an
+        /// ListBox's DragIndicatorColor before the same fix), so an
         /// app that changed its accent after building the list still showed
         /// the default blue regardless.
         /// </summary>
@@ -1226,7 +1226,7 @@ namespace CustomWFUI.Controls
         // click/threshold has to happen there (see HeaderInputSubclass).
         // From here on, though, tracking the rest of the drag is handed
         // off to WinForms' own DoDragDrop/OnDragOver/OnDragDrop, the same
-        // mechanism StyledListBox already uses successfully for its own
+        // mechanism ListBox already uses successfully for its own
         // item-reorder drag - it runs as a native OLE drag-drop operation
         // independent of which specific child window the cursor happens to
         // be over, sidestepping the whole header-hwnd-ownership problem
@@ -1802,7 +1802,7 @@ namespace CustomWFUI.Controls
         // all. Once the drag threshold is exceeded, this hands off
         // entirely to StyledListView.BeginColumnDragDrop (WinForms'
         // DoDragDrop/OnDragOver/OnDragDrop, the same mechanism
-        // StyledListBox already uses for its own item-reorder drag) rather
+        // ListBox already uses for its own item-reorder drag) rather
         // than continuing to track raw mouse messages here - an earlier
         // attempt at hand-rolled SetCapture-based tracking fought a losing
         // battle against the native header repeatedly releasing capture on

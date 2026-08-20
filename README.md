@@ -43,7 +43,7 @@ one-line summary of what it's for.
 - **`UIStyles`** (root namespace) - the one class you're meant to call
   directly. Everything below is effectively an implementation detail behind
   it.
-- **`Controls/`** - the actual custom controls (`StyledListBox`,
+- **`Controls/`** - the actual custom controls (`ListBox`,
   `StyledListView`, `ToggleSwitch`, `TitleBarControl`, ...), for when you
   need to reach past what a factory method gives you (e.g. subscribing to
   an event, or a property `UIStyles` doesn't proxy).
@@ -79,7 +79,7 @@ UIStyles.Colors.ApplyTheme(UIThemes.Light);
 
 Most controls also expose their own colors as regular properties for a
 one-off override (e.g. `ToggleSwitch.CheckedBackColor`,
-`StyledListBox.SelectedBackColor`) - those work per-instance, any time,
+`ListBox.SelectedBackColor`) - those work per-instance, any time,
 independent of the two calls above.
 
 ## Localization

@@ -400,32 +400,32 @@ namespace CustomWFUI
             }
         }
 
-        /// <summary>A themed, owner-drawn, optionally drag-reorderable <see cref="Controls.StyledListBox"/> - a heavier alternative to the native ListBox with icons, custom item colors, and enumeration support.</summary>
-        public static class StyledListBoxes
+        /// <summary>A themed, owner-drawn, optionally drag-reorderable <see cref="Controls.ListBox"/> - a heavier alternative to the native ListBox with icons, custom item colors, and enumeration support.</summary>
+        public static class ListBoxes
         {
-            public static StyledListBox Create(
+            public static Controls.ListBox CreateStandard(
                 string displayTextMember = null,
                 bool allowReorder = false,
                 bool showEnumeration = false)
             {
-                return UIStyledListBoxFactory.Create(
+                return UIListBoxFactory.CreateStandard(
                     displayTextMember,
                     allowReorder,
                     showEnumeration);
             }
         }
 
-        /// <summary>A <see cref="Controls.StyledListBox"/> wrapped with an optional header bar - see <see cref="StyledListBoxes"/> for the list box on its own.</summary>
-        public static class StyledListBoxControls
+        /// <summary>A <see cref="Controls.ListBox"/> wrapped with an optional header bar - see <see cref="ListBoxes"/> for the list box on its own.</summary>
+        public static class ListBoxControls
         {
-            public static StyledListBoxControl Create(
+            public static ListBoxControl CreateStandard(
                 string headerTitle = null,
                 string displayTextMember = null,
                 bool allowReorder = false,
                 bool showEnumeration = false,
                 ContentAlignment headerTextAlign = ContentAlignment.MiddleLeft)
             {
-                return UIStyledListBoxControlFactory.Create(
+                return UIListBoxControlFactory.CreateStandard(
                     headerTitle,
                     displayTextMember,
                     allowReorder,
@@ -434,12 +434,12 @@ namespace CustomWFUI
             }
         }
 
-        /// <summary>A themed key/value <see cref="Controls.StyledPropertyTable"/> (label + editor per row, grouped into sections) - typical use is a settings/options panel.</summary>
+        /// <summary>A themed key/value <see cref="Controls.PropertyTable"/> (label + editor per row, grouped into sections) - typical use is a settings/options panel.</summary>
         public static class PropertyTables
         {
-            public static StyledPropertyTable Create()
+            public static PropertyTable CreateStandard()
             {
-                return UIStyledPropertyTableFactory.Create();
+                return UIPropertyTableFactory.CreateStandard();
             }
         }
 

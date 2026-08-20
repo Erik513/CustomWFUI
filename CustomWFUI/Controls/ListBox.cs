@@ -8,14 +8,22 @@ using CustomWFUI.Styles;
 namespace CustomWFUI.Controls
 {
     /// <summary>
-    /// An owner-drawn <see cref="ListBox"/> with per-item icons, optional
-    /// drag-to-reorder (a drag handle appears on the right of each item),
-    /// enumeration numbers, and fully overridable item colors - a themed
-    /// alternative to the native list box for anything beyond plain text
-    /// rows. Use <see cref="StyledListBoxControl"/> instead if you also want
-    /// a header bar above the list.
+    /// An owner-drawn <see cref="System.Windows.Forms.ListBox"/> with
+    /// per-item icons, optional drag-to-reorder (a drag handle appears on
+    /// the right of each item), enumeration numbers, and fully overridable
+    /// item colors - a themed alternative to the native list box for
+    /// anything beyond plain text rows. Use <see cref="ListBoxControl"/>
+    /// instead if you also want a header bar above the list.
     /// </summary>
-    public class StyledListBox : ListBox
+    /// <remarks>
+    /// Named the same as its own base class, same as
+    /// <see cref="Controls.DataGridView"/> - the base type reference below
+    /// stays fully qualified so the class doesn't try to inherit from
+    /// itself. Go through <see cref="UIStyles.ListBoxes.CreateStandard"/> to
+    /// get one without ever having to spell out
+    /// <c>CustomWFUI.Controls.ListBox</c>.
+    /// </remarks>
+    public class ListBox : System.Windows.Forms.ListBox
     {
         private const int DragHandleWidth = 30;
         private const int DragHandleHitAreaPadding = 5;
@@ -133,7 +141,7 @@ namespace CustomWFUI.Controls
             }
         }
 
-        /// <summary>Row height in pixels - use this instead of the inherited <see cref="ListBox.ItemHeight"/> so the internal default stays in sync.</summary>
+        /// <summary>Row height in pixels - use this instead of the inherited <see cref="System.Windows.Forms.ListBox.ItemHeight"/> so the internal default stays in sync.</summary>
         public int ItemHeightCustom
         {
             get => _itemHeight;
@@ -250,7 +258,7 @@ namespace CustomWFUI.Controls
             }
         }
 
-        public StyledListBox()
+        public ListBox()
         {
             _alternateItemBackColor = Darken(_itemBackColor, 5);
 

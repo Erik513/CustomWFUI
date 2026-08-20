@@ -18,7 +18,7 @@ namespace CustomWFUI.Showcase
     // themselves) - there's no supported way to retint an already-built
     // control short of recreating it.
     //
-    // Laid out with a StyledPropertyTable instead of manually-positioned
+    // Laid out with a PropertyTable instead of manually-positioned
     // cards - it's a real CustomWFUI control too (dogfooding it here rather
     // than a one-off layout scheme), it keeps every row's label/editor
     // evenly aligned automatically, and it's exactly the kind of "several
@@ -261,7 +261,7 @@ namespace CustomWFUI.Showcase
 
         private void BuildContent(Panel host)
         {
-            StyledPropertyTable table = UIStyles.PropertyTables.Create();
+            PropertyTable table = UIStyles.PropertyTables.CreateStandard();
             table.Dock = DockStyle.Top;
 
             AddButtonsSection(table);
@@ -283,11 +283,11 @@ namespace CustomWFUI.Showcase
         // state) | Variant 2 (another state, or empty) | Disabled. Equal
         // Percent columns line up across rows because every row's editor
         // area is the same overall width, not because the widths are
-        // absolute - see StyledPropertyTable.CreateEditorLayout.
+        // absolute - see PropertyTable.CreateEditorLayout.
         private const float UniformColumnPercent = 100f / 3f;
 
         private void AddUniformRow(
-            StyledPropertyTable table,
+            PropertyTable table,
             string labelText,
             Control variant1,
             Control variant2,
@@ -312,7 +312,7 @@ namespace CustomWFUI.Showcase
         private const float TwoColumnPercent = 50f;
 
         private void AddTwoColumnRow(
-            StyledPropertyTable table,
+            PropertyTable table,
             string labelText,
             Control primary,
             Control disabled)
@@ -323,7 +323,7 @@ namespace CustomWFUI.Showcase
                 UIColumn.Percent(disabled, TwoColumnPercent));
         }
 
-        private void AddButtonsSection(StyledPropertyTable table)
+        private void AddButtonsSection(PropertyTable table)
         {
             table.AddSection("Buttons");
 
@@ -355,7 +355,7 @@ namespace CustomWFUI.Showcase
             AddTwoColumnRow(table, "Browse", browse, browseDisabled);
         }
 
-        private void AddCheckBoxesAndTogglesSection(StyledPropertyTable table)
+        private void AddCheckBoxesAndTogglesSection(PropertyTable table)
         {
             table.AddSection("CheckBoxes / ToggleSwitches");
 
@@ -382,7 +382,7 @@ namespace CustomWFUI.Showcase
             AddUniformRow(table, "Sizes (Small / Large)", small, large, null);
         }
 
-        private void AddInputsSection(StyledPropertyTable table)
+        private void AddInputsSection(PropertyTable table)
         {
             table.AddSection("TextBoxes / ComboBox / NumericUpDown");
 
@@ -407,7 +407,7 @@ namespace CustomWFUI.Showcase
             AddUniformRow(table, "NumericUpDown", numeric, null, numericDisabled);
         }
 
-        private void AddProgressBarsSection(StyledPropertyTable table)
+        private void AddProgressBarsSection(PropertyTable table)
         {
             table.AddSection("ProgressBars");
 
@@ -502,7 +502,7 @@ namespace CustomWFUI.Showcase
             _progressBarAnimationSetters.Add(setValue);
         }
 
-        private void AddLabelsSection(StyledPropertyTable table)
+        private void AddLabelsSection(PropertyTable table)
         {
             table.AddSection("Labels");
 
@@ -522,7 +522,7 @@ namespace CustomWFUI.Showcase
             AddTwoColumnRow(table, "CreateMuted", muted, mutedDisabled);
         }
 
-        private void AddPanelsSection(StyledPropertyTable table)
+        private void AddPanelsSection(PropertyTable table)
         {
             table.AddSection("Panels (background shades)");
 
@@ -547,11 +547,11 @@ namespace CustomWFUI.Showcase
             AddUniformRow(table, "Shades 2", swatches[3].Panel, null, null);
         }
 
-        private void AddListsSection(StyledPropertyTable table)
+        private void AddListsSection(PropertyTable table)
         {
-            table.AddSection("StyledListBoxControl / StyledListView");
+            table.AddSection("ListBoxControl / StyledListView");
 
-            StyledListBoxControl listBox = UIStyles.StyledListBoxControls.Create(
+            ListBoxControl listBox = UIStyles.ListBoxControls.CreateStandard(
                 "Sample list",
                 allowReorder: true,
                 showEnumeration: true);
@@ -572,7 +572,7 @@ namespace CustomWFUI.Showcase
                 UIColumn.Percent(listView, 50));
         }
 
-        private void AddDataGridSection(StyledPropertyTable table)
+        private void AddDataGridSection(PropertyTable table)
         {
             table.AddSection("DataGridView");
 
@@ -601,7 +601,7 @@ namespace CustomWFUI.Showcase
                 UIColumn.Percent(disabledGrid, 50));
         }
 
-        private void AddPopupsSection(StyledPropertyTable table)
+        private void AddPopupsSection(PropertyTable table)
         {
             table.AddSection("Popups (CustomMessageBox / ToastForm / InfoPopupForm)");
 

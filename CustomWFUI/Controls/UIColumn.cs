@@ -5,7 +5,7 @@ namespace CustomWFUI.Controls
     /// <summary>
     /// Pairs a <see cref="Control"/> (or a null placeholder) with a
     /// <see cref="TableLayoutPanel"/> column width, for
-    /// <see cref="StyledPropertyTable"/>'s multi-column row overloads. Build
+    /// <see cref="PropertyTable"/>'s multi-column row overloads. Build
     /// one with <see cref="Auto"/>, <see cref="Absolute"/>, or
     /// <see cref="Percent"/> rather than constructing it directly.
     /// </summary>

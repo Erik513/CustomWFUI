@@ -11,7 +11,7 @@ namespace CustomWFUI.Controls
     /// a row can hold more than one editor control side by side via the
     /// <see cref="UIColumn"/>-based overloads.
     /// </summary>
-    public partial class StyledPropertyTable : UserControl
+    public partial class PropertyTable : UserControl
     {
         private const int DefaultLabelColumnWidth = 130;
         private const int DefaultRowHeight = 42;
@@ -20,7 +20,7 @@ namespace CustomWFUI.Controls
 
         private readonly TableLayoutPanel _layout;
 
-        public StyledPropertyTable()
+        public PropertyTable()
         {
             Dock = DockStyle.Top;
             AutoSize = true;

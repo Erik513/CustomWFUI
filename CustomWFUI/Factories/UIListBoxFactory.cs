@@ -2,14 +2,14 @@
 
 namespace CustomWFUI.Factories
 {
-    internal static class UIStyledListBoxFactory
+    internal static class UIListBoxFactory
     {
-        public static StyledListBox Create(
+        public static ListBox CreateStandard(
             string displayTextMember = null,
             bool allowReorder = true,
             bool showEnumeration = false)
         {
-            return new StyledListBox
+            return new ListBox
             {
                 DisplayTextMember = displayTextMember,
                 AllowReorder = allowReorder,

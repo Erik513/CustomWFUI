@@ -6,30 +6,30 @@ using CustomWFUI.Styles;
 namespace CustomWFUI.Controls
 {
     /// <summary>
-    /// A <see cref="StyledListBox"/> with an optional header bar above it.
+    /// A <see cref="ListBox"/> with an optional header bar above it.
     /// Most members here just proxy the same-named member on the inner list
     /// box (see <see cref="InnerListBox"/>) - reach through InnerListBox
     /// directly for anything not proxied.
     /// </summary>
-    public class StyledListBoxControl : UserControl
+    public class ListBoxControl : UserControl
     {
         private const int DefaultHeaderHeight = 30;
         private const int HeaderSidePadding = 10;
 
         private readonly Panel _headerPanel;
         private readonly Label _titleLabel;
-        private readonly StyledListBox _listBox;
+        private readonly ListBox _listBox;
 
         public event EventHandler SelectedIndexChanged;
         public event EventHandler ItemsReordered;
 
-        public StyledListBoxControl()
+        public ListBoxControl()
             : this(null, false, false, null, ContentAlignment.MiddleLeft)
         {
         }
 
         /// <summary>headerTitle left null/empty hides the header bar entirely (the default) - set <see cref="Title"/> later to show it.</summary>
-        public StyledListBoxControl(
+        public ListBoxControl(
             string displayTextMember = null,
             bool allowReorder = false,
             bool showEnumeration = false,
@@ -62,7 +62,7 @@ namespace CustomWFUI.Controls
         }
 
         /// <summary>The wrapped list box - use this for anything (events, colors, ...) not already proxied by a member on this class.</summary>
-        public StyledListBox InnerListBox
+        public ListBox InnerListBox
         {
             get { return _listBox; }
         }
@@ -235,12 +235,12 @@ namespace CustomWFUI.Controls
             };
         }
 
-        private StyledListBox CreateListBox(
+        private ListBox CreateListBox(
             string displayTextMember,
             bool allowReorder,
             bool showEnumeration)
         {
-            return new StyledListBox
+            return new ListBox
             {
                 Dock = DockStyle.Fill,
                 DisplayTextMember = displayTextMember,

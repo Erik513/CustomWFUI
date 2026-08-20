@@ -6,20 +6,20 @@ using CustomWFUI.Controls;
 namespace CustomWFUI.Forms
 {
     /// <summary>
-    /// A small options/settings dialog built around a StyledPropertyTable:
+    /// A small options/settings dialog built around a PropertyTable:
     /// add rows to PropertyTable, then call FitToContent() so the window
     /// sizes itself to exactly fit whatever was added, instead of guessing
     /// a fixed size up front.
     /// </summary>
     public class StyledOptionsForm : StyledForm
     {
-        private readonly StyledPropertyTable _propertyTable;
+        private readonly PropertyTable _propertyTable;
         private readonly Panel _buttonBar;
         private readonly Button _saveButton;
         private readonly Button _cancelButton;
 
         /// <summary>Add your option rows here, then call <see cref="FitToContent"/>.</summary>
-        public StyledPropertyTable PropertyTable
+        public PropertyTable PropertyTable
         {
             get { return _propertyTable; }
         }
@@ -63,7 +63,7 @@ namespace CustomWFUI.Forms
             // the whole window edge-to-edge instead of reading as a card.
             ContentPanel.Padding = new Padding(20);
 
-            _propertyTable = UIStyles.PropertyTables.Create();
+            _propertyTable = UIStyles.PropertyTables.CreateStandard();
             _propertyTable.Dock = DockStyle.Top;
             // The table's default background matches ContentPanel's
             // BackgroundMedium, so its (transparent) label column blended

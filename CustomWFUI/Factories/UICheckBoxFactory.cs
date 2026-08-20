@@ -50,7 +50,7 @@ namespace CustomWFUI.Factories
         // peeking out at the boundary; and even a full-rectangle erase in a
         // plain CheckBox's Paint EVENT still let native ButtonBase text
         // render underneath/after it in specific layouts (confirmed via a
-        // StyledPropertyTable row: a disabled or otherwise-repainted
+        // PropertyTable row: a disabled or otherwise-repainted
         // checkbox showed its label doubled, faintly offset - ButtonBase's
         // own OnPaint drawing its default glyph/text using its own layout,
         // with our Paint-event handler's drawing on top not fully hiding it
@@ -92,7 +92,7 @@ namespace CustomWFUI.Factories
             // preferred size for the SYSTEM checkbox glyph, which knows
             // nothing about our custom 16px box/padding layout. Left
             // enabled, this caused the real (already laid-out, resized,
-            // relaid-out) StyledPropertyTable instance to settle on
+            // relaid-out) PropertyTable instance to settle on
             // different bounds than what a single fresh construction+paint
             // produces - live screen captures (CopyFromScreen AND
             // PrintWindow, i.e. not a capture-tooling artifact) showed
@@ -120,7 +120,7 @@ namespace CustomWFUI.Factories
             // BackColor=Transparent (the previous approach) makes WinForms
             // route background painting through its "ask the parent to
             // render what's behind me" fake-transparency path - inside a
-            // nested TableLayoutPanel (StyledPropertyTable's editor cells)
+            // nested TableLayoutPanel (PropertyTable's editor cells)
             // that path picked up stale/sibling content (a neighboring
             // checkbox's or the row label's text), showing through as
             // ghosted text on real screen paints. DrawToBitmap didn't
