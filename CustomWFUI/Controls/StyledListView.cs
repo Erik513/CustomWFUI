@@ -56,6 +56,14 @@ namespace CustomWFUI.Controls
         private int _activeRow = -1;
         private int _activeColumn = -1;
         private bool _isDragSelecting;
+        private bool _isPollTrackingPress;
+        private bool _isPolledDragSelecting;
+        private Point _pollPressPoint;
+        private bool _wasLeftButtonDownLastPoll;
+        private bool _isHeaderPressActive;
+        private Point _selectionAnchorPoint;
+        private Point _selectionCurrentPoint;
+        private readonly Timer _externalDragPollTimer;
         private bool _isApplyingFillColumn;
 
         private Color _rowBackColor = UIColors.BackgroundMedium;
@@ -239,6 +247,20 @@ namespace CustomWFUI.Controls
             ColumnWidthChanged += OnColumnWidthChanged;
 
             ContextMenuStrip = BuildContextMenu();
+
+            // Polls rather than relying on this control's own MouseMove/
+            // MouseUp for the "drag started outside this control entirely"
+            // case (see OnExternalDragPollTick) - a plain MouseMove-based
+            // approach was tried first and never actually fired, because
+            // WinForms implicitly captures the mouse for whatever control
+            // the button-down happened on, so this control never receives
+            // mouse messages for a drag it didn't itself start. Polling
+            // Control.MouseButtons/Cursor.Position instead sidesteps
+            // capture ownership entirely, since those reflect true global
+            // input state rather than routed messages.
+            _externalDragPollTimer = new Timer { Interval = 25 };
+            _externalDragPollTimer.Tick += OnExternalDragPollTick;
+            _externalDragPollTimer.Start();
         }
 
         protected override void Dispose(bool disposing)
@@ -246,6 +268,8 @@ namespace CustomWFUI.Controls
             if (disposing)
             {
                 _cellToolTip.Dispose();
+                _externalDragPollTimer.Stop();
+                _externalDragPollTimer.Dispose();
             }
 
             base.Dispose(disposing);
@@ -711,7 +735,29 @@ namespace CustomWFUI.Controls
         // position before comparing.
         private bool IsCellSelected(int row, int dataColumnIndex)
         {
-            if (_anchorRow < 0 || dataColumnIndex < 0 || dataColumnIndex >= Columns.Count)
+            if (row < 0 || row >= Items.Count || dataColumnIndex < 0 || dataColumnIndex >= Columns.Count)
+            {
+                return false;
+            }
+
+            // While a mouse drag is actually in progress (either the
+            // normal on-cell one, or a poll-driven one - see
+            // OnExternalDragPollTick), selection is real pixel-rectangle
+            // intersection against the cell's own bounds, matching how
+            // Explorer's own rubber-band selection works: a cell counts
+            // only if its bounds genuinely overlap the dragged area.
+            // Independently clamping row and column index from the
+            // cursor's X and Y (the previous approach) could select a cell
+            // whose row merely happened to share a Y-coordinate band with
+            // the cursor while X was nowhere near any column at all (e.g.
+            // dragging somewhere far to the side of the whole table).
+            if (_isDragSelecting || _isPolledDragSelecting)
+            {
+                var cellRect = GetSubItemBounds(Items[row], Columns[dataColumnIndex], Items[row].Bounds);
+                return cellRect.IntersectsWith(GetNormalizedSelectionRectangle());
+            }
+
+            if (_anchorRow < 0)
             {
                 return false;
             }
@@ -724,6 +770,67 @@ namespace CustomWFUI.Controls
             return row >= rowStart && row <= rowEnd && displayIndex >= columnStart && displayIndex <= columnEnd;
         }
 
+        private Rectangle GetNormalizedSelectionRectangle()
+        {
+            int left = Math.Min(_selectionAnchorPoint.X, _selectionCurrentPoint.X);
+            int right = Math.Max(_selectionAnchorPoint.X, _selectionCurrentPoint.X);
+            int top = Math.Min(_selectionAnchorPoint.Y, _selectionCurrentPoint.Y);
+            int bottom = Math.Max(_selectionAnchorPoint.Y, _selectionCurrentPoint.Y);
+            return Rectangle.FromLTRB(left, top, right, bottom);
+        }
+
+        // Converts the live pixel selection rectangle into the index-based
+        // _anchorRow/_anchorColumn/_activeRow/_activeColumn representation
+        // once a drag ends, so keyboard navigation (MoveSelectionWithArrowKey),
+        // Ctrl+C, and a plain click's "is this cell already selected" check
+        // keep working the normal, index-based way afterward - only the
+        // live drag itself needs pixel intersection. A rectangle dragged
+        // over a regular cell grid always covers a contiguous index range,
+        // so tracking the min/max row and display-column index among every
+        // intersected cell fully reconstructs it.
+        private void FinalizeDragSelection()
+        {
+            if (Items.Count == 0 || Columns.Count == 0)
+            {
+                ClearSelection();
+                return;
+            }
+
+            var selectionRect = GetNormalizedSelectionRectangle();
+            var orderedColumns = GetColumnsInDisplayOrder();
+
+            int minRow = -1, maxRow = -1, minColumn = -1, maxColumn = -1;
+
+            for (int row = 0; row < Items.Count; row++)
+            {
+                var rowBounds = Items[row].Bounds;
+                for (int displayIndex = 0; displayIndex < orderedColumns.Count; displayIndex++)
+                {
+                    var cellRect = GetSubItemBounds(Items[row], orderedColumns[displayIndex], rowBounds);
+                    if (!cellRect.IntersectsWith(selectionRect))
+                    {
+                        continue;
+                    }
+
+                    minRow = minRow < 0 ? row : Math.Min(minRow, row);
+                    maxRow = Math.Max(maxRow, row);
+                    minColumn = minColumn < 0 ? displayIndex : Math.Min(minColumn, displayIndex);
+                    maxColumn = Math.Max(maxColumn, displayIndex);
+                }
+            }
+
+            if (minRow < 0)
+            {
+                ClearSelection();
+                return;
+            }
+
+            _anchorRow = minRow;
+            _activeRow = maxRow;
+            _anchorColumn = minColumn;
+            _activeColumn = maxColumn;
+        }
+
         private void OnListViewMouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left)
@@ -731,25 +838,24 @@ namespace CustomWFUI.Controls
                 return;
             }
 
-            // Require an actual item hit here (not the clamped fallback
-            // GetRowIndexAtY uses for an in-progress drag) - a click that
-            // isn't over a real row is most often the column header (whose
-            // own drag-reorder tracking lives entirely in
-            // HeaderInputSubclass, since header clicks land on that
-            // separate native child window and never reach this handler at
-            // all) and must never disturb a cell selection.
+            // A real header click never reaches this handler at all - it
+            // lands on the header's own separate native child window (see
+            // HeaderInputSubclass).
             var hitTest = HitTest(e.Location);
             if (hitTest.Item == null)
             {
-                // Clicking below the last row (empty space in the list) clears
-                // the current selection, same as clicking outside a selection
-                // in a spreadsheet. A click in the header area (above the
-                // first row, or when there are no rows at all) is left alone.
-                if (Items.Count > 0 && e.Location.Y > Items[Items.Count - 1].Bounds.Bottom)
-                {
-                    ClearSelection();
-                }
-
+                // Handled entirely by OnExternalDragPollTick instead -
+                // native mouse events for an "off-item" press turned out
+                // unreliable here (confirmed by logging a real attempt:
+                // the native ListView fires its own MouseUp almost
+                // immediately for such a press, even while the physical
+                // button is still held, wiping out any state tracked from
+                // MouseDown before a real drag ever got a chance to
+                // register). Polling Control.MouseButtons/Cursor.Position
+                // instead doesn't depend on this control's own mouse
+                // events at all, so it isn't affected by that quirk - and
+                // handles a press starting outside this control the same
+                // way, uniformly, with no need to tell the two apart.
                 return;
             }
 
@@ -774,6 +880,8 @@ namespace CustomWFUI.Controls
                 _anchorColumn = column;
                 _activeRow = row;
                 _activeColumn = column;
+                _selectionAnchorPoint = e.Location;
+                _selectionCurrentPoint = e.Location;
                 _isDragSelecting = true;
             }
 
@@ -814,26 +922,146 @@ namespace CustomWFUI.Controls
                 return;
             }
 
-            var row = GetRowIndexAtY(e.Location.Y);
-            if (row < 0)
+            if (e.Location == _selectionCurrentPoint)
             {
                 return;
             }
 
-            var column = GetColumnIndexAtX(e.Location.X);
-            if (row == _activeRow && column == _activeColumn)
-            {
-                return;
-            }
-
-            _activeRow = row;
-            _activeColumn = column;
+            _selectionCurrentPoint = e.Location;
             Invalidate();
         }
 
         private void OnListViewMouseUp(object sender, MouseEventArgs e)
         {
+            if (_isDragSelecting)
+            {
+                FinalizeDragSelection();
+                Invalidate();
+            }
+
             _isDragSelecting = false;
+        }
+
+        // Drives cell selection for every press that ISN'T a direct hit on
+        // a real cell - both a press starting in this control's own dead
+        // zone (below the last row, beside the last column) and one
+        // starting somewhere else in the app entirely, uniformly, with no
+        // need to tell the two apart. A direct on-cell press is still
+        // handled the normal way, by OnListViewMouseDown/Move/Up - those
+        // reliably fire for a genuine item hit, and already have their own
+        // richer click behavior (toggle off if already selected,
+        // Ctrl+Alt to extend) that only makes sense there.
+        //
+        // Everything here works off polled global state
+        // (Control.MouseButtons/Cursor.Position) instead of this
+        // control's own mouse events, because two different event-based
+        // attempts both broke on real native quirks: routing through
+        // MouseMove never saw a single event for a press that started
+        // outside this control (WinForms implicitly captures the mouse
+        // for whichever control the button actually went down on, so nothing
+        // ever reaches here); and routing through this control's own
+        // MouseDown/MouseUp for a dead-zone press broke because the native
+        // ListView fires its own MouseUp almost immediately for an
+        // "off-item" press, even while the physical button is still held -
+        // confirmed by logging a real attempt, where MouseUp landed right
+        // after MouseDown at the same point while every MouseMove
+        // afterward kept reporting the button as still down. Polling
+        // doesn't depend on any of that; it just asks the OS directly,
+        // every tick.
+        private void OnExternalDragPollTick(object sender, EventArgs e)
+        {
+            bool leftDown = (MouseButtons & MouseButtons.Left) != 0;
+            bool justPressed = leftDown && !_wasLeftButtonDownLastPoll;
+            bool justReleased = !leftDown && _wasLeftButtonDownLastPoll;
+            _wasLeftButtonDownLastPoll = leftDown;
+
+            // A press on the header (reordering a column, or just resizing
+            // one) is owned entirely by HeaderInputSubclass/DoDragDrop -
+            // this control's own MouseDown never even fires for it (see
+            // HeaderInputSubclass's own comment), so without this check
+            // this poll would otherwise see "a fresh press that isn't on a
+            // real cell" and start a cell-selection drag at the same time
+            // as a column-reorder drag.
+            if (_isHeaderPressActive)
+            {
+                _isPollTrackingPress = false;
+                _isPolledDragSelecting = false;
+                return;
+            }
+
+            if (justPressed && !_isDragSelecting)
+            {
+                // _isDragSelecting can only already be true here if the
+                // press landed on a real cell - OnListViewMouseDown (a
+                // normal input event, delivered before this poll tick could
+                // possibly run) already claimed it. A fresh press anywhere
+                // else clears whatever was selected, same as the original
+                // "click below the last row clears the selection" behavior,
+                // just no longer limited to that one specific dead zone.
+                if (_anchorRow >= 0)
+                {
+                    ClearSelection();
+                }
+
+                _pollPressPoint = PointToClient(Cursor.Position);
+                _isPollTrackingPress = true;
+            }
+
+            if (justReleased)
+            {
+                if (_isPolledDragSelecting)
+                {
+                    FinalizeDragSelection();
+                    Invalidate();
+                }
+
+                _isPollTrackingPress = false;
+                _isPolledDragSelecting = false;
+            }
+
+            if (_isDragSelecting || !leftDown || !_isPollTrackingPress || Items.Count == 0 || Columns.Count == 0)
+            {
+                return;
+            }
+
+            var currentPoint = PointToClient(Cursor.Position);
+
+            if (!_isPolledDragSelecting)
+            {
+                bool movedEnough =
+                    Math.Abs(currentPoint.X - _pollPressPoint.X) >= SystemInformation.DragSize.Width ||
+                    Math.Abs(currentPoint.Y - _pollPressPoint.Y) >= SystemInformation.DragSize.Height;
+
+                if (!movedEnough)
+                {
+                    return;
+                }
+
+                // Anchored at the ORIGINAL press point, in raw (unclamped)
+                // pixels - safe even when that point is far outside this
+                // control entirely (pressed somewhere else in the app),
+                // because selection is now real rectangle intersection
+                // (see IsCellSelected): a rectangle whose corner starts far
+                // away simply won't intersect any cell that isn't actually
+                // within it. The earlier index-clamping approach silently
+                // snapped an out-of-range point to the nearest row/column
+                // regardless of the other axis, which could select a cell
+                // whose row merely shared a Y-coordinate band with the
+                // cursor while X was nowhere near any column.
+                _selectionAnchorPoint = _pollPressPoint;
+                _selectionCurrentPoint = currentPoint;
+                _isPolledDragSelecting = true;
+                Invalidate();
+                return;
+            }
+
+            if (currentPoint == _selectionCurrentPoint)
+            {
+                return;
+            }
+
+            _selectionCurrentPoint = currentPoint;
+            Invalidate();
         }
 
         // Called from HeaderInputSubclass once a header click has moved
@@ -867,6 +1095,15 @@ namespace CustomWFUI.Controls
                 _isDraggingColumn = false;
                 _dragColumnIndex = -1;
                 _dragInsertBeforeDisplayIndex = -1;
+
+                // DoDragDrop runs its own internal message loop for the
+                // whole drag, so the header's own WM_LBUTTONUP (which
+                // would otherwise clear this) may never actually reach
+                // HeaderInputSubclass's normal WndProc handling for a real
+                // reorder - this is the reliable place to clear it instead,
+                // since DoDragDrop has, by definition, just finished.
+                _isHeaderPressActive = false;
+
                 InvalidateHeader();
             }
         }
@@ -1172,25 +1409,6 @@ namespace CustomWFUI.Controls
             Invalidate();
         }
 
-        private int GetRowIndexAtY(int y)
-        {
-            if (Items.Count == 0)
-            {
-                return -1;
-            }
-
-            var hitTest = HitTest(new Point(1, y));
-            if (hitTest.Item != null)
-            {
-                return hitTest.Item.Index;
-            }
-
-            // Dragging above the first row or below the last one still
-            // extends the selection to that end, the same way a
-            // spreadsheet does when a drag leaves the visible grid.
-            return y < Items[0].Bounds.Top ? 0 : Items.Count - 1;
-        }
-
         // Returns a DISPLAY index (position in visual column order), to match
         // how _anchorColumn/_activeColumn and IsCellSelected are tracked -
         // necessary so drag-selection stays visually correct after columns
@@ -1462,6 +1680,13 @@ namespace CustomWFUI.Controls
                 switch (m.Msg)
                 {
                     case WM_LBUTTONDOWN:
+                        // Set for ANY press here, including a resize-grip
+                        // click OnMouseDown itself ignores (leaves
+                        // _pendingColumnIndex at -1) - a resize is still a
+                        // header interaction, not a cell one, and must
+                        // block OnExternalDragPollTick's cell-selection
+                        // polling exactly the same as a reorder does.
+                        _owner._isHeaderPressActive = true;
                         OnMouseDown(GetX(m.LParam));
                         break;
 
@@ -1476,6 +1701,7 @@ namespace CustomWFUI.Controls
                         // only ever called after OnMouseMove sees the
                         // threshold exceeded.
                         _pendingColumnIndex = -1;
+                        _owner._isHeaderPressActive = false;
                         break;
                 }
             }
