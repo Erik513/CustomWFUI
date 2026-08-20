@@ -264,15 +264,22 @@ namespace CustomWFUI.Showcase
             PropertyTable table = UIStyles.PropertyTables.CreateStandard();
             table.Dock = DockStyle.Top;
 
+            // Alphabetical by section title, so the Showcase's own layout
+            // doesn't silently depend on this list's order matching it.
             AddButtonsSection(table);
-            AddCheckBoxesAndTogglesSection(table);
-            AddInputsSection(table);
-            AddProgressBarsSection(table);
-            AddLabelsSection(table);
-            AddPanelsSection(table);
-            AddListsSection(table);
+            AddCheckBoxesSection(table);
+            AddComboBoxesSection(table);
             AddDataGridSection(table);
+            AddLabelsSection(table);
+            AddListBoxControlSection(table);
+            AddListViewSection(table);
+            AddNumericUpDownsSection(table);
+            AddPanelsSection(table);
             AddPopupsSection(table);
+            AddProgressBarsSection(table);
+            AddSlimProgressBarsSection(table);
+            AddTextBoxesSection(table);
+            AddToggleSwitchesSection(table);
 
             host.Controls.Add(table);
         }
@@ -355,7 +362,7 @@ namespace CustomWFUI.Showcase
             AddTwoColumnRow(table, "CreateBrowse", browse, browseDisabled);
         }
 
-        private void AddCheckBoxesAndTogglesSection(PropertyTable table)
+        private void AddCheckBoxesSection(PropertyTable table)
         {
             table.AddSection("CheckBoxes");
 
@@ -370,7 +377,10 @@ namespace CustomWFUI.Showcase
             CheckBox compactDisabled = UIStyles.CheckBoxes.CreateCompact(true);
             compactDisabled.Enabled = false;
             AddUniformRow(table, "CreateCompact", compactChecked, compactUnchecked, compactDisabled);
+        }
 
+        private void AddToggleSwitchesSection(PropertyTable table)
+        {
             table.AddSection("ToggleSwitches");
 
             ToggleSwitch standardOn = UIStyles.ToggleSwitches.CreateStandard(true);
@@ -392,7 +402,7 @@ namespace CustomWFUI.Showcase
             AddUniformRow(table, "CreateLarge", largeOn, largeOff, largeDisabled);
         }
 
-        private void AddInputsSection(PropertyTable table)
+        private void AddTextBoxesSection(PropertyTable table)
         {
             table.AddSection("TextBoxes");
 
@@ -405,7 +415,10 @@ namespace CustomWFUI.Showcase
             TextBox borderlessDisabled = UIStyles.TextBoxes.CreateBorderstyleNone("Disabled", "");
             borderlessDisabled.Enabled = false;
             AddTwoColumnRow(table, "CreateBorderstyleNone", borderless, borderlessDisabled);
+        }
 
+        private void AddComboBoxesSection(PropertyTable table)
+        {
             table.AddSection("ComboBoxes");
 
             ComboBox combo = UIStyles.ComboBoxes.CreateStandard();
@@ -416,7 +429,10 @@ namespace CustomWFUI.Showcase
             comboDisabled.SelectedIndex = 0;
             comboDisabled.Enabled = false;
             AddTwoColumnRow(table, "CreateStandard", combo, comboDisabled);
+        }
 
+        private void AddNumericUpDownsSection(PropertyTable table)
+        {
             table.AddSection("NumericUpDowns");
 
             NumericUpDown numeric = UIStyles.NumericUpDowns.CreateStandard(0, 100, 1, 42);
@@ -483,7 +499,10 @@ namespace CustomWFUI.Showcase
             statusTransparentDisabled.BackColor = UIColors.BackgroundLight;
             statusTransparentDisabled.Enabled = false;
             AddTwoColumnRow(table, "CreateStatusTransparent", statusTransparentBar, statusTransparentDisabled);
+        }
 
+        private void AddSlimProgressBarsSection(PropertyTable table)
+        {
             table.AddSection("SlimProgressBars");
 
             SlimProgressBar slimGreenBar = UIStyles.SlimProgressBars.CreateGreen();
@@ -564,7 +583,7 @@ namespace CustomWFUI.Showcase
             table.AddRow("CreatePrimary", swatches[3].Panel);
         }
 
-        private void AddListsSection(PropertyTable table)
+        private void AddListBoxControlSection(PropertyTable table)
         {
             table.AddSection("ListBoxControl");
 
@@ -577,7 +596,10 @@ namespace CustomWFUI.Showcase
             listBox.Items.Add("Third item (drag to reorder)");
 
             table.AddRow("CreateStandard", 260, listBox);
+        }
 
+        private void AddListViewSection(PropertyTable table)
+        {
             table.AddSection("ListView");
 
             var listView = UIStyles.ListViews.CreateStandard();
