@@ -116,6 +116,12 @@ namespace CustomWFUI.Factories
                 string pszSubAppName,
                 string pszSubIdList);
 
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            private static extern System.IntPtr GetWindowDC(System.IntPtr hWnd);
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            private static extern int ReleaseDC(System.IntPtr hWnd, System.IntPtr hDC);
+
             public BorderedProgressBar(bool drawBorder)
             {
                 _drawBorder = drawBorder;
@@ -132,11 +138,46 @@ namespace CustomWFUI.Factories
             {
                 base.WndProc(ref m);
 
-                if (_drawBorder && m.Msg == WM_PAINT)
+                if (m.Msg != WM_PAINT)
+                    return;
+
+                if (_drawBorder)
                 {
                     using (Graphics g = Graphics.FromHwnd(Handle))
                     using (Pen pen = new Pen(UIColors.BorderMedium))
                         g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+
+                    return;
+                }
+
+                // CreateTransparent (drawBorder: false) wants this control
+                // to blend seamlessly into its container - no border at
+                // all. The classic (unthemed) native ProgressBar can still
+                // show a 1px 3D sunken-edge frame independent of
+                // SetWindowTheme above - confirmed only after a real
+                // theme/accent-triggered rebuild (constructed while its
+                // parent hierarchy was already visible), never on a fresh
+                // construction. Painting over it via the CLIENT dc
+                // (Graphics.FromHwnd, i.e. GetDC) had no effect at all,
+                // which points at this edge being drawn into the window's
+                // NON-CLIENT area specifically. GetWindowDC (unlike GetDC)
+                // gives access to the full window surface, non-client area
+                // included, so painting the outer edge there reaches pixels
+                // the client dc structurally never could.
+                System.IntPtr windowDc = GetWindowDC(Handle);
+
+                if (windowDc != System.IntPtr.Zero)
+                {
+                    try
+                    {
+                        using (Graphics g = Graphics.FromHdc(windowDc))
+                        using (Pen pen = new Pen(BackColor))
+                            g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                    }
+                    finally
+                    {
+                        ReleaseDC(Handle, windowDc);
+                    }
                 }
             }
         }
