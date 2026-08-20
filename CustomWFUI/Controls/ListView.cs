@@ -92,6 +92,8 @@ namespace CustomWFUI.Controls
         private bool _isDraggingColumn;
         private int _dragColumnIndex = -1;
         private int _dragInsertBeforeDisplayIndex = -1;
+        private Font _headerFontOverride;
+        private ImageList _rowHeightImageList;
         private HeaderInputSubclass _headerInputSubclass;
 
         private readonly ToolTip _cellToolTip = new ToolTip { InitialDelay = 400, ReshowDelay = 100, AutoPopDelay = 8000, ShowAlways = true };
@@ -211,6 +213,56 @@ namespace CustomWFUI.Controls
             {
                 _headerForeColor = value;
                 Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// Font for the column header row - defaults to a bold version of
+        /// <see cref="Control.Font"/> if never set. Setting this to a larger
+        /// size is also the way to make the native header band itself
+        /// taller (there's no direct "header height" API on the underlying
+        /// Win32 header control - it sizes itself from its own font
+        /// metrics, same as row height below).
+        /// </summary>
+        public Font HeaderFont
+        {
+            // Always a fresh instance - OnDrawColumnHeader disposes whatever
+            // it gets from this getter after each paint, which would
+            // silently dispose the caller's own Font object (breaking every
+            // paint after the first) if this ever handed that instance back
+            // directly instead of a clone.
+            get { return _headerFontOverride != null ? (Font)_headerFontOverride.Clone() : new Font(Font, FontStyle.Bold); }
+            set
+            {
+                _headerFontOverride = value;
+                Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// Forces every row to this exact height in pixels. Unset (0) lets
+        /// rows size themselves from <see cref="Control.Font"/> as usual.
+        /// Implemented via the classic Win32 trick of assigning a 1px-wide,
+        /// N-tall <c>SmallImageList</c> - the native ListView derives its
+        /// row height from the small image list's height when one is set,
+        /// since there's no direct row-height API either. Don't also assign
+        /// a real <c>SmallImageList</c> for per-item icons while this is
+        /// set; the two would fight over the same slot.
+        /// </summary>
+        public int RowHeight
+        {
+            get { return _rowHeightImageList?.ImageSize.Height ?? 0; }
+            set
+            {
+                if (value <= 0)
+                {
+                    _rowHeightImageList = null;
+                    SmallImageList = null;
+                    return;
+                }
+
+                _rowHeightImageList = new ImageList { ImageSize = new Size(1, value) };
+                SmallImageList = _rowHeightImageList;
             }
         }
 
@@ -731,7 +783,7 @@ namespace CustomWFUI.Controls
 
             using (var background = new SolidBrush(_headerBackColor))
             using (var divider = new Pen(UIColors.BorderMedium))
-            using (var font = new Font(Font, FontStyle.Bold))
+            using (var font = HeaderFont)
             {
                 e.Graphics.FillRectangle(background, e.Bounds);
                 e.Graphics.DrawRectangle(divider, e.Bounds.Left, e.Bounds.Top, e.Bounds.Width - 1, e.Bounds.Height - 1);
