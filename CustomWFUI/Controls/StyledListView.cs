@@ -365,6 +365,19 @@ namespace CustomWFUI.Controls
             ApplyFillColumn();
         }
 
+        // Clicking a cell already clears/replaces the selection on its own
+        // (see OnListViewMouseDown), but nothing previously cleared it when
+        // focus moved to a completely different control elsewhere in the
+        // app - the selected cells stayed highlighted indefinitely even
+        // though nothing about them was still relevant. Matches how a
+        // spreadsheet's own selection typically doesn't survive switching
+        // away to another window/control either.
+        protected override void OnLeave(EventArgs e)
+        {
+            base.OnLeave(e);
+            ClearSelection();
+        }
+
         private void OnColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
         {
             if (_nonResizableColumns.Contains(e.ColumnIndex))
@@ -411,9 +424,18 @@ namespace CustomWFUI.Controls
             }
         }
 
+        // Re-applies on ANY column's width change, including the fill
+        // column's own - previously excluded the fill column itself
+        // (assuming a manual resize of it meant "let the user override the
+        // fill width"), but that just left it stuck at whatever smaller
+        // width the user dragged it to instead of snapping back to fill
+        // the leftover space, which is the whole point of it being the
+        // fill column in the first place. _isApplyingFillColumn still
+        // guards against ApplyFillColumn's own width assignment
+        // re-triggering this handler.
         private void OnColumnWidthChanged(object sender, ColumnWidthChangedEventArgs e)
         {
-            if (!_isApplyingFillColumn && e.ColumnIndex != GetEffectiveFillColumnIndex())
+            if (!_isApplyingFillColumn)
             {
                 ApplyFillColumn();
             }
@@ -589,15 +611,25 @@ namespace CustomWFUI.Controls
                 return;
             }
 
-            using (var pen = new Pen(ColumnReorderIndicatorColor, 2))
+            // A filled rectangle rather than a DrawLine pen - a pen is
+            // centered on its coordinate, so a line drawn exactly at x=0
+            // (the very first column's left edge) has half its width
+            // clipped off the visible header entirely, making the leftmost
+            // position look noticeably thinner than every other one. A
+            // rectangle has no such centering ambiguity: it always occupies
+            // exactly [x, x + lineWidth), fully visible regardless of which
+            // edge it's flush against.
+            const int lineWidth = 2;
+
+            using (var brush = new SolidBrush(ColumnReorderIndicatorColor))
             {
                 if (e.Header.DisplayIndex == _dragInsertBeforeDisplayIndex)
                 {
-                    e.Graphics.DrawLine(pen, e.Bounds.Left, e.Bounds.Top, e.Bounds.Left, e.Bounds.Bottom);
+                    e.Graphics.FillRectangle(brush, e.Bounds.Left, e.Bounds.Top, lineWidth, e.Bounds.Height);
                 }
                 else if (_dragInsertBeforeDisplayIndex == Columns.Count && e.Header.DisplayIndex == Columns.Count - 1)
                 {
-                    e.Graphics.DrawLine(pen, e.Bounds.Right - 1, e.Bounds.Top, e.Bounds.Right - 1, e.Bounds.Bottom);
+                    e.Graphics.FillRectangle(brush, e.Bounds.Right - lineWidth, e.Bounds.Top, lineWidth, e.Bounds.Height);
                 }
             }
         }
