@@ -482,6 +482,18 @@ namespace CustomWFUI
             {
                 return UIProgressBarFactory.CreateTransparent();
             }
+
+            /// <summary>Like <see cref="CreateStandard"/> but the fill follows the app-wide accent instead of the fixed green.</summary>
+            public static ProgressBar CreatePrimary()
+            {
+                return UIProgressBarFactory.CreatePrimary();
+            }
+
+            /// <summary>Like <see cref="CreatePrimary"/> but without the border, and BackColor left for you to match your own panel - the accent-following equivalent of <see cref="CreateTransparent"/>.</summary>
+            public static ProgressBar CreatePrimaryTransparent()
+            {
+                return UIProgressBarFactory.CreatePrimaryTransparent();
+            }
         }
 
         /// <summary>
