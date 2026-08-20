@@ -49,6 +49,28 @@ namespace CustomWFUI.Factories
             return Create(UIColors.Primary, drawBorder: false);
         }
 
+        // Fill color follows Value instead of being fixed: red at Minimum,
+        // yellow at the midpoint, green at Maximum, blending smoothly
+        // between them rather than snapping - for a "status/health" bar
+        // where the color itself communicates good/bad, not just the fill
+        // amount. Doesn't take SetEnabledStyle's restore-color path since
+        // the color is recomputed fresh on every paint anyway (from Value
+        // when enabled, DisabledGray when not) - there's no fixed color to
+        // save and restore.
+        public static ProgressBar CreateStatus()
+        {
+            ProgressBar progressBar = new BorderedProgressBar(drawBorder: true, useStatusGradient: true)
+            {
+                Minimum = 0,
+                Maximum = 100,
+                Style = ProgressBarStyle.Continuous,
+                BackColor = UIColors.BackgroundMedium,
+                Margin = new Padding(0)
+            };
+
+            return progressBar;
+        }
+
         private static ProgressBar Create(Color foreColor, bool drawBorder)
         {
             ProgressBar progressBar = new BorderedProgressBar(drawBorder)
@@ -127,6 +149,7 @@ namespace CustomWFUI.Factories
             private const int WM_PAINT = 0x000F;
 
             private readonly bool _drawBorder;
+            private readonly bool _useStatusGradient;
 
             [System.Runtime.InteropServices.DllImport("uxtheme.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
             private static extern int SetWindowTheme(
@@ -140,9 +163,10 @@ namespace CustomWFUI.Factories
             [System.Runtime.InteropServices.DllImport("user32.dll")]
             private static extern int ReleaseDC(System.IntPtr hWnd, System.IntPtr hDC);
 
-            public BorderedProgressBar(bool drawBorder)
+            public BorderedProgressBar(bool drawBorder, bool useStatusGradient = false)
             {
                 _drawBorder = drawBorder;
+                _useStatusGradient = useStatusGradient;
 
                 // With visual styles enabled, the native ProgressBar ignores
                 // ForeColor/BackColor entirely and always shows the system
@@ -154,6 +178,23 @@ namespace CustomWFUI.Factories
 
             protected override void WndProc(ref Message m)
             {
+                // The native fill is drawn by base.WndProc's own WM_PAINT
+                // handling, reading whatever ForeColor currently is -
+                // there's no ValueChanged event (WinForms' ProgressBar
+                // doesn't have one) and Value isn't virtual, so recomputing
+                // the color here, right before the native paint actually
+                // happens, is simpler than trying to intercept every place
+                // Value could change instead.
+                if (_useStatusGradient && m.Msg == WM_PAINT)
+                {
+                    Color statusColor = Enabled
+                        ? ComputeStatusColor(Value, Minimum, Maximum)
+                        : UIColors.DisabledGray;
+
+                    if (ForeColor != statusColor)
+                        ForeColor = statusColor;
+                }
+
                 base.WndProc(ref m);
 
                 if (m.Msg != WM_PAINT)
@@ -204,6 +245,39 @@ namespace CustomWFUI.Factories
                         ReleaseDC(Handle, windowDc);
                     }
                 }
+            }
+
+            // Two-segment blend - red to yellow, then yellow to green -
+            // rather than a straight red-to-green blend, which would pass
+            // through a muddy brown/olive around the midpoint instead of a
+            // clear yellow "midway" cue. The breakpoint between the two
+            // segments is NOT the midpoint (0.5): green reading as "done"
+            // should only dominate near the top of the range, so the
+            // red->yellow segment gets the larger share (0-65%) and only
+            // the last third blends yellow->green - a flat 50/50 split
+            // turned green too early ("es wird zu schnell grün").
+            private const double YellowBreakpoint = 0.65;
+
+            private static Color ComputeStatusColor(int value, int minimum, int maximum)
+            {
+                double range = maximum - minimum;
+                double fraction = range > 0 ? (value - minimum) / range : 0;
+                fraction = Math.Max(0, Math.Min(1, fraction));
+
+                if (fraction <= YellowBreakpoint)
+                    return Lerp(UIColors.Red, UIColors.Yellow, fraction / YellowBreakpoint);
+
+                return Lerp(UIColors.Yellow, UIColors.Green, (fraction - YellowBreakpoint) / (1 - YellowBreakpoint));
+            }
+
+            private static Color Lerp(Color from, Color to, double t)
+            {
+                t = Math.Max(0, Math.Min(1, t));
+
+                return Color.FromArgb(
+                    (int)Math.Round(from.R + (to.R - from.R) * t),
+                    (int)Math.Round(from.G + (to.G - from.G) * t),
+                    (int)Math.Round(from.B + (to.B - from.B) * t));
             }
         }
     }

@@ -71,6 +71,15 @@ namespace CustomWFUI.Controls
             }
         }
 
+        /// <summary>
+        /// When true, the fill color follows <see cref="Value"/> instead of
+        /// <see cref="Control.ForeColor"/> - red at <see cref="Minimum"/>,
+        /// yellow at the midpoint, green at <see cref="Maximum"/>, blending
+        /// smoothly between them. For a "status/health" bar where the color
+        /// itself communicates good/bad, not just the fill amount.
+        /// </summary>
+        public bool UseStatusGradient { get; set; }
+
         protected override void OnEnabledChanged(EventArgs e)
         {
             base.OnEnabledChanged(e);
@@ -94,7 +103,14 @@ namespace CustomWFUI.Controls
             if (fillWidth <= 0)
                 return;
 
-            Color fillColor = Enabled ? ForeColor : UIColors.DisabledGray;
+            Color fillColor;
+
+            if (!Enabled)
+                fillColor = UIColors.DisabledGray;
+            else if (UseStatusGradient)
+                fillColor = ComputeStatusColor(_value, _minimum, _maximum);
+            else
+                fillColor = ForeColor;
 
             using (SolidBrush fillBrush = new SolidBrush(fillColor))
                 g.FillRectangle(fillBrush, new Rectangle(0, 0, fillWidth, Height));
@@ -111,6 +127,43 @@ namespace CustomWFUI.Controls
                 max = min;
 
             return Math.Max(min, Math.Min(max, value));
+        }
+
+        // Two-segment blend - red to yellow, then yellow to green - rather
+        // than a straight red-to-green blend, which would pass through a
+        // muddy brown/olive around the midpoint instead of a clear yellow
+        // "midway" cue. The breakpoint between the two segments is NOT the
+        // midpoint (0.5): green reading as "done" should only dominate near
+        // the top of the range, so the red->yellow segment gets the larger
+        // share (0-65%) and only the last third blends yellow->green - a
+        // flat 50/50 split turned green too early ("es wird zu schnell
+        // grün"). Same logic as UIProgressBarFactory's BorderedProgressBar.
+        // ComputeStatusColor - duplicated rather than shared, matching this
+        // codebase's existing pattern of small per-control color helpers
+        // (see BlendTowardColor in ToggleSwitch.cs/UICheckBoxFactory.cs)
+        // rather than one central utility.
+        private const double YellowBreakpoint = 0.65;
+
+        private static Color ComputeStatusColor(int value, int minimum, int maximum)
+        {
+            double range = maximum - minimum;
+            double fraction = range > 0 ? (value - minimum) / range : 0;
+            fraction = Math.Max(0, Math.Min(1, fraction));
+
+            if (fraction <= YellowBreakpoint)
+                return Lerp(UIColors.Red, UIColors.Yellow, fraction / YellowBreakpoint);
+
+            return Lerp(UIColors.Yellow, UIColors.Green, (fraction - YellowBreakpoint) / (1 - YellowBreakpoint));
+        }
+
+        private static Color Lerp(Color from, Color to, double t)
+        {
+            t = Math.Max(0, Math.Min(1, t));
+
+            return Color.FromArgb(
+                (int)Math.Round(from.R + (to.R - from.R) * t),
+                (int)Math.Round(from.G + (to.G - from.G) * t),
+                (int)Math.Round(from.B + (to.B - from.B) * t));
         }
     }
 }

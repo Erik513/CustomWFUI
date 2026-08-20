@@ -494,6 +494,12 @@ namespace CustomWFUI
             {
                 return UIProgressBarFactory.CreatePrimaryTransparent();
             }
+
+            /// <summary>Fill color follows Value instead of being fixed - red at Minimum, yellow at the midpoint, green at Maximum, blending smoothly between them. For a "status/health" bar where color communicates good/bad.</summary>
+            public static ProgressBar CreateStatus()
+            {
+                return UIProgressBarFactory.CreateStatus();
+            }
         }
 
         /// <summary>
@@ -513,6 +519,12 @@ namespace CustomWFUI
             public static SlimProgressBar CreatePrimary()
             {
                 return UISlimProgressBarFactory.CreatePrimary();
+            }
+
+            /// <summary>Fill color follows Value instead of being fixed - red at Minimum, yellow at the midpoint, green at Maximum, blending smoothly between them. For a "status/health" bar where color communicates good/bad.</summary>
+            public static SlimProgressBar CreateStatus()
+            {
+                return UISlimProgressBarFactory.CreateStatus();
             }
         }
 

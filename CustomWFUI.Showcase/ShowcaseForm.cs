@@ -438,6 +438,20 @@ namespace CustomWFUI.Showcase
             slimPrimaryDisabled.Value = 40;
             slimPrimaryDisabled.Enabled = false;
             AddUniformRow(table, "Slim.CreatePrimary", slimPrimaryBar, null, slimPrimaryDisabled);
+
+            ProgressBar statusBar = UIStyles.ProgressBars.CreateStatus();
+            AnimateProgressBar(v => statusBar.Value = v);
+            ProgressBar statusDisabled = UIStyles.ProgressBars.CreateStatus();
+            statusDisabled.Value = 65;
+            statusDisabled.Enabled = false;
+            AddUniformRow(table, "CreateStatus", statusBar, null, statusDisabled);
+
+            SlimProgressBar slimStatusBar = UIStyles.SlimProgressBars.CreateStatus();
+            AnimateProgressBar(v => slimStatusBar.Value = v);
+            SlimProgressBar slimStatusDisabled = UIStyles.SlimProgressBars.CreateStatus();
+            slimStatusDisabled.Value = 40;
+            slimStatusDisabled.Enabled = false;
+            AddUniformRow(table, "Slim.CreateStatus", slimStatusBar, null, slimStatusDisabled);
         }
 
         // Applies the current animation percentage immediately (so the bar

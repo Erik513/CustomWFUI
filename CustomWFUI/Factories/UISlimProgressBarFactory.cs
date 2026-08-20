@@ -16,6 +16,19 @@ namespace CustomWFUI.Factories
             return Create(UIColors.Primary);
         }
 
+        // Fill color follows Value instead of ForeColor - see
+        // SlimProgressBar.UseStatusGradient.
+        public static SlimProgressBar CreateStatus()
+        {
+            return new SlimProgressBar
+            {
+                Minimum = 0,
+                Maximum = 100,
+                BackColor = UIColors.BackgroundMedium,
+                UseStatusGradient = true
+            };
+        }
+
         private static SlimProgressBar Create(Color foreColor)
         {
             return new SlimProgressBar
