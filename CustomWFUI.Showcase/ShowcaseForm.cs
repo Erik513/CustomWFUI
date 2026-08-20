@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using CustomWFUI.Controls;
@@ -49,6 +50,23 @@ namespace CustomWFUI.Showcase
         private Timer _infoPopupHideTimer;
         private bool _isLightTheme;
 
+        // Lets every ProgressBars-section row (the setters registered by
+        // AddProgressBarsSection) actually show what a real, moving load
+        // looks like instead of just sitting at one fixed demo percentage -
+        // one shared value drives all of them in lockstep. A list of
+        // setters rather than a list of controls because ProgressBar.Value
+        // and SlimProgressBar.Value aren't behind a common interface;
+        // storing "how to apply the current percentage to this specific
+        // bar" sidesteps that without needing one. Rebuilt (cleared, then
+        // repopulated) on every BuildUi() call alongside the controls
+        // themselves, since the old bars get disposed each time a
+        // theme/accent switch tears down and recreates the whole UI - an
+        // un-cleared list would keep invoking setters that close over
+        // disposed controls.
+        private readonly List<Action<int>> _progressBarAnimationSetters = new List<Action<int>>();
+        private Timer _progressBarAnimationTimer;
+        private int _progressBarAnimationPercent;
+
         public ShowcaseForm()
             : base(StyledFormOptions.CreateStandard("CustomWFUI Showcase"))
         {
@@ -65,6 +83,18 @@ namespace CustomWFUI.Showcase
                 _infoPopup.Hide();
             };
 
+            // 1% every 60ms - a full 0->100 sweep takes 6 seconds, slow
+            // enough to actually watch rather than just flicker by.
+            _progressBarAnimationTimer = new Timer { Interval = 60 };
+            _progressBarAnimationTimer.Tick += delegate
+            {
+                _progressBarAnimationPercent = (_progressBarAnimationPercent + 1) % 101;
+
+                foreach (Action<int> setter in _progressBarAnimationSetters)
+                    setter(_progressBarAnimationPercent);
+            };
+            _progressBarAnimationTimer.Start();
+
             BuildUi();
         }
 
@@ -77,6 +107,13 @@ namespace CustomWFUI.Showcase
                     _infoPopupHideTimer.Stop();
                     _infoPopupHideTimer.Dispose();
                     _infoPopupHideTimer = null;
+                }
+
+                if (_progressBarAnimationTimer != null)
+                {
+                    _progressBarAnimationTimer.Stop();
+                    _progressBarAnimationTimer.Dispose();
+                    _progressBarAnimationTimer = null;
                 }
 
                 if (_infoPopup != null)
@@ -127,6 +164,11 @@ namespace CustomWFUI.Showcase
                 AutoScroll = true,
                 BackColor = UIColors.BackgroundMedium
             };
+
+            // The bars AddProgressBarsSection is about to (re)create are
+            // brand new instances - drop the setters that closed over the
+            // just-disposed previous ones before it repopulates this.
+            _progressBarAnimationSetters.Clear();
 
             BuildContent(_scrollHost);
 
@@ -344,16 +386,23 @@ namespace CustomWFUI.Showcase
         {
             table.AddSection("ProgressBars");
 
+            // Every enabled bar below is driven by the shared animation
+            // timer (see _progressBarAnimationSetters) instead of a fixed
+            // demo value, so this section doubles as a preview of what an
+            // actual, moving load looks like. Disabled bars are deliberately
+            // left out of the animation and kept at one fixed value - the
+            // point of that column is to show the disabled look clearly,
+            // which a constantly-changing bar would undercut.
             ProgressBar standardBar = UIStyles.ProgressBars.CreateGreen();
-            standardBar.Value = 65;
+            AnimateProgressBar(v => standardBar.Value = v);
             ProgressBar disabledBar = UIStyles.ProgressBars.CreateGreen();
             disabledBar.Value = 65;
             disabledBar.Enabled = false;
             AddUniformRow(table, "CreateGreen", standardBar, null, disabledBar);
 
             ProgressBar transparentBar = UIStyles.ProgressBars.CreateGreenTransparent();
-            transparentBar.Value = 40;
             transparentBar.BackColor = UIColors.BackgroundLight;
+            AnimateProgressBar(v => transparentBar.Value = v);
             ProgressBar transparentDisabled = UIStyles.ProgressBars.CreateGreenTransparent();
             transparentDisabled.Value = 40;
             transparentDisabled.BackColor = UIColors.BackgroundLight;
@@ -361,15 +410,15 @@ namespace CustomWFUI.Showcase
             AddUniformRow(table, "CreateGreenTransparent", transparentBar, null, transparentDisabled);
 
             ProgressBar primaryBar = UIStyles.ProgressBars.CreatePrimary();
-            primaryBar.Value = 65;
+            AnimateProgressBar(v => primaryBar.Value = v);
             ProgressBar primaryDisabled = UIStyles.ProgressBars.CreatePrimary();
             primaryDisabled.Value = 65;
             primaryDisabled.Enabled = false;
             AddUniformRow(table, "CreatePrimary", primaryBar, null, primaryDisabled);
 
             ProgressBar primaryTransparentBar = UIStyles.ProgressBars.CreatePrimaryTransparent();
-            primaryTransparentBar.Value = 40;
             primaryTransparentBar.BackColor = UIColors.BackgroundLight;
+            AnimateProgressBar(v => primaryTransparentBar.Value = v);
             ProgressBar primaryTransparentDisabled = UIStyles.ProgressBars.CreatePrimaryTransparent();
             primaryTransparentDisabled.Value = 40;
             primaryTransparentDisabled.BackColor = UIColors.BackgroundLight;
@@ -377,18 +426,27 @@ namespace CustomWFUI.Showcase
             AddUniformRow(table, "CreatePrimaryTransparent", primaryTransparentBar, null, primaryTransparentDisabled);
 
             SlimProgressBar slimGreenBar = UIStyles.SlimProgressBars.CreateGreen();
-            slimGreenBar.Value = 65;
+            AnimateProgressBar(v => slimGreenBar.Value = v);
             SlimProgressBar slimGreenDisabled = UIStyles.SlimProgressBars.CreateGreen();
             slimGreenDisabled.Value = 65;
             slimGreenDisabled.Enabled = false;
             AddUniformRow(table, "Slim.CreateGreen", slimGreenBar, null, slimGreenDisabled);
 
             SlimProgressBar slimPrimaryBar = UIStyles.SlimProgressBars.CreatePrimary();
-            slimPrimaryBar.Value = 40;
+            AnimateProgressBar(v => slimPrimaryBar.Value = v);
             SlimProgressBar slimPrimaryDisabled = UIStyles.SlimProgressBars.CreatePrimary();
             slimPrimaryDisabled.Value = 40;
             slimPrimaryDisabled.Enabled = false;
             AddUniformRow(table, "Slim.CreatePrimary", slimPrimaryBar, null, slimPrimaryDisabled);
+        }
+
+        // Applies the current animation percentage immediately (so the bar
+        // doesn't sit at its Value=0 default until the next timer tick)
+        // and registers the setter so future ticks keep it moving.
+        private void AnimateProgressBar(Action<int> setValue)
+        {
+            setValue(_progressBarAnimationPercent);
+            _progressBarAnimationSetters.Add(setValue);
         }
 
         private void AddLabelsSection(StyledPropertyTable table)
