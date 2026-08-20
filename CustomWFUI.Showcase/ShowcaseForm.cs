@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 using CustomWFUI.Controls;
@@ -270,6 +271,7 @@ namespace CustomWFUI.Showcase
             AddLabelsSection(table);
             AddPanelsSection(table);
             AddListsSection(table);
+            AddDataGridSection(table);
             AddPopupsSection(table);
 
             host.Controls.Add(table);
@@ -568,6 +570,35 @@ namespace CustomWFUI.Showcase
                 260,
                 UIColumn.Percent(listBox, 50),
                 UIColumn.Percent(listView, 50));
+        }
+
+        private void AddDataGridSection(StyledPropertyTable table)
+        {
+            table.AddSection("DataGridView");
+
+            // Demonstrates actual DataSource binding - the one thing a
+            // plain ListView (and anything built on it, like
+            // StyledListView) simply cannot do at all.
+            var source = new DataTable();
+            source.Columns.Add("Track");
+            source.Columns.Add("Artist");
+            source.Columns.Add("Length");
+            source.Rows.Add("Sample Song", "Sample Artist", "3:42");
+            source.Rows.Add("Another Track", "Someone Else", "4:15");
+            source.Rows.Add("Third One", "Someone Else", "2:58");
+
+            var grid = UIStyles.DataGridViews.CreateStandard(source);
+            grid.Dock = DockStyle.Fill;
+
+            var disabledGrid = UIStyles.DataGridViews.CreateStandard(source.Copy());
+            disabledGrid.Dock = DockStyle.Fill;
+            disabledGrid.Enabled = false;
+
+            table.AddRow(
+                "DataGridView",
+                180,
+                UIColumn.Percent(grid, 50),
+                UIColumn.Percent(disabledGrid, 50));
         }
 
         private void AddPopupsSection(StyledPropertyTable table)

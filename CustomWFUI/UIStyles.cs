@@ -222,6 +222,15 @@ namespace CustomWFUI
             }
         }
 
+        /// <summary>A themed <see cref="System.Windows.Forms.DataGridView"/> for data bound via <see cref="System.Windows.Forms.DataGridView.DataSource"/> - the control to reach for when rows come from a bound source rather than being added by hand.</summary>
+        public static class DataGridViews
+        {
+            public static System.Windows.Forms.DataGridView CreateStandard(object dataSource = null)
+            {
+                return UIDataGridViewFactory.CreateStandard(dataSource);
+            }
+        }
+
         /// <summary>Themed <see cref="Label"/>s: <see cref="CreateTitle"/> (bold/large), <see cref="CreateNormal"/> (body text), <see cref="CreateMuted"/> (de-emphasized).</summary>
         public static class Labels
         {
