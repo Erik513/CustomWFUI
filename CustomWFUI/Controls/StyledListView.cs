@@ -69,6 +69,9 @@ namespace CustomWFUI.Controls
         private int _fillColumnIndex = -1;
         private readonly HashSet<int> _nonResizableColumns = new HashSet<int>();
         private readonly HashSet<int> _nonReorderableColumns = new HashSet<int>();
+        private Color _columnReorderIndicatorColorOverride;
+        private bool _columnReorderIndicatorColorIsOverridden;
+        private HeaderDragLineSubclass _headerDragLineSubclass;
 
         private readonly ToolTip _cellToolTip = new ToolTip { InitialDelay = 400, ReshowDelay = 100, AutoPopDelay = 8000, ShowAlways = true };
         private int _toolTipRow = -1;
@@ -141,6 +144,32 @@ namespace CustomWFUI.Controls
                 _selectionOverlayColorOverride = value;
                 _selectionOverlayColorIsOverridden = true;
                 Invalidate();
+            }
+        }
+
+        /// <summary>
+        /// Color of the vertical line the header shows while a column is
+        /// being dragged to reorder it. Follows the current accent live
+        /// until explicitly set, same as <see cref="SelectionOverlayColor"/>.
+        /// Unlike that property, this line isn't drawn by CustomWFUI at all -
+        /// <see cref="ListView.AllowColumnReorder"/> hands the whole drag
+        /// gesture to the native Win32 header control (comctl32), which
+        /// paints its own fixed light-blue insertion line with no public API
+        /// to recolor it. <see cref="HeaderDragLineSubclass"/> lets the
+        /// native line draw as normal and then repaints just those pixels
+        /// (matched by their known fixed color, RGB 128/179/230, confirmed
+        /// by sampling an actual drag) in this color instead - the same
+        /// "let native draw, then paint over the exact pixels" approach
+        /// <see cref="Factories.UIProgressBarFactory"/>'s non-client-border
+        /// fix used, applied to a native child window instead of a border.
+        /// </summary>
+        public Color ColumnReorderIndicatorColor
+        {
+            get { return _columnReorderIndicatorColorIsOverridden ? _columnReorderIndicatorColorOverride : UIColors.Primary; }
+            set
+            {
+                _columnReorderIndicatorColorOverride = value;
+                _columnReorderIndicatorColorIsOverridden = true;
             }
         }
 
@@ -301,6 +330,26 @@ namespace CustomWFUI.Controls
         {
             base.OnHandleCreated(e);
             ApplyFillColumn();
+
+            // The header is a separate native child window (class
+            // "SysHeader32"), recreated along with the ListView's own handle -
+            // re-attach the subclass every time rather than once in the
+            // constructor.
+            _headerDragLineSubclass?.ReleaseHandle();
+            System.IntPtr headerHandle = HeaderDragLineSubclass.GetHeaderHandle(Handle);
+            if (headerHandle != System.IntPtr.Zero)
+            {
+                _headerDragLineSubclass = new HeaderDragLineSubclass(this);
+                _headerDragLineSubclass.AssignHandle(headerHandle);
+            }
+        }
+
+        protected override void OnHandleDestroyed(EventArgs e)
+        {
+            _headerDragLineSubclass?.ReleaseHandle();
+            _headerDragLineSubclass = null;
+
+            base.OnHandleDestroyed(e);
         }
 
         protected override void OnResize(EventArgs e)
@@ -1130,6 +1179,152 @@ namespace CustomWFUI.Controls
                 Math.Max(0, color.R - amount),
                 Math.Max(0, color.G - amount),
                 Math.Max(0, color.B - amount));
+        }
+
+        // Subclasses the ListView's own header child window (class
+        // "SysHeader32") purely to recolor the native column-reorder drag
+        // line - see ColumnReorderIndicatorColor's doc comment for why this
+        // exists instead of an owner-draw hook. Everything else about the
+        // header (background, text, the resize cursor, etc.) is untouched;
+        // this only ever runs extra work during WM_PAINT, and only when the
+        // native line's exact color is actually found on screen.
+        private sealed class HeaderDragLineSubclass : NativeWindow
+        {
+            private const int WM_PAINT = 0x000F;
+            private const int WM_MOUSEMOVE = 0x0200;
+            private const int LVM_FIRST = 0x1000;
+            private const int LVM_GETHEADER = LVM_FIRST + 31;
+
+            // The native insertion line's fixed color, confirmed by pixel-
+            // sampling an actual drag in the Showcase (RGB 128/179/230) -
+            // not a documented constant, just what comctl32 happens to draw.
+            // A tolerance is used rather than an exact match since minor
+            // rendering differences (DPI, Windows version) could shift it
+            // slightly; the header's other content (dark background, gray/
+            // white text, the gray drop-target highlight) is far enough away
+            // in color that a generous tolerance still can't mistake it for
+            // any of those.
+            private static readonly Color NativeLineColor = Color.FromArgb(128, 179, 230);
+            private const int ColorTolerance = 30;
+
+            private readonly StyledListView _owner;
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            private static extern System.IntPtr SendMessage(System.IntPtr hWnd, int msg, System.IntPtr wParam, System.IntPtr lParam);
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            private static extern bool GetWindowRect(System.IntPtr hWnd, out RECT lpRect);
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            private static extern System.IntPtr GetWindowDC(System.IntPtr hWnd);
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            private static extern int ReleaseDC(System.IntPtr hWnd, System.IntPtr hDC);
+
+            [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+            private struct RECT
+            {
+                public int Left;
+                public int Top;
+                public int Right;
+                public int Bottom;
+            }
+
+            public HeaderDragLineSubclass(StyledListView owner)
+            {
+                _owner = owner;
+            }
+
+            public static System.IntPtr GetHeaderHandle(System.IntPtr listViewHandle)
+            {
+                return SendMessage(listViewHandle, LVM_GETHEADER, System.IntPtr.Zero, System.IntPtr.Zero);
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                base.WndProc(ref m);
+
+                if (m.Msg == WM_PAINT || m.Msg == WM_MOUSEMOVE)
+                    RecolorNativeLine();
+            }
+
+            // Lets the header draw as normal first (including the native
+            // line, if a drag is in progress), then reads back a single row
+            // of already-rendered pixels via CopyFromScreen (the header has
+            // definitely finished drawing to the screen by the time
+            // base.WndProc returns) to find where that line landed, and
+            // repaints just those columns of pixels in
+            // ColumnReorderIndicatorColor directly on the window dc. A
+            // no-op whenever no matching pixel is found, which is every
+            // call except during an actual drag.
+            //
+            // Hooked off WM_MOUSEMOVE as well as WM_PAINT - confirmed by
+            // instrumenting WndProc during a live drag that the header
+            // never sends itself a WM_PAINT while the line is moving; it
+            // draws the line straight onto its own DC from inside its
+            // WM_MOUSEMOVE handling instead (classic old-style drag
+            // feedback, bypassing the normal invalidate/paint cycle
+            // entirely for this one visual). WM_PAINT alone left the line
+            // permanently native blue - it only ever fired before/after the
+            // drag, when there was no line to find yet.
+            private void RecolorNativeLine()
+            {
+                RECT rect;
+                if (!GetWindowRect(Handle, out rect))
+                    return;
+
+                int width = rect.Right - rect.Left;
+                int height = rect.Bottom - rect.Top;
+
+                if (width <= 0 || height <= 0)
+                    return;
+
+                int sampleY = rect.Top + height / 2;
+
+                List<int> matchedColumns = new List<int>();
+
+                using (Bitmap row = new Bitmap(width, 1))
+                {
+                    using (Graphics g = Graphics.FromImage(row))
+                        g.CopyFromScreen(rect.Left, sampleY, 0, 0, new Size(width, 1));
+
+                    for (int x = 0; x < width; x++)
+                    {
+                        if (IsNativeLineColor(row.GetPixel(x, 0)))
+                            matchedColumns.Add(x);
+                    }
+                }
+
+                if (matchedColumns.Count == 0)
+                    return;
+
+                System.IntPtr windowDc = GetWindowDC(Handle);
+                if (windowDc == System.IntPtr.Zero)
+                    return;
+
+                try
+                {
+                    using (Graphics g = Graphics.FromHdc(windowDc))
+                    using (Pen pen = new Pen(_owner.ColumnReorderIndicatorColor))
+                    {
+                        foreach (int x in matchedColumns)
+                            g.DrawLine(pen, x, 0, x, height);
+                    }
+                }
+                finally
+                {
+                    ReleaseDC(Handle, windowDc);
+                }
+            }
+
+            private static bool IsNativeLineColor(Color c)
+            {
+                int dr = c.R - NativeLineColor.R;
+                int dg = c.G - NativeLineColor.G;
+                int db = c.B - NativeLineColor.B;
+
+                return (dr * dr + dg * dg + db * db) <= ColorTolerance * ColorTolerance;
+            }
         }
     }
 }
