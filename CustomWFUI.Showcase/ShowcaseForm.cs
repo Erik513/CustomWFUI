@@ -375,6 +375,20 @@ namespace CustomWFUI.Showcase
             primaryTransparentDisabled.BackColor = UIColors.BackgroundLight;
             primaryTransparentDisabled.Enabled = false;
             AddUniformRow(table, "CreatePrimaryTransparent", primaryTransparentBar, null, primaryTransparentDisabled);
+
+            SlimProgressBar slimGreenBar = UIStyles.SlimProgressBars.CreateGreen();
+            slimGreenBar.Value = 65;
+            SlimProgressBar slimGreenDisabled = UIStyles.SlimProgressBars.CreateGreen();
+            slimGreenDisabled.Value = 65;
+            slimGreenDisabled.Enabled = false;
+            AddUniformRow(table, "Slim.CreateGreen", slimGreenBar, null, slimGreenDisabled);
+
+            SlimProgressBar slimPrimaryBar = UIStyles.SlimProgressBars.CreatePrimary();
+            slimPrimaryBar.Value = 40;
+            SlimProgressBar slimPrimaryDisabled = UIStyles.SlimProgressBars.CreatePrimary();
+            slimPrimaryDisabled.Value = 40;
+            slimPrimaryDisabled.Enabled = false;
+            AddUniformRow(table, "Slim.CreatePrimary", slimPrimaryBar, null, slimPrimaryDisabled);
         }
 
         private void AddLabelsSection(StyledPropertyTable table)

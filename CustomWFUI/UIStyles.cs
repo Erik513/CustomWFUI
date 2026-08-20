@@ -497,6 +497,26 @@ namespace CustomWFUI
         }
 
         /// <summary>
+        /// A thin, fully custom-drawn <see cref="SlimProgressBar"/> - no
+        /// native Win32 control underneath (unlike <see cref="ProgressBars"/>),
+        /// so no border/theming quirks to work around. For slim status-strip-
+        /// style progress indicators rather than a prominent, full-size bar.
+        /// </summary>
+        public static class SlimProgressBars
+        {
+            public static SlimProgressBar CreateGreen()
+            {
+                return UISlimProgressBarFactory.CreateGreen();
+            }
+
+            /// <summary>Like <see cref="CreateGreen"/> but the fill follows the app-wide accent instead of the fixed green.</summary>
+            public static SlimProgressBar CreatePrimary()
+            {
+                return UISlimProgressBarFactory.CreatePrimary();
+            }
+        }
+
+        /// <summary>
         /// CustomWFUI's own bundled icons (Web/Folder/Document/Application),
         /// plus <see cref="LoadEmbedded"/> for loading your own app's icon
         /// from its embedded resources the same way - see
