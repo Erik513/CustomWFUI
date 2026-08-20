@@ -56,6 +56,7 @@ namespace CustomWFUI.Controls
         private int _activeRow = -1;
         private int _activeColumn = -1;
         private bool _isDragSelecting;
+        private int _headerHeight = 24;
         private bool _isPollTrackingPress;
         private bool _isPolledDragSelecting;
         private Point _pollPressPoint;
@@ -78,6 +79,8 @@ namespace CustomWFUI.Controls
         private int _fillColumnIndex = -1;
         private readonly HashSet<int> _nonResizableColumns = new HashSet<int>();
         private readonly HashSet<int> _nonReorderableColumns = new HashSet<int>();
+        private bool _allowColumnReordering = true;
+        private bool _allowColumnResizing = true;
         private Color _columnReorderIndicatorColorOverride;
         private bool _columnReorderIndicatorColorIsOverridden;
         private bool _isDraggingColumn;
@@ -283,6 +286,36 @@ namespace CustomWFUI.Controls
         /// dragged to something illegible) while others stay freely
         /// resizable.
         /// </summary>
+        /// <summary>
+        /// Master switch for whether ANY column can be resized at all -
+        /// simpler than calling <see cref="SetColumnResizable"/> for every
+        /// column when the answer is "none of them". Per-column overrides
+        /// via <see cref="SetColumnResizable"/> still apply among whichever
+        /// columns this allows; setting this false overrides all of them
+        /// (nothing becomes resizable no matter what they say). Defaults to
+        /// true, matching this control's previous unconditional behavior.
+        /// </summary>
+        public bool AllowColumnResizing
+        {
+            get => _allowColumnResizing;
+            set => _allowColumnResizing = value;
+        }
+
+        /// <summary>
+        /// Master switch for whether ANY column can be dragged to reorder
+        /// it at all - simpler than calling <see cref="SetColumnReorderable"/>
+        /// for every column when the answer is "none of them". Per-column
+        /// overrides via <see cref="SetColumnReorderable"/> still apply
+        /// among whichever columns this allows; setting this false
+        /// overrides all of them. Defaults to true, matching this control's
+        /// previous unconditional behavior.
+        /// </summary>
+        public bool AllowColumnReordering
+        {
+            get => _allowColumnReordering;
+            set => _allowColumnReordering = value;
+        }
+
         public void SetColumnResizable(int columnIndex, bool resizable)
         {
             if (resizable)
@@ -297,15 +330,14 @@ namespace CustomWFUI.Controls
 
         public bool IsColumnResizable(int columnIndex)
         {
-            return !_nonResizableColumns.Contains(columnIndex);
+            return _allowColumnResizing && !_nonResizableColumns.Contains(columnIndex);
         }
 
         /// <summary>
-        /// Configurable per column, independent of the control-wide
-        /// <see cref="ListView.AllowColumnReorder"/> switch: a column can be
-        /// pinned in place (e.g. a leading "Time"/"Metric" column that should
-        /// always stay leftmost) while the rest can still be freely dragged
-        /// into a new order.
+        /// Configurable per column, independent of <see cref="AllowColumnReordering"/>:
+        /// a column can be pinned in place (e.g. a leading "Time"/"Metric"
+        /// column that should always stay leftmost) while the rest can
+        /// still be freely dragged into a new order.
         /// </summary>
         public void SetColumnReorderable(int columnIndex, bool reorderable)
         {
@@ -321,7 +353,7 @@ namespace CustomWFUI.Controls
 
         public bool IsColumnReorderable(int columnIndex)
         {
-            return !_nonReorderableColumns.Contains(columnIndex);
+            return _allowColumnReordering && !_nonReorderableColumns.Contains(columnIndex);
         }
 
         /// <summary>
@@ -439,7 +471,23 @@ namespace CustomWFUI.Controls
                 using (Graphics g = Graphics.FromHdc(dc))
                 using (Pen pen = new Pen(UIColors.BorderMedium))
                 {
-                    g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                    // Skips the whole header strip (y < _headerHeight)
+                    // entirely, not just its top edge - the header sits
+                    // there as its own separate native child window,
+                    // repainting completely independently of this
+                    // WM_PAINT, and OnDrawColumnHeader already draws a full
+                    // border around every column through the normal
+                    // owner-draw path (no native-paint race possible
+                    // there). A real glitch was seen specifically near the
+                    // top-left - right where a rectangle spanning the full
+                    // height used to overlap that independently-repainting
+                    // area - so this leaves that whole strip to the one
+                    // place already drawing it correctly, rather than
+                    // trying to coexist with it.
+                    int top = Math.Min(_headerHeight, Height - 1);
+                    g.DrawLine(pen, 0, top, 0, Height - 1);
+                    g.DrawLine(pen, Width - 1, top, Width - 1, Height - 1);
+                    g.DrawLine(pen, 0, Height - 1, Width - 1, Height - 1);
                 }
             }
             finally
@@ -463,7 +511,7 @@ namespace CustomWFUI.Controls
 
         private void OnColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
         {
-            if (_nonResizableColumns.Contains(e.ColumnIndex))
+            if (!IsColumnResizable(e.ColumnIndex))
             {
                 e.NewWidth = Columns[e.ColumnIndex].Width;
                 e.Cancel = true;
@@ -673,6 +721,8 @@ namespace CustomWFUI.Controls
 
         private void OnDrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
         {
+            _headerHeight = e.Bounds.Height;
+
             using (var background = new SolidBrush(_headerBackColor))
             using (var divider = new Pen(UIColors.BorderMedium))
             using (var font = new Font(Font, FontStyle.Bold))
@@ -795,7 +845,25 @@ namespace CustomWFUI.Controls
                 }
             }
 
-            return new Rectangle(left, fallbackVerticalBounds.Top, column.Width, fallbackVerticalBounds.Height);
+            var width = column.Width;
+
+            // The leftmost column only is inset 1px on its own left edge -
+            // reserves that pixel column exclusively for the outer border
+            // (see WndProc's own comment on why that border exists), so row
+            // content painting can never overwrite it. Without this,
+            // something about hovering a row repaints its background and
+            // erases the border pixel at x=0 with nothing left to redraw it
+            // afterward - confirmed by comparing screenshots before and
+            // after hovering the first row. Every other column's bounds
+            // are completely unaffected, so this can't misalign anything
+            // with the header's own (unshifted) column positions.
+            if (column.DisplayIndex == 0)
+            {
+                left += 1;
+                width -= 1;
+            }
+
+            return new Rectangle(left, fallbackVerticalBounds.Top, width, fallbackVerticalBounds.Height);
         }
 
         // _anchorColumn/_activeColumn are tracked in DISPLAY order (visual
@@ -1297,6 +1365,30 @@ namespace CustomWFUI.Controls
             return false;
         }
 
+        // comctl32's header control has no concept of "this specific
+        // column isn't resizable" - it always shows the resize cursor near
+        // any column boundary, regardless of SetColumnResizable. Dragging
+        // is already blocked there (OnColumnWidthChanging cancels it), but
+        // without this the cursor itself would still misleadingly suggest
+        // it's possible. Resizing a boundary adjusts the column to its
+        // LEFT (comctl32's own convention), so that's the column whose
+        // resizability actually governs this specific boundary.
+        private bool IsNearNonResizableColumnBorder(int x)
+        {
+            const int resizeGripWidth = 5;
+            var cumulativeWidth = 0;
+            foreach (var column in GetColumnsInDisplayOrder())
+            {
+                cumulativeWidth += column.Width;
+                if (Math.Abs(x - cumulativeWidth) <= resizeGripWidth)
+                {
+                    return !IsColumnResizable(column.Index);
+                }
+            }
+
+            return false;
+        }
+
         // Where a column dropped at x would be inserted, expressed as
         // "insert before this display index" - the boundary flips at each
         // column's midpoint rather than its edges, so the insertion line
@@ -1779,6 +1871,23 @@ namespace CustomWFUI.Controls
                         break;
 
                     case WM_MOUSEMOVE:
+                        // Checked AFTER base.WndProc, not via WM_SETCURSOR
+                        // beforehand - an earlier WM_SETCURSOR-based attempt
+                        // never actually suppressed anything, because the
+                        // header sets its resize cursor directly from
+                        // inside its own WM_MOUSEMOVE handling (a common
+                        // comctl32 pattern - hot-tracking controls often
+                        // call SetCursor straight from mouse-move handling
+                        // rather than going through WM_SETCURSOR at all),
+                        // so intercepting WM_SETCURSOR first just meant
+                        // native code set the cursor moments later anyway.
+                        // Letting base run first and then setting our own
+                        // cursor right after is the same "let native act,
+                        // then correct it" approach already used elsewhere
+                        // in this class (the reorder line's color, the
+                        // outer border) - whichever SetCursor call happens
+                        // last is the one that's actually visible.
+                        TrySuppressResizeCursor(GetX(m.LParam));
                         OnMouseMove(GetX(m.LParam));
                         break;
 
@@ -1797,6 +1906,16 @@ namespace CustomWFUI.Controls
             private static int GetX(System.IntPtr lParam)
             {
                 return unchecked((short)((long)lParam & 0xFFFF));
+            }
+
+            // See the WM_MOUSEMOVE case above for why this runs after
+            // base.WndProc instead of intercepting WM_SETCURSOR.
+            private void TrySuppressResizeCursor(int x)
+            {
+                if (_owner.IsNearNonResizableColumnBorder(x))
+                {
+                    Cursor.Current = Cursors.Default;
+                }
             }
 
             private void OnMouseDown(int x)

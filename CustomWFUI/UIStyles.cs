@@ -425,15 +425,6 @@ namespace CustomWFUI
             }
         }
 
-        /// <summary>A lightweight, read-only <see cref="Controls.StyledDataTable"/> for displaying tabular data - see <see cref="Controls.StyledListView"/> for a heavier, sortable/copyable alternative.</summary>
-        public static class DataTables
-        {
-            public static StyledDataTable Create()
-            {
-                return new StyledDataTable();
-            }
-        }
-
         /// <summary>A themed key/value <see cref="Controls.StyledPropertyTable"/> (label + editor per row, grouped into sections) - typical use is a settings/options panel.</summary>
         public static class PropertyTables
         {

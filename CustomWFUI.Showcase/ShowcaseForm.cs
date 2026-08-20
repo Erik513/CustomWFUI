@@ -547,7 +547,7 @@ namespace CustomWFUI.Showcase
 
         private void AddListsSection(StyledPropertyTable table)
         {
-            table.AddSection("StyledListBoxControl / StyledDataTable / StyledListView");
+            table.AddSection("StyledListBoxControl / StyledListView");
 
             StyledListBoxControl listBox = UIStyles.StyledListBoxControls.Create(
                 "Sample list",
@@ -556,15 +556,6 @@ namespace CustomWFUI.Showcase
             listBox.Items.Add("First item");
             listBox.Items.Add("Second item");
             listBox.Items.Add("Third item (drag to reorder)");
-
-            StyledDataTable dataTable = UIStyles.DataTables.Create();
-            dataTable.SetColumns(new[] { "Name", "Value" }, new[] { 150, 130 });
-            dataTable.SetRows(new[]
-            {
-                new[] { "Accent", "Blue" },
-                new[] { "Theme", "Dark" },
-                new[] { "Version", "1.0" }
-            });
 
             StyledListView listView = new StyledListView { View = View.Details };
             listView.Columns.Add("Item", 180);
@@ -575,9 +566,8 @@ namespace CustomWFUI.Showcase
             table.AddRow(
                 "Lists",
                 260,
-                UIColumn.Percent(listBox, 34),
-                UIColumn.Percent(dataTable, 33),
-                UIColumn.Percent(listView, 33));
+                UIColumn.Percent(listBox, 50),
+                UIColumn.Percent(listView, 50));
         }
 
         private void AddPopupsSection(StyledPropertyTable table)
