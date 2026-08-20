@@ -298,6 +298,29 @@ namespace CustomWFUI.Showcase
                 UIColumn.Percent(disabled, UniformColumnPercent));
         }
 
+        // For sections where every row only ever has a Variant 1 and a
+        // Disabled control - no natural "another state" to put in the
+        // middle slot (Buttons, ProgressBars, Labels) - AddUniformRow's
+        // always-null Variant 2 column just sat there empty in every single
+        // row of those sections. Two 50/50 columns instead of three, at the
+        // cost of no longer lining up column-for-column with sections that
+        // DO use all three (CheckBoxes/ToggleSwitches, TextBoxes, Panels -
+        // this doesn't attempt to keep cross-section alignment, only
+        // requested for the sections that never used the middle slot).
+        private const float TwoColumnPercent = 50f;
+
+        private void AddTwoColumnRow(
+            StyledPropertyTable table,
+            string labelText,
+            Control primary,
+            Control disabled)
+        {
+            table.AddRow(
+                labelText,
+                UIColumn.Percent(primary, TwoColumnPercent),
+                UIColumn.Percent(disabled, TwoColumnPercent));
+        }
+
         private void AddButtonsSection(StyledPropertyTable table)
         {
             table.AddSection("Buttons");
@@ -307,27 +330,27 @@ namespace CustomWFUI.Showcase
             Button standard = UIStyles.Buttons.CreateStandard("Standard", size: textButtonSize);
             Button standardDisabled = UIStyles.Buttons.CreateStandard("Disabled", size: textButtonSize);
             standardDisabled.Enabled = false;
-            AddUniformRow(table, "CreateStandard", standard, null, standardDisabled);
+            AddTwoColumnRow(table, "CreateStandard", standard, standardDisabled);
 
             Button primary = UIStyles.Buttons.CreatePrimary("Primary", size: textButtonSize);
             Button primaryDisabled = UIStyles.Buttons.CreatePrimary("Disabled", size: textButtonSize);
             primaryDisabled.Enabled = false;
-            AddUniformRow(table, "CreatePrimary", primary, null, primaryDisabled);
+            AddTwoColumnRow(table, "CreatePrimary", primary, primaryDisabled);
 
             Button green = UIStyles.Buttons.CreateGreen("Confirm", size: textButtonSize);
             Button greenDisabled = UIStyles.Buttons.CreateGreen("Disabled", size: textButtonSize);
             greenDisabled.Enabled = false;
-            AddUniformRow(table, "CreateGreen", green, null, greenDisabled);
+            AddTwoColumnRow(table, "CreateGreen", green, greenDisabled);
 
             Button danger = UIStyles.Buttons.CreateRed("Delete", size: textButtonSize);
             Button dangerDisabled = UIStyles.Buttons.CreateRed("Disabled", size: textButtonSize);
             dangerDisabled.Enabled = false;
-            AddUniformRow(table, "CreateRed", danger, null, dangerDisabled);
+            AddTwoColumnRow(table, "CreateRed", danger, dangerDisabled);
 
             Button browse = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
             Button browseDisabled = UIStyles.Buttons.CreateBrowseInFolder("Browse", new Size(36, 30));
             browseDisabled.Enabled = false;
-            AddUniformRow(table, "Browse", browse, null, browseDisabled);
+            AddTwoColumnRow(table, "Browse", browse, browseDisabled);
         }
 
         private void AddCheckBoxesAndTogglesSection(StyledPropertyTable table)
@@ -398,7 +421,7 @@ namespace CustomWFUI.Showcase
             ProgressBar disabledBar = UIStyles.ProgressBars.CreateGreen();
             disabledBar.Value = 65;
             disabledBar.Enabled = false;
-            AddUniformRow(table, "CreateGreen", standardBar, null, disabledBar);
+            AddTwoColumnRow(table, "CreateGreen", standardBar, disabledBar);
 
             ProgressBar transparentBar = UIStyles.ProgressBars.CreateGreenTransparent();
             transparentBar.BackColor = UIColors.BackgroundLight;
@@ -407,14 +430,14 @@ namespace CustomWFUI.Showcase
             transparentDisabled.Value = 40;
             transparentDisabled.BackColor = UIColors.BackgroundLight;
             transparentDisabled.Enabled = false;
-            AddUniformRow(table, "CreateGreenTransparent", transparentBar, null, transparentDisabled);
+            AddTwoColumnRow(table, "CreateGreenTransparent", transparentBar, transparentDisabled);
 
             ProgressBar primaryBar = UIStyles.ProgressBars.CreatePrimary();
             AnimateProgressBar(v => primaryBar.Value = v);
             ProgressBar primaryDisabled = UIStyles.ProgressBars.CreatePrimary();
             primaryDisabled.Value = 65;
             primaryDisabled.Enabled = false;
-            AddUniformRow(table, "CreatePrimary", primaryBar, null, primaryDisabled);
+            AddTwoColumnRow(table, "CreatePrimary", primaryBar, primaryDisabled);
 
             ProgressBar primaryTransparentBar = UIStyles.ProgressBars.CreatePrimaryTransparent();
             primaryTransparentBar.BackColor = UIColors.BackgroundLight;
@@ -423,14 +446,14 @@ namespace CustomWFUI.Showcase
             primaryTransparentDisabled.Value = 40;
             primaryTransparentDisabled.BackColor = UIColors.BackgroundLight;
             primaryTransparentDisabled.Enabled = false;
-            AddUniformRow(table, "CreatePrimaryTransparent", primaryTransparentBar, null, primaryTransparentDisabled);
+            AddTwoColumnRow(table, "CreatePrimaryTransparent", primaryTransparentBar, primaryTransparentDisabled);
 
             ProgressBar statusBar = UIStyles.ProgressBars.CreateStatus();
             AnimateProgressBar(v => statusBar.Value = v);
             ProgressBar statusDisabled = UIStyles.ProgressBars.CreateStatus();
             statusDisabled.Value = 65;
             statusDisabled.Enabled = false;
-            AddUniformRow(table, "CreateStatus", statusBar, null, statusDisabled);
+            AddTwoColumnRow(table, "CreateStatus", statusBar, statusDisabled);
 
             ProgressBar statusTransparentBar = UIStyles.ProgressBars.CreateStatusTransparent();
             statusTransparentBar.BackColor = UIColors.BackgroundLight;
@@ -439,7 +462,7 @@ namespace CustomWFUI.Showcase
             statusTransparentDisabled.Value = 40;
             statusTransparentDisabled.BackColor = UIColors.BackgroundLight;
             statusTransparentDisabled.Enabled = false;
-            AddUniformRow(table, "CreateStatusTransparent", statusTransparentBar, null, statusTransparentDisabled);
+            AddTwoColumnRow(table, "CreateStatusTransparent", statusTransparentBar, statusTransparentDisabled);
 
             // Slim variants grouped together below the normal ones, rather
             // than interleaved row-by-row, so the section reads as two
@@ -451,21 +474,21 @@ namespace CustomWFUI.Showcase
             SlimProgressBar slimGreenDisabled = UIStyles.SlimProgressBars.CreateGreen();
             slimGreenDisabled.Value = 65;
             slimGreenDisabled.Enabled = false;
-            AddUniformRow(table, "Slim.CreateGreen", slimGreenBar, null, slimGreenDisabled);
+            AddTwoColumnRow(table, "Slim.CreateGreen", slimGreenBar, slimGreenDisabled);
 
             SlimProgressBar slimPrimaryBar = UIStyles.SlimProgressBars.CreatePrimary();
             AnimateProgressBar(v => slimPrimaryBar.Value = v);
             SlimProgressBar slimPrimaryDisabled = UIStyles.SlimProgressBars.CreatePrimary();
             slimPrimaryDisabled.Value = 40;
             slimPrimaryDisabled.Enabled = false;
-            AddUniformRow(table, "Slim.CreatePrimary", slimPrimaryBar, null, slimPrimaryDisabled);
+            AddTwoColumnRow(table, "Slim.CreatePrimary", slimPrimaryBar, slimPrimaryDisabled);
 
             SlimProgressBar slimStatusBar = UIStyles.SlimProgressBars.CreateStatus();
             AnimateProgressBar(v => slimStatusBar.Value = v);
             SlimProgressBar slimStatusDisabled = UIStyles.SlimProgressBars.CreateStatus();
             slimStatusDisabled.Value = 40;
             slimStatusDisabled.Enabled = false;
-            AddUniformRow(table, "Slim.CreateStatus", slimStatusBar, null, slimStatusDisabled);
+            AddTwoColumnRow(table, "Slim.CreateStatus", slimStatusBar, slimStatusDisabled);
         }
 
         // Applies the current animation percentage immediately (so the bar
@@ -484,17 +507,17 @@ namespace CustomWFUI.Showcase
             Label title = UIStyles.Labels.CreateTitle("Title label");
             Label titleDisabled = UIStyles.Labels.CreateTitle("Title label");
             titleDisabled.Enabled = false;
-            AddUniformRow(table, "CreateTitle", title, null, titleDisabled);
+            AddTwoColumnRow(table, "CreateTitle", title, titleDisabled);
 
             Label normal = UIStyles.Labels.CreateNormal("Normal body text");
             Label normalDisabled = UIStyles.Labels.CreateNormal("Normal body text");
             normalDisabled.Enabled = false;
-            AddUniformRow(table, "CreateNormal", normal, null, normalDisabled);
+            AddTwoColumnRow(table, "CreateNormal", normal, normalDisabled);
 
             Label muted = UIStyles.Labels.CreateMuted("Muted / de-emphasized text");
             Label mutedDisabled = UIStyles.Labels.CreateMuted("Muted / de-emphasized text");
             mutedDisabled.Enabled = false;
-            AddUniformRow(table, "CreateMuted", muted, null, mutedDisabled);
+            AddTwoColumnRow(table, "CreateMuted", muted, mutedDisabled);
         }
 
         private void AddPanelsSection(StyledPropertyTable table)
