@@ -61,6 +61,7 @@ namespace CustomWFUI.Controls
         private Point _pollPressPoint;
         private bool _wasLeftButtonDownLastPoll;
         private bool _isHeaderPressActive;
+        private bool _isContextMenuOpen;
         private Point _selectionAnchorPoint;
         private Point _selectionCurrentPoint;
         private readonly Timer _externalDragPollTimer;
@@ -594,7 +595,20 @@ namespace CustomWFUI.Controls
                 // nothing for "Copy selection" (plain or as table) to act on.
                 copySelection.Enabled = _anchorRow >= 0;
                 copyAll.Enabled = Items.Count > 0;
+                _isContextMenuOpen = true;
             };
+
+            // Left-clicking a menu item (including hovering into the
+            // "Copy selection"/"Copy all" submenus) is, from
+            // OnExternalDragPollTick's perspective, indistinguishable from
+            // any other left-button press that isn't on a real cell - it
+            // would otherwise clear the selection the instant the menu is
+            // clicked, before the item's own Click handler (which reads
+            // that same selection) gets a chance to run. _isContextMenuOpen
+            // tells the poll tick to stay out of the way entirely while
+            // this whole cascading menu is up; Closed only fires once the
+            // whole thing (including any open submenu) actually closes.
+            menu.Closed += (sender, e) => _isContextMenuOpen = false;
 
             return menu;
         }
@@ -983,6 +997,23 @@ namespace CustomWFUI.Controls
             // real cell" and start a cell-selection drag at the same time
             // as a column-reorder drag.
             if (_isHeaderPressActive)
+            {
+                _isPollTrackingPress = false;
+                _isPolledDragSelecting = false;
+                return;
+            }
+
+            // Same idea as the header check above - a left-click on this
+            // control's own ContextMenuStrip (including its "Copy
+            // selection"/"Copy all" submenus) isn't on a real cell either,
+            // and without this the poll would clear the very selection
+            // that click's own menu item is about to act on, before its
+            // Click handler ever gets a chance to read it - confirmed live:
+            // right-click a selected cell, then left-click "Copy selection"
+            // in the menu, and nothing got copied (no toast, selection
+            // visibly gone) because this poll cleared it out from under the
+            // menu click.
+            if (_isContextMenuOpen)
             {
                 _isPollTrackingPress = false;
                 _isPolledDragSelecting = false;
