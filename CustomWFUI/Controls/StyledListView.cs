@@ -374,6 +374,18 @@ namespace CustomWFUI.Controls
                 _headerInputSubclass = new HeaderInputSubclass(this);
                 _headerInputSubclass.AssignHandle(headerHandle);
             }
+
+            // Guards against a one-off glitch seen on the very first theme
+            // switch that rebuilds this control (not on plain construction) -
+            // the initial WM_PAINT right after a handle is (re)created can
+            // land before layout/theme colors have fully settled, so the
+            // outer border drawn there (see WndProc) could momentarily use
+            // stale values. Deferring one tick, the same way ApplyFillColumn
+            // already gets deferred elsewhere in this class after a native
+            // reorder, guarantees at least one more repaint once everything
+            // has actually settled, without needing the user to trigger a
+            // second redraw themselves (e.g. by resizing).
+            BeginInvoke(new MethodInvoker(Invalidate));
         }
 
         protected override void OnHandleDestroyed(EventArgs e)
@@ -388,6 +400,52 @@ namespace CustomWFUI.Controls
         {
             base.OnResize(e);
             ApplyFillColumn();
+        }
+
+        // BorderStyle is None - this draws a light frame around the whole
+        // control instead, matching the border each header column already
+        // gets (OnDrawColumnHeader). Since the list content itself is
+        // natively painted (WM_PAINT bypasses .NET's owner-draw pipeline
+        // for everything except what DrawItem/DrawSubItem/DrawColumnHeader
+        // already hook), the border can't be added via OnPaint either -
+        // it's drawn straight onto the client dc right after the native
+        // paint finishes, the same technique used to fix a stray native
+        // border on ProgressBar earlier in this codebase's history.
+        private const int WM_PAINT = 0x000F;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern System.IntPtr GetDC(System.IntPtr hWnd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern int ReleaseDC(System.IntPtr hWnd, System.IntPtr hDC);
+
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+
+            if (m.Msg != WM_PAINT || Width <= 1 || Height <= 1)
+            {
+                return;
+            }
+
+            System.IntPtr dc = GetDC(Handle);
+            if (dc == System.IntPtr.Zero)
+            {
+                return;
+            }
+
+            try
+            {
+                using (Graphics g = Graphics.FromHdc(dc))
+                using (Pen pen = new Pen(UIColors.BorderMedium))
+                {
+                    g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+                }
+            }
+            finally
+            {
+                ReleaseDC(Handle, dc);
+            }
         }
 
         // Clicking a cell already clears/replaces the selection on its own
@@ -620,8 +678,7 @@ namespace CustomWFUI.Controls
             using (var font = new Font(Font, FontStyle.Bold))
             {
                 e.Graphics.FillRectangle(background, e.Bounds);
-                e.Graphics.DrawLine(divider, e.Bounds.Right - 1, e.Bounds.Top, e.Bounds.Right - 1, e.Bounds.Bottom);
-                e.Graphics.DrawLine(divider, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1);
+                e.Graphics.DrawRectangle(divider, e.Bounds.Left, e.Bounds.Top, e.Bounds.Width - 1, e.Bounds.Height - 1);
                 TextRenderer.DrawText(
                     e.Graphics,
                     e.Header.Text,
