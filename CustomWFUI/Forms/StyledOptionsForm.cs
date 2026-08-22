@@ -1,9 +1,9 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using CustomWFUI.Controls;
+using ErikwnkWFUI.Controls;
 
-namespace CustomWFUI.Forms
+namespace ErikwnkWFUI.Forms
 {
     /// <summary>
     /// A small options/settings dialog built around a PropertyTable:
@@ -107,7 +107,7 @@ namespace CustomWFUI.Forms
             // the form's AcceptButton/CancelButton is what makes Enter (in
             // any child control that doesn't itself consume it, e.g. a
             // single-line TextBox) submit and Escape cancel, matching every
-            // other CustomWFUI dialog convention.
+            // other ErikwnkWFUI dialog convention.
             AcceptButton = _saveButton;
             CancelButton = _cancelButton;
 

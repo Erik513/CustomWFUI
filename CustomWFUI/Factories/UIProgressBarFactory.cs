@@ -1,9 +1,9 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Factories
+namespace ErikwnkWFUI.Factories
 {
     internal static class UIProgressBarFactory
     {

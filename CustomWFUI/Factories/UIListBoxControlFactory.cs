@@ -1,7 +1,7 @@
 ﻿using System.Drawing;
-using CustomWFUI.Controls;
+using ErikwnkWFUI.Controls;
 
-namespace CustomWFUI.Factories
+namespace ErikwnkWFUI.Factories
 {
     internal static class UIListBoxControlFactory
     {

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using CustomWFUI.Factories;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Factories;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Forms
+namespace ErikwnkWFUI.Forms
 {
     /// <summary>Which buttons a <see cref="MessageBox"/> shows.</summary>
     public enum MessageBoxButtons
@@ -35,13 +35,13 @@ namespace CustomWFUI.Forms
     }
 
     /// <summary>
-    /// CustomWFUI's themed replacement for
+    /// ErikwnkWFUI's themed replacement for
     /// <see cref="System.Windows.Forms.MessageBox"/> - call <see cref="Show"/>.
     /// </summary>
     /// <remarks>
     /// Named the same as the native dialog it replaces, same as
     /// <see cref="Controls.ListView"/> and friends - callers never need to
-    /// spell out <c>CustomWFUI.Forms.MessageBox</c> themselves as long as
+    /// spell out <c>ErikwnkWFUI.Forms.MessageBox</c> themselves as long as
     /// they don't also have <c>using System.Windows.Forms;</c> in scope
     /// wherever they call <see cref="Show"/>.
     /// </remarks>

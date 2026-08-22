@@ -1,11 +1,11 @@
-﻿using CustomWFUI.Styles;
+﻿using ErikwnkWFUI.Styles;
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace CustomWFUI.Forms
+namespace ErikwnkWFUI.Forms
 {
     /// <summary>
     /// A small, borderless, rounded-corner tooltip-like popup for showing
@@ -342,7 +342,7 @@ namespace CustomWFUI.Forms
         // why the color fix above wasn't enough on its own: BackColor/the
         // label colors were still only ever set once, at construction time -
         // so an app that switches accent/theme after building this popup
-        // (or, in CustomWFUI.Showcase's case, after every single accent
+        // (or, in ErikwnkWFUI.Showcase's case, after every single accent
         // swatch click) kept showing whatever color was live when `new
         // InfoPopupForm(...)` first ran. Called at the top of every Show*
         // method so each call re-reads the current accent, the same way a

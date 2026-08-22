@@ -1,8 +1,8 @@
 ﻿using System.Drawing;
-using CustomWFUI.Controls;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Controls;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Factories
+namespace ErikwnkWFUI.Factories
 {
     internal static class UIToggleSwitchFactory
     {

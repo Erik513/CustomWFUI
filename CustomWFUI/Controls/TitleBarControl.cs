@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using CustomWFUI.Helpers;
-using CustomWFUI.Factories;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Helpers;
+using ErikwnkWFUI.Factories;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Controls
+namespace ErikwnkWFUI.Controls
 {
     /// <summary>
     /// A custom-drawn window title bar: logo, title text, minimize/maximize/
     /// close buttons, and window dragging (including drag-to-maximize and
     /// double-click-to-maximize) - all reimplemented in managed code since it
-    /// replaces the native one. <see cref="CustomWFUI.Forms.StyledForm"/> already creates and
+    /// replaces the native one. <see cref="ErikwnkWFUI.Forms.StyledForm"/> already creates and
     /// docks one of these for you; construct it directly only if you're
     /// building a custom top-level window from scratch instead of deriving
     /// from StyledForm.
@@ -46,7 +46,7 @@ namespace CustomWFUI.Controls
             set { _titleLabel.Text = value ?? ""; }
         }
 
-        /// <summary>The small logo at the top-left, or null to hide it entirely (default). See CustomWFUI/README.md for how to load this from your own embedded resources.</summary>
+        /// <summary>The small logo at the top-left, or null to hide it entirely (default). See ErikwnkWFUI/README.md for how to load this from your own embedded resources.</summary>
         public Image IconImage
         {
             get { return _iconPictureBox.Image; }

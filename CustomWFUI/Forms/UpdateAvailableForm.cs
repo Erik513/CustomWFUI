@@ -2,10 +2,10 @@ using System;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using CustomWFUI.Factories;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Factories;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Forms
+namespace ErikwnkWFUI.Forms
 {
     /// <summary>How an <see cref="UpdatePrompt.ShowUpdateAvailableAsync"/> dialog ended.</summary>
     public enum UpdateOutcome

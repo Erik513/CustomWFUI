@@ -3,10 +3,10 @@
   <PropertyGroup>
     <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
     <UseWindowsForms>true</UseWindowsForms>
-    <RootNamespace>CustomWFUI</RootNamespace>
-    <AssemblyName>CustomWFUI</AssemblyName>
+    <RootNamespace>ErikwnkWFUI</RootNamespace>
+    <AssemblyName>ErikwnkWFUI</AssemblyName>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <!-- Ships CustomWFUI.xml next to the DLL so a consuming project sees
+    <!-- Ships ErikwnkWFUI.xml next to the DLL so a consuming project sees
          IntelliSense tooltips from this library's XML doc comments -
          without this, /// <summary> comments only ever help someone
          reading this source, never someone who just added a DLL

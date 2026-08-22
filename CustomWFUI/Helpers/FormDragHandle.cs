@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace CustomWFUI.Helpers
+namespace ErikwnkWFUI.Helpers
 {
     internal class FormDragHandle : IDisposable
     {

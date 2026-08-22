@@ -5,10 +5,10 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Windows.Forms;
-using CustomWFUI.Forms;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Forms;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Controls
+namespace ErikwnkWFUI.Controls
 {
     /// <summary>How <see cref="Controls.ListView"/> confirms a Ctrl+C/Ctrl+Shift+C copy.</summary>
     public enum CopyConfirmationStyle

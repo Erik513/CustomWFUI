@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CustomWFUI.Styles
+namespace ErikwnkWFUI.Styles
 {
     public static class UIColors
     {

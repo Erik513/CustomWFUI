@@ -2,9 +2,9 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Forms
+namespace ErikwnkWFUI.Forms
 {
     /// <summary>
     /// A small, rounded, self-dismissing confirmation toast (checkmark +

@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace CustomWFUI.Factories
+namespace ErikwnkWFUI.Factories
 {
     internal static class UIFlowLayoutPanelFactory
     {

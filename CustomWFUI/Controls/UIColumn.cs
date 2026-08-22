@@ -1,6 +1,6 @@
 ﻿using System.Windows.Forms;
 
-namespace CustomWFUI.Controls
+namespace ErikwnkWFUI.Controls
 {
     /// <summary>
     /// Pairs a <see cref="Control"/> (or a null placeholder) with a

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Controls
+namespace ErikwnkWFUI.Controls
 {
     /// <summary>
     /// An owner-drawn <see cref="System.Windows.Forms.ListBox"/> with
@@ -21,7 +21,7 @@ namespace CustomWFUI.Controls
     /// stays fully qualified so the class doesn't try to inherit from
     /// itself. Go through <see cref="UIStyles.ListBoxes.CreateStandard"/> to
     /// get one without ever having to spell out
-    /// <c>CustomWFUI.Controls.ListBox</c>.
+    /// <c>ErikwnkWFUI.Controls.ListBox</c>.
     /// </remarks>
     public class ListBox : System.Windows.Forms.ListBox
     {

@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
-using CustomWFUI.Controls;
-using CustomWFUI.Forms;
-using CustomWFUI.Styles;
-using MessageBox = CustomWFUI.Forms.MessageBox;
-using MessageBoxButtons = CustomWFUI.Forms.MessageBoxButtons;
-using MessageBoxIcon = CustomWFUI.Forms.MessageBoxIcon;
+using ErikwnkWFUI.Controls;
+using ErikwnkWFUI.Forms;
+using ErikwnkWFUI.Styles;
+using MessageBox = ErikwnkWFUI.Forms.MessageBox;
+using MessageBoxButtons = ErikwnkWFUI.Forms.MessageBoxButtons;
+using MessageBoxIcon = ErikwnkWFUI.Forms.MessageBoxIcon;
 
-namespace CustomWFUI.Showcase
+namespace ErikwnkWFUI.Showcase
 {
-    // A single window that instantiates one of every CustomWFUI control so
+    // A single window that instantiates one of every ErikwnkWFUI control so
     // its look (and, for the interactive ones, its behavior) can all be
     // checked in one place instead of hunting through consuming apps. Theme
     // and accent switching rebuild every control from scratch rather than
@@ -22,7 +22,7 @@ namespace CustomWFUI.Showcase
     // control short of recreating it.
     //
     // Laid out with a PropertyTable instead of manually-positioned
-    // cards - it's a real CustomWFUI control too (dogfooding it here rather
+    // cards - it's a real ErikwnkWFUI control too (dogfooding it here rather
     // than a one-off layout scheme), it keeps every row's label/editor
     // evenly aligned automatically, and it's exactly the kind of "several
     // controls in a settings-panel-shaped list" layout the Showcase already
@@ -72,7 +72,7 @@ namespace CustomWFUI.Showcase
         private int _progressBarAnimationPercent;
 
         public ShowcaseForm()
-            : base(StyledFormOptions.CreateStandard("CustomWFUI Showcase"))
+            : base(StyledFormOptions.CreateStandard("ErikwnkWFUI Showcase"))
         {
             StartPosition = FormStartPosition.CenterScreen;
             Size = new Size(1180, 900);

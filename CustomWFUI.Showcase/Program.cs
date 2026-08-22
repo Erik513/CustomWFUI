@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace CustomWFUI.Showcase
+namespace ErikwnkWFUI.Showcase
 {
     internal static class Program
     {

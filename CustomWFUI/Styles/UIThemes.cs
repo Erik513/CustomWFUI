@@ -1,10 +1,10 @@
 using System.Drawing;
 
-namespace CustomWFUI.Styles
+namespace ErikwnkWFUI.Styles
 {
     /// <summary>
     /// Ready-to-use base themes for <see cref="UIColors.ApplyTheme"/>. Dark
-    /// matches CustomWFUI's original, always-has-been-the-default palette
+    /// matches ErikwnkWFUI's original, always-has-been-the-default palette
     /// exactly (applying it is a no-op unless something else already changed
     /// the theme). Light is a from-scratch light palette, not a per-channel
     /// inversion of Dark - see the note on <see cref="UIColorTheme"/> about

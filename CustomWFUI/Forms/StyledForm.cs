@@ -1,15 +1,15 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
-using CustomWFUI.Controls;
-using CustomWFUI.Styles;
-using CustomWFUI.Helpers;
+using ErikwnkWFUI.Controls;
+using ErikwnkWFUI.Styles;
+using ErikwnkWFUI.Helpers;
 
-namespace CustomWFUI.Forms
+namespace ErikwnkWFUI.Forms
 {
     /// <summary>
-    /// A <see cref="Form"/> with CustomWFUI's own custom-drawn title bar
+    /// A <see cref="Form"/> with ErikwnkWFUI's own custom-drawn title bar
     /// (<see cref="TitleBar"/>) instead of the native Windows one, and
-    /// optional borderless resizing. This is the base class every CustomWFUI
+    /// optional borderless resizing. This is the base class every ErikwnkWFUI
     /// window is built on - either use it directly (<c>new StyledForm(title)</c>
     /// for a quick window, or the <see cref="StyledFormOptions"/> constructor
     /// for full control), or derive from it the way
@@ -162,7 +162,7 @@ namespace CustomWFUI.Forms
     {
         public StyledFormType Type { get; set; } = StyledFormType.Standard;
 
-        /// <summary>True (the default) removes the native Windows title bar/frame in favor of CustomWFUI's own <see cref="TitleBarControl"/>.</summary>
+        /// <summary>True (the default) removes the native Windows title bar/frame in favor of ErikwnkWFUI's own <see cref="TitleBarControl"/>.</summary>
         public bool Borderless { get; set; } = true;
         public int BorderSize { get; set; } = 1;
         /// <summary>Whether the window can be resized by dragging its edges - only meaningful when <see cref="Borderless"/> is true.</summary>

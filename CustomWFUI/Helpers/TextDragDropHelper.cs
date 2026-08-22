@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 
-namespace CustomWFUI.Helpers
+namespace ErikwnkWFUI.Helpers
 {
     /// <summary>
     /// Helper for adding drag and drop support to controls.

@@ -1,6 +1,6 @@
-﻿using CustomWFUI.Controls;
+﻿using ErikwnkWFUI.Controls;
 
-namespace CustomWFUI.Factories
+namespace ErikwnkWFUI.Factories
 {
     internal static class UIListBoxFactory
     {

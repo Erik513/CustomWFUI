@@ -1,8 +1,8 @@
 using System.Drawing;
 using System.Windows.Forms;
-using static CustomWFUI.UIStyles;
+using static ErikwnkWFUI.UIStyles;
 
-namespace CustomWFUI.Controls
+namespace ErikwnkWFUI.Controls
 {
     /// <summary>
     /// A two-column "label: editor" table, grouped into optional labeled

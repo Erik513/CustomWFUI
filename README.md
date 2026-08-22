@@ -1,4 +1,4 @@
-# CustomWFUI
+# ErikwnkWFUI
 
 A dark-themed WinForms UI control library: borderless windows with a custom
 title bar, styled buttons/labels/lists/tables/dialogs, and a small theming
@@ -7,21 +7,21 @@ system (accent color + light/dark base palette). Targets `net48` and
 
 ## Adding it to a project
 
-Reference `CustomWFUI.dll` (built from `CustomWFUI/CustomWFUI.csproj`) the
+Reference `ErikwnkWFUI.dll` (built from `CustomWFUI/CustomWFUI.csproj`) the
 same way as any other library - project reference if you have the source
 checked out alongside your app, or copy the built DLL (see
-`CustomWFUI/bin/<Debug|Release>/<net48|net8.0-windows>/CustomWFUI.dll`)
+`CustomWFUI/bin/<Debug|Release>/<net48|net8.0-windows>/ErikwnkWFUI.dll`)
 into your own project and add a plain assembly reference. IntelliSense
-tooltips come from `CustomWFUI.xml`, built next to the DLL - keep the two
+tooltips come from `ErikwnkWFUI.xml`, built next to the DLL - keep the two
 together.
 
 ## Quick start
 
 ```csharp
-using CustomWFUI;
-using CustomWFUI.Forms;
+using ErikwnkWFUI;
+using ErikwnkWFUI.Forms;
 
-// A borderless, resizable window with CustomWFUI's own title bar.
+// A borderless, resizable window with ErikwnkWFUI's own title bar.
 using (var form = new StyledForm("My App"))
 {
     var button = UIStyles.Buttons.CreatePrimary("Click me");
@@ -47,12 +47,12 @@ one-line summary of what it's for.
   `ListView`, `ToggleSwitch`, `TitleBarControl`, ...), for when you
   need to reach past what a factory method gives you (e.g. subscribing to
   an event, or a property `UIStyles` doesn't proxy).
-- **`Forms/`** - `StyledForm` (the base every CustomWFUI window builds on),
+- **`Forms/`** - `StyledForm` (the base every ErikwnkWFUI window builds on),
   plus ready-made dialogs (`MessageBoxForm`, `InfoPopupForm`,
   `UpdateAvailableForm`, `StyledOptionsForm`).
 - **`Factories/`** - internal. `UIStyles` is the only supported public
   entry point to these; if you're referencing anything under
-  `CustomWFUI.Factories` directly, use the equivalent `UIStyles.*` instead.
+  `ErikwnkWFUI.Factories` directly, use the equivalent `UIStyles.*` instead.
 - **`Styles/`** - the color/font/string tables `UIStyles` reads from
   (`UIColors`, `UIFonts`, `UIThemes`, `UIAccentColors`, `UIStrings`).
 - **`Helpers/`** - low-level plumbing (borderless resize hit-testing,
@@ -72,7 +72,7 @@ change made afterward:
 UIStyles.Colors.SetAccent(UIAccentColors.Purple);
 
 // Base theme: backgrounds/text/borders. Defaults to UIThemes.Dark
-// (CustomWFUI's original dark gray palette) - switch to UIThemes.Light
+// (ErikwnkWFUI's original dark gray palette) - switch to UIThemes.Light
 // for a light theme. Combine freely with SetAccent.
 UIStyles.Colors.ApplyTheme(UIThemes.Light);
 ```
@@ -88,7 +88,7 @@ independent of the two calls above.
 UIStyles.Language = UILanguage.German;
 ```
 
-Switches the text CustomWFUI's own built-in dialogs ship (title bar
+Switches the text ErikwnkWFUI's own built-in dialogs ship (title bar
 tooltips, the update-available prompt, message box buttons, ...) between
 English (default) and German. Same "set before building UI" caveat as
 theming - already-built dialogs won't relabel themselves, except the title

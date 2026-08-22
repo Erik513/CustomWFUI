@@ -1,6 +1,6 @@
 using System.Windows.Forms;
 
-namespace CustomWFUI.Factories
+namespace ErikwnkWFUI.Factories
 {
     // Returns the System.Windows.Forms.DataGridView base type on purpose,
     // not Controls.DataGridView - callers never need to spell out the

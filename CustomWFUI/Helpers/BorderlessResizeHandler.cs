@@ -2,13 +2,13 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace CustomWFUI.Helpers
+namespace ErikwnkWFUI.Helpers
 {
     /// <summary>
     /// Restores edge/corner resize cursors and dragging for a borderless
     /// (<see cref="FormBorderStyle.None"/>) form, which loses that
     /// automatically along with its native frame.
-    /// <see cref="CustomWFUI.Forms.StyledForm"/> already wires this up for
+    /// <see cref="ErikwnkWFUI.Forms.StyledForm"/> already wires this up for
     /// you when its Borderless/Resizable options are both true - construct
     /// one directly only if you're building a borderless window from
     /// scratch instead of deriving from StyledForm.

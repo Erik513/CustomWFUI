@@ -4,10 +4,10 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Reflection;
 
-namespace CustomWFUI.Styles
+namespace ErikwnkWFUI.Styles
 {
     // Reusable step/action icons, shipped as embedded resources in
-    // CustomWFUI.dll so multiple projects can use them without keeping
+    // ErikwnkWFUI.dll so multiple projects can use them without keeping
     // their own copy of the image files.
     public static class UIIcons
     {
@@ -43,12 +43,12 @@ namespace CustomWFUI.Styles
 
         private static Image LoadIcon(string fileName)
         {
-            return LoadEmbedded(Assembly.GetExecutingAssembly(), $"CustomWFUI.Icons.{fileName}");
+            return LoadEmbedded(Assembly.GetExecutingAssembly(), $"ErikwnkWFUI.Icons.{fileName}");
         }
 
         /// <summary>
         /// Loads an image from an embedded resource in the given assembly. Intended
-        /// for consuming apps to load their own logo/icon the same way CustomWFUI
+        /// for consuming apps to load their own logo/icon the same way ErikwnkWFUI
         /// loads its bundled icons: baked into the assembly instead of a loose file
         /// next to the exe, so it can't go missing or get left behind by an update.
         /// </summary>

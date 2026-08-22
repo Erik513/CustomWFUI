@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 
-namespace CustomWFUI
+namespace ErikwnkWFUI
 {
     public enum AppCurrency
     {

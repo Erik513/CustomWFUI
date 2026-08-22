@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Windows.Forms;
-using static CustomWFUI.UIStyles;
+using static ErikwnkWFUI.UIStyles;
 
-namespace CustomWFUI.Factories
+namespace ErikwnkWFUI.Factories
 {
     internal static class UINumericUpDownFactory
     {

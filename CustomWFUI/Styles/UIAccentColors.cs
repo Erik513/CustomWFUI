@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace CustomWFUI.Styles
+namespace ErikwnkWFUI.Styles
 {
     /// <summary>
     /// A curated palette of base colors for <see cref="UIColors.SetAccent"/>,
@@ -11,7 +11,7 @@ namespace CustomWFUI.Styles
     /// </summary>
     public static class UIAccentColors
     {
-        /// <summary>CustomWFUI's original, always-has-been-the-default accent.</summary>
+        /// <summary>ErikwnkWFUI's original, always-has-been-the-default accent.</summary>
         public static readonly Color Blue = Color.FromArgb(0, 90, 158);
 
         public static readonly Color Red = Color.FromArgb(200, 45, 45);

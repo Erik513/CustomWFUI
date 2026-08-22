@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace CustomWFUI.Styles
+namespace ErikwnkWFUI.Styles
 {
     public enum UILanguage
     {

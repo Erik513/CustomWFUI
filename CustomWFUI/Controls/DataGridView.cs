@@ -2,9 +2,9 @@ using System;
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI.Controls
+namespace ErikwnkWFUI.Controls
 {
     /// <summary>
     /// A themed <see cref="System.Windows.Forms.DataGridView"/> for displaying
@@ -24,7 +24,7 @@ namespace CustomWFUI.Controls
     /// library is moving toward, replacing the old "Styled" prefix) - the
     /// base type reference below has to stay fully qualified so the class
     /// doesn't try to inherit from itself. Consumers never need to spell out
-    /// <c>CustomWFUI.Controls.DataGridView</c> either: go through
+    /// <c>ErikwnkWFUI.Controls.DataGridView</c> either: go through
     /// <see cref="UIStyles.DataGridViews.CreateStandard"/>, which hands back
     /// a plain <see cref="System.Windows.Forms.DataGridView"/>-typed
     /// reference.

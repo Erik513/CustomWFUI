@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CustomWFUI.Styles
+namespace ErikwnkWFUI.Styles
 {
-    /// <summary>The fonts used across CustomWFUI's controls - fixed, not part of the theme system.</summary>
+    /// <summary>The fonts used across ErikwnkWFUI's controls - fixed, not part of the theme system.</summary>
     public static class UIFonts
     {
         /// <summary>Bold, for headings/titles.</summary>

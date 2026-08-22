@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace CustomWFUI.Helpers
+namespace ErikwnkWFUI.Helpers
 {
     /// <summary>
     /// Keeps the display and system from sleeping while active, e.g. during

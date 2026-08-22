@@ -2,16 +2,16 @@
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
-using CustomWFUI.Controls;
-using CustomWFUI.Factories;
-using CustomWFUI.Styles;
+using ErikwnkWFUI.Controls;
+using ErikwnkWFUI.Factories;
+using ErikwnkWFUI.Styles;
 
-namespace CustomWFUI
+namespace ErikwnkWFUI
 {
     /// <summary>
-    /// The single entry point for CustomWFUI's control factories and styling
+    /// The single entry point for ErikwnkWFUI's control factories and styling
     /// - start here rather than the individual classes under
-    /// <see cref="CustomWFUI.Factories"/>/<see cref="CustomWFUI.Styles"/>
+    /// <see cref="ErikwnkWFUI.Factories"/>/<see cref="ErikwnkWFUI.Styles"/>
     /// (most of which are internal). Each nested class below (<see
     /// cref="Buttons"/>, <see cref="Labels"/>, ...) mirrors one control type
     /// with a set of <c>Create*</c> factory methods that return a
@@ -25,7 +25,7 @@ namespace CustomWFUI
         /// <summary>
         /// Language used by built-in dialogs/controls that ship their own text
         /// (update prompt, title bar tooltips). Set once at startup, before any
-        /// CustomWFUI form is created, to switch away from the English default.
+        /// ErikwnkWFUI form is created, to switch away from the English default.
         /// </summary>
         public static UILanguage Language
         {
@@ -34,7 +34,7 @@ namespace CustomWFUI
         }
 
         /// <summary>
-        /// Read-only access to every color used across CustomWFUI's controls,
+        /// Read-only access to every color used across ErikwnkWFUI's controls,
         /// plus <see cref="SetAccent"/>/<see cref="ApplyTheme"/> to customize
         /// them. Defaults to a dark gray theme with a blue accent; nothing
         /// here needs to be set unless you want to change that.
@@ -126,7 +126,7 @@ namespace CustomWFUI
             }
         }
 
-        /// <summary>The fonts used across CustomWFUI's controls.</summary>
+        /// <summary>The fonts used across ErikwnkWFUI's controls.</summary>
         public static class Fonts
         {
             public static Font Title { get { return UIFonts.Title; } }
@@ -272,7 +272,7 @@ namespace CustomWFUI
             }
         }
 
-        /// <summary>A themed <see cref="ComboBox"/>. Note: only the edit portion follows the theme - the native dropdown list itself still renders with system colors (see CustomWFUI/README.md).</summary>
+        /// <summary>A themed <see cref="ComboBox"/>. Note: only the edit portion follows the theme - the native dropdown list itself still renders with system colors (see ErikwnkWFUI/README.md).</summary>
         public static class ComboBoxes
         {
             public static ComboBox CreateStandard(
@@ -544,10 +544,10 @@ namespace CustomWFUI
         }
 
         /// <summary>
-        /// CustomWFUI's own bundled icons (Web/Folder/Document/Application),
+        /// ErikwnkWFUI's own bundled icons (Web/Folder/Document/Application),
         /// plus <see cref="LoadEmbedded"/> for loading your own app's icon
         /// from its embedded resources the same way - see
-        /// CustomWFUI/README.md for why that's preferable to a loose file.
+        /// ErikwnkWFUI/README.md for why that's preferable to a loose file.
         /// </summary>
         public static class Icons
         {

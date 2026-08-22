@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace CustomWFUI
+namespace ErikwnkWFUI
 {
     public enum AppLanguage
     {
@@ -11,7 +11,7 @@ namespace CustomWFUI
 
     /// <summary>
     /// General-purpose text localization for a consumer app's own strings -
-    /// separate from CustomWFUI's internal UIStrings, which only covers the
+    /// separate from ErikwnkWFUI's internal UIStrings, which only covers the
     /// library's own built-in dialogs (title bar tooltips, update prompt).
     /// An app registers one dictionary per language once at startup, then
     /// looks strings up by key. Switching Language raises LanguageChanged so

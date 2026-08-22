@@ -1,6 +1,6 @@
 using System.Drawing;
 
-namespace CustomWFUI.Styles
+namespace ErikwnkWFUI.Styles
 {
     /// <summary>
     /// The set of base surface colors (backgrounds, text, borders, hover/active
