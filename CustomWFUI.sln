@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37314.3
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomWFUI", "CustomWFUI\CustomWFUI.csproj", "{67BEB9A5-DD73-4C4A-910B-D9848640924A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ErikwnkWFUI", "CustomWFUI\CustomWFUI.csproj", "{67BEB9A5-DD73-4C4A-910B-D9848640924A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomWFUI.Showcase", "CustomWFUI.Showcase\CustomWFUI.Showcase.csproj", "{37CA0C99-8D4E-43FC-A47B-324D96E3567F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ErikwnkWFUI.Showcase", "ErikwnkWFUI.Showcase\ErikwnkWFUI.Showcase.csproj", "{37CA0C99-8D4E-43FC-A47B-324D96E3567F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
