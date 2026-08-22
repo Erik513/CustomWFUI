@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using ErikwnkWFUI.Styles;
-using GitHubSelfUpdater;
+using ErikwnkCore.Updater;
 
 namespace ErikwnkWFUI.Forms
 {
@@ -12,7 +12,7 @@ namespace ErikwnkWFUI.Forms
     /// Self-contained "check for update" flow for apps hosting their releases on
     /// GitHub. Provides all the UI itself (prompt, progress, failure message) and
     /// only needs the repo coordinates and a couple of HttpClients to talk to
-    /// GitHubSelfUpdater - the consuming app never touches that library directly.
+    /// ErikwnkCore.Updater - the consuming app never touches that library directly.
     /// </summary>
     public class AppUpdater
     {
