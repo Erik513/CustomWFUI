@@ -7,10 +7,10 @@ system (accent color + light/dark base palette). Targets `net48` and
 
 ## Adding it to a project
 
-Reference `ErikwnkWFUI.dll` (built from `CustomWFUI/CustomWFUI.csproj`) the
+Reference `ErikwnkWFUI.dll` (built from `ErikwnkWFUI/ErikwnkWFUI.csproj`) the
 same way as any other library - project reference if you have the source
 checked out alongside your app, or copy the built DLL (see
-`CustomWFUI/bin/<Debug|Release>/<net48|net8.0-windows>/ErikwnkWFUI.dll`)
+`ErikwnkWFUI/bin/<Debug|Release>/<net48|net8.0-windows>/ErikwnkWFUI.dll`)
 into your own project and add a plain assembly reference. IntelliSense
 tooltips come from `ErikwnkWFUI.xml`, built next to the DLL - keep the two
 together.
