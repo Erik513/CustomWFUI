@@ -69,6 +69,7 @@ namespace ErikwnkWFUI.Controls
         private bool _wasLeftButtonDownLastPoll;
         private bool _isHeaderPressActive;
         private bool _isContextMenuOpen;
+        private bool _isScrollBarPressActive;
         private Point _selectionAnchorPoint;
         private Point _selectionCurrentPoint;
         private readonly Timer _externalDragPollTimer;
@@ -508,6 +509,36 @@ namespace ErikwnkWFUI.Controls
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern int ReleaseDC(System.IntPtr hWnd, System.IntPtr hDC);
+
+        // Used by OnExternalDragPollTick to recognize a press on this
+        // control's own native scrollbar (vertical or horizontal) - those
+        // live in the non-client area, at a position the poll would
+        // otherwise see only as "a fresh press that isn't on a real cell"
+        // and wrongly treat as a click that should clear the selection
+        // (same class of problem the header/context-menu checks below
+        // already solve, just not previously covered for the scrollbar).
+        // A first attempt asked Windows itself via WM_NCHITTEST, but that
+        // didn't actually work here (confirmed by the user still seeing
+        // the selection clear) - the geometric check below is more direct
+        // and doesn't depend on that message being routed/answered the way
+        // a plain, non-owner-drawn control would: the native scrollbar's
+        // non-client strip is exactly the gap between ClientSize (the area
+        // rows are actually laid out in) and the control's own full Size
+        // (its outer bounds, scrollbar included), so a point is "on the
+        // scrollbar" whenever it falls in that gap.
+        private bool IsPointOnScrollBar(Point screenPoint)
+        {
+            var clientPoint = PointToClient(screenPoint);
+
+            bool onVerticalScrollBar =
+                clientPoint.X >= ClientSize.Width && clientPoint.X < Width &&
+                clientPoint.Y >= 0 && clientPoint.Y < Height;
+            bool onHorizontalScrollBar =
+                clientPoint.Y >= ClientSize.Height && clientPoint.Y < Height &&
+                clientPoint.X >= 0 && clientPoint.X < Width;
+
+            return onVerticalScrollBar || onHorizontalScrollBar;
+        }
 
         protected override void WndProc(ref Message m)
         {
@@ -1206,6 +1237,35 @@ namespace ErikwnkWFUI.Controls
             // as a column-reorder drag.
             if (_isHeaderPressActive)
             {
+                _isPollTrackingPress = false;
+                _isPolledDragSelecting = false;
+                return;
+            }
+
+            // A fresh press is checked against the scrollbar (native
+            // non-client area) before anything else below can react to it -
+            // scrolling by dragging the thumb or clicking the track/arrows
+            // must never clear or start a selection, the same as a header
+            // or context-menu press. The check only needs to run once, on
+            // the press itself: while the button stays down afterward
+            // (dragging the thumb), the cursor can move away from the
+            // scrollbar's own bounds (Windows keeps tracking the drag via
+            // its own capture regardless), so latching the result for the
+            // whole press - instead of re-hit-testing every tick - is what
+            // keeps a thumb-drag that briefly crosses over the list content
+            // from suddenly being treated as a selection drag mid-scroll.
+            if (justPressed)
+            {
+                _isScrollBarPressActive = IsPointOnScrollBar(Cursor.Position);
+            }
+
+            if (_isScrollBarPressActive)
+            {
+                if (justReleased)
+                {
+                    _isScrollBarPressActive = false;
+                }
+
                 _isPollTrackingPress = false;
                 _isPolledDragSelecting = false;
                 return;
