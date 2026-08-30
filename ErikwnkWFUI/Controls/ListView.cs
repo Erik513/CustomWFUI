@@ -59,6 +59,7 @@ namespace ErikwnkWFUI.Controls
 
         private int _headerHeight = 24;
         private bool _isApplyingFillColumn;
+        private bool _isSnappingHeightToWholeRows;
         private int _pendingToggleDeselectItemIndex = -1;
         private readonly Timer _toggleDeselectSettleTimer;
         private int _toggleDeselectWatchIndex = -1;
@@ -253,6 +254,7 @@ namespace ErikwnkWFUI.Controls
 
                 _rowHeightImageList = new ImageList { ImageSize = new Size(1, value) };
                 SmallImageList = _rowHeightImageList;
+                SnapHeightToWholeRows();
             }
         }
 
@@ -492,6 +494,12 @@ namespace ErikwnkWFUI.Controls
             // has actually settled, without needing the user to trigger a
             // second redraw themselves (e.g. by resizing).
             BeginInvoke(new MethodInvoker(Invalidate));
+
+            // Deferred for the same reason - _headerHeight only reflects
+            // reality after at least one real header paint, and a row's
+            // own Bounds (GetEffectiveRowHeight) needs the handle to have
+            // actually finished settling too.
+            BeginInvoke(new MethodInvoker(SnapHeightToWholeRows));
         }
 
         protected override void OnHandleDestroyed(EventArgs e)
@@ -506,6 +514,80 @@ namespace ErikwnkWFUI.Controls
         {
             base.OnResize(e);
             ApplyFillColumn();
+            SnapHeightToWholeRows();
+        }
+
+        // Never grows past the height that was actually requested - this
+        // only ever rounds DOWN to the largest whole-row-count height that
+        // still fits within whatever Height/Size the caller set, so the
+        // control can't end up taller than asked for. The point is to make
+        // "a partially visible row at the bottom" - the root condition
+        // every one of the border/repaint artifacts around scrolling a
+        // half-visible row into view ultimately came from - simply never
+        // able to occur in the first place, rather than continuing to
+        // patch each individual symptom of it.
+        private void SnapHeightToWholeRows()
+        {
+            if (_isSnappingHeightToWholeRows || IsDisposed || !IsHandleCreated)
+            {
+                return;
+            }
+
+            var rowHeight = GetEffectiveRowHeight();
+            if (rowHeight <= 0)
+            {
+                return;
+            }
+
+            var availableContentHeight = ClientSize.Height - _headerHeight;
+            if (availableContentHeight < rowHeight)
+            {
+                // Not even one full row fits - leave the height alone
+                // rather than collapsing the control down to its header.
+                return;
+            }
+
+            var wholeRowCount = availableContentHeight / rowHeight;
+            var desiredClientHeight = _headerHeight + (wholeRowCount * rowHeight);
+            if (desiredClientHeight == ClientSize.Height)
+            {
+                return;
+            }
+
+            _isSnappingHeightToWholeRows = true;
+            try
+            {
+                ClientSize = new Size(ClientSize.Width, desiredClientHeight);
+            }
+            finally
+            {
+                _isSnappingHeightToWholeRows = false;
+            }
+        }
+
+        // The explicit RowHeight property (if set) is authoritative -
+        // otherwise a real row's own native Bounds.Height is preferred
+        // over a Font-based guess, since it reflects whatever padding/
+        // theming Windows actually applied; the Font-based estimate (the
+        // same one IsVerticalScrollBarLikelyVisible already uses) is only
+        // a fallback for when there's no row yet to measure.
+        private int GetEffectiveRowHeight()
+        {
+            if (RowHeight > 0)
+            {
+                return RowHeight;
+            }
+
+            if (Items.Count > 0)
+            {
+                var height = Items[0].Bounds.Height;
+                if (height > 0)
+                {
+                    return height;
+                }
+            }
+
+            return Font.Height + 6;
         }
 
         // BorderStyle is None - this draws a light frame around the whole
@@ -537,6 +619,7 @@ namespace ErikwnkWFUI.Controls
         // every visible row fresh and gets rid of it. LVS_EX_DOUBLEBUFFER
         // above keeps this from re-introducing the flicker the partial
         // blit was originally meant to avoid.
+        //
         private const int WM_VSCROLL = 0x0115;
         private const int WM_HSCROLL = 0x0114;
         private const int WM_MOUSEWHEEL = 0x020A;
@@ -967,7 +1050,27 @@ namespace ErikwnkWFUI.Controls
                 width -= 1;
             }
 
-            return new Rectangle(left, fallbackVerticalBounds.Top, width, fallbackVerticalBounds.Height);
+            var top = fallbackVerticalBounds.Top;
+            var height = fallbackVerticalBounds.Height;
+
+            // Same trick, same reason, for the BOTTOM edge - the row that
+            // ends at (or is cut off by) the very bottom of the client area
+            // otherwise paints straight into the exact pixel row WndProc's
+            // border draws its bottom edge on, and any later repaint of
+            // just that row (a hover, a click, a key press, ...) erases the
+            // border there the same way an unprotected left edge used to.
+            // Reserving this one pixel row for the border, the same way
+            // the left column already reserves one pixel column, means
+            // nothing native can ever paint over it in the first place -
+            // no repaint-ordering trick can race a pixel that's simply
+            // never drawn into by anything else.
+            var maxBottom = ClientSize.Height - 1;
+            if (top + height > maxBottom)
+            {
+                height = Math.Max(0, maxBottom - top);
+            }
+
+            return new Rectangle(left, top, width, height);
         }
 
         // Called from HeaderInputSubclass once a header click has moved
