@@ -609,16 +609,24 @@ namespace ErikwnkWFUI.Showcase
             listView.Columns.Add("Item", 180);
             listView.Columns.Add("Status", 100);
 
-            // Enough rows to force a vertical scrollbar - the 260px row
-            // height below only shows ~8 of them at once, so this doubles
-            // as a way to actually exercise drag-select + scroll behavior
-            // here instead of only in a consuming app.
+            // PropertyTable centers a row's editor control inside an
+            // AutoSize middle row rather than stretching it (see
+            // PropertyTable.AddControlToCell) - so the row height passed to
+            // AddRow below only changes how much padding surrounds the
+            // control, not the control's own size. The control's actual
+            // rendered height comes from this Height instead.
+            listView.Height = 380;
+
+            // Enough rows to force a vertical scrollbar - only ~13 fit in
+            // that height at once, so this doubles as a way to actually
+            // exercise drag-select + scroll behavior here instead of only
+            // in a consuming app.
             for (int i = 1; i <= 40; i++)
             {
                 listView.Items.Add(new ListViewItem(new[] { "Row " + i, i % 2 == 0 ? "OK" : "Pending" }));
             }
 
-            table.AddRow("CreateStandard", 260, listView);
+            table.AddRow("CreateStandard", 420, listView);
         }
 
         private void AddDataGridSection(PropertyTable table)

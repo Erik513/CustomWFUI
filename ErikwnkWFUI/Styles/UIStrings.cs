@@ -57,8 +57,8 @@ namespace ErikwnkWFUI.Styles
             ["ListView.CopySelection"] = "Copy selection",
             ["ListView.CopyAll"] = "Copy all",
             ["ListView.AsTable"] = "As table",
-            ["ListView.CellCopied"] = "Cell copied",
-            ["ListView.CellsCopied"] = "{0} cells copied",
+            ["ListView.RowCopied"] = "Row copied",
+            ["ListView.RowsCopied"] = "{0} rows copied",
             ["ListView.WithHeaderSuffix"] = " (with header)",
         };
 
@@ -83,8 +83,8 @@ namespace ErikwnkWFUI.Styles
             ["ListView.CopySelection"] = "Auswahl kopieren",
             ["ListView.CopyAll"] = "Alles kopieren",
             ["ListView.AsTable"] = "Als Tabelle",
-            ["ListView.CellCopied"] = "Zelle kopiert",
-            ["ListView.CellsCopied"] = "{0} Zellen kopiert",
+            ["ListView.RowCopied"] = "Zeile kopiert",
+            ["ListView.RowsCopied"] = "{0} Zeilen kopiert",
             ["ListView.WithHeaderSuffix"] = " (mit Kopfzeile)",
         };
 

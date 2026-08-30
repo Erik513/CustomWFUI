@@ -22,23 +22,23 @@ namespace ErikwnkWFUI.Controls
     }
 
     /// <summary>
-    /// A dark-themed, multi-column ListView (Details view) with genuine,
-    /// spreadsheet-like cell-range selection instead of the native
-    /// whole-row highlight: cells stay dark until a real selection is made,
-    /// and then only the selected cells turn blue.
+    /// A dark-themed, multi-column ListView (Details view) with completely
+    /// standard, native row selection - click, Ctrl+click, Shift+click, and
+    /// the native rubber-band drag (including its own auto-scroll past an
+    /// edge) all work exactly like Explorer's own list view, since they
+    /// simply are Explorer's own list view under the hood. Only the visuals
+    /// (row/header colors, fonts, the selection overlay) are this control's
+    /// own - selection itself is left entirely to
+    /// <see cref="System.Windows.Forms.ListView.MultiSelect"/> and
+    /// <see cref="System.Windows.Forms.ListView.SelectedItems"/>, not
+    /// reimplemented by hand.
     /// <list type="bullet">
-    /// <item>A plain click selects just that one cell.</item>
-    /// <item>Holding the left button down and dragging extends the selection to a rectangle between the click and the current cursor cell.</item>
-    /// <item>Ctrl+Alt+Click extends the existing selection to the clicked cell without needing to drag all the way there.</item>
-    /// <item>Ctrl+A selects every cell.</item>
-    /// <item>Clicking a cell that's already selected deselects it again.</item>
-    /// <item>Arrow keys move a single-cell selection; Shift+arrow extends it, the same way Shift+click would.</item>
     /// <item>Hovering a cell whose text is wider than its column shows the full text in a tooltip.</item>
     /// </list>
-    /// Ctrl+C copies the selected rectangle (tab-separated columns, one line
+    /// Ctrl+C copies every selected row (tab-separated columns, one line
     /// per row, no header line - meant to be pasted as plain data). Ctrl+
-    /// Shift+C copies the same rectangle with a leading row of column names,
-    /// for pasting as a proper table. Both also place an HTML table on the
+    /// Shift+C copies the same rows with a leading row of column names, for
+    /// pasting as a proper table. Both also place an HTML table on the
     /// clipboard alongside the plain text, so apps that understand it (Word,
     /// Outlook, browsers, Excel, ...) paste an actual bordered table instead
     /// of raw tab characters; plain-text-only targets still get the tab-
@@ -57,23 +57,12 @@ namespace ErikwnkWFUI.Controls
     {
         private const int DefaultMinimumColumnWidth = 40;
 
-        private int _anchorRow = -1;
-        private int _anchorColumn = -1;
-        private int _activeRow = -1;
-        private int _activeColumn = -1;
-        private bool _isDragSelecting;
         private int _headerHeight = 24;
-        private bool _isPollTrackingPress;
-        private bool _isPolledDragSelecting;
-        private Point _pollPressPoint;
-        private bool _wasLeftButtonDownLastPoll;
-        private bool _isHeaderPressActive;
-        private bool _isContextMenuOpen;
-        private bool _isScrollBarPressActive;
-        private Point _selectionAnchorPoint;
-        private Point _selectionCurrentPoint;
-        private readonly Timer _externalDragPollTimer;
         private bool _isApplyingFillColumn;
+        private int _pendingToggleDeselectItemIndex = -1;
+        private readonly Timer _toggleDeselectSettleTimer;
+        private int _toggleDeselectWatchIndex = -1;
+        private readonly OutsideClickDeselectFilter _outsideClickDeselectFilter;
 
         private Color _rowBackColor = UIColors.BackgroundMedium;
         private Color _alternateRowBackColor;
@@ -272,7 +261,7 @@ namespace ErikwnkWFUI.Controls
             View = View.Details;
             FullRowSelect = true;
             HideSelection = true;
-            MultiSelect = false;
+            MultiSelect = true;
             // Column reordering is hand-rolled (see HeaderInputSubclass and
             // OnDragOver/OnDragDrop below) instead of using the native
             // drag - see ColumnReorderIndicatorColor's doc comment for why.
@@ -300,30 +289,29 @@ namespace ErikwnkWFUI.Controls
             DrawColumnHeader += OnDrawColumnHeader;
             DrawItem += OnDrawItem;
             DrawSubItem += OnDrawSubItem;
-            MouseDown += OnListViewMouseDown;
-            MouseMove += OnListViewMouseMove;
+            MouseDown += OnListViewMouseDownForToggleDeselect;
+            MouseUp += OnListViewMouseUpForToggleDeselect;
+            ItemSelectionChanged += OnItemSelectionChangedForToggleDeselect;
+            // Safety-net only, only ever running for ~1.5s after a toggle-
+            // deselect - see OnListViewMouseUpForToggleDeselect for why
+            // this exists at all.
+            _toggleDeselectSettleTimer = new Timer { Interval = 1500 };
+            _toggleDeselectSettleTimer.Tick += OnToggleDeselectSettleTimerTick;
             MouseMove += OnListViewMouseMoveForToolTip;
             MouseLeave += OnListViewMouseLeave;
-            MouseUp += OnListViewMouseUp;
             KeyDown += OnListViewKeyDown;
             ColumnWidthChanging += OnColumnWidthChanging;
             ColumnWidthChanged += OnColumnWidthChanged;
 
             ContextMenuStrip = BuildContextMenu();
 
-            // Polls rather than relying on this control's own MouseMove/
-            // MouseUp for the "drag started outside this control entirely"
-            // case (see OnExternalDragPollTick) - a plain MouseMove-based
-            // approach was tried first and never actually fired, because
-            // WinForms implicitly captures the mouse for whatever control
-            // the button-down happened on, so this control never receives
-            // mouse messages for a drag it didn't itself start. Polling
-            // Control.MouseButtons/Cursor.Position instead sidesteps
-            // capture ownership entirely, since those reflect true global
-            // input state rather than routed messages.
-            _externalDragPollTimer = new Timer { Interval = 25 };
-            _externalDragPollTimer.Tick += OnExternalDragPollTick;
-            _externalDragPollTimer.Start();
+            // Reacts to a left-button press landing on any OTHER window in
+            // this app - a message filter, not a poll, so this doesn't
+            // bring back the kind of hand-rolled per-tick tracking the
+            // selection rewrite just got rid of. See
+            // OutsideClickDeselectFilter for what counts as "outside".
+            _outsideClickDeselectFilter = new OutsideClickDeselectFilter(this);
+            Application.AddMessageFilter(_outsideClickDeselectFilter);
         }
 
         protected override void Dispose(bool disposing)
@@ -331,8 +319,9 @@ namespace ErikwnkWFUI.Controls
             if (disposing)
             {
                 _cellToolTip.Dispose();
-                _externalDragPollTimer.Stop();
-                _externalDragPollTimer.Dispose();
+                _toggleDeselectSettleTimer.Stop();
+                _toggleDeselectSettleTimer.Dispose();
+                Application.RemoveMessageFilter(_outsideClickDeselectFilter);
             }
 
             base.Dispose(disposing);
@@ -536,36 +525,6 @@ namespace ErikwnkWFUI.Controls
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern int ReleaseDC(System.IntPtr hWnd, System.IntPtr hDC);
 
-        // Used by OnExternalDragPollTick to recognize a press on this
-        // control's own native scrollbar (vertical or horizontal) - those
-        // live in the non-client area, at a position the poll would
-        // otherwise see only as "a fresh press that isn't on a real cell"
-        // and wrongly treat as a click that should clear the selection
-        // (same class of problem the header/context-menu checks below
-        // already solve, just not previously covered for the scrollbar).
-        // A first attempt asked Windows itself via WM_NCHITTEST, but that
-        // didn't actually work here (confirmed by the user still seeing
-        // the selection clear) - the geometric check below is more direct
-        // and doesn't depend on that message being routed/answered the way
-        // a plain, non-owner-drawn control would: the native scrollbar's
-        // non-client strip is exactly the gap between ClientSize (the area
-        // rows are actually laid out in) and the control's own full Size
-        // (its outer bounds, scrollbar included), so a point is "on the
-        // scrollbar" whenever it falls in that gap.
-        private bool IsPointOnScrollBar(Point screenPoint)
-        {
-            var clientPoint = PointToClient(screenPoint);
-
-            bool onVerticalScrollBar =
-                clientPoint.X >= ClientSize.Width && clientPoint.X < Width &&
-                clientPoint.Y >= 0 && clientPoint.Y < Height;
-            bool onHorizontalScrollBar =
-                clientPoint.Y >= ClientSize.Height && clientPoint.Y < Height &&
-                clientPoint.X >= 0 && clientPoint.X < Width;
-
-            return onVerticalScrollBar || onHorizontalScrollBar;
-        }
-
         // Scrolling (scrollbar drag/click, mouse wheel, or a keyboard
         // scroll) makes the native ListView shift its existing pixels with
         // ScrollWindowEx and then repaint only the newly-exposed strip -
@@ -664,19 +623,6 @@ namespace ErikwnkWFUI.Controls
             {
                 ReleaseDC(Handle, dc);
             }
-        }
-
-        // Clicking a cell already clears/replaces the selection on its own
-        // (see OnListViewMouseDown), but nothing previously cleared it when
-        // focus moved to a completely different control elsewhere in the
-        // app - the selected cells stayed highlighted indefinitely even
-        // though nothing about them was still relevant. Matches how a
-        // spreadsheet's own selection typically doesn't survive switching
-        // away to another window/control either.
-        protected override void OnLeave(EventArgs e)
-        {
-            base.OnLeave(e);
-            ClearSelection();
         }
 
         private void OnColumnWidthChanging(object sender, ColumnWidthChangingEventArgs e)
@@ -867,24 +813,9 @@ namespace ErikwnkWFUI.Controls
 
             menu.Opening += (sender, e) =>
             {
-                // Nothing is selected outside a real anchor cell, so there's
-                // nothing for "Copy selection" (plain or as table) to act on.
-                copySelection.Enabled = _anchorRow >= 0;
+                copySelection.Enabled = SelectedItems.Count > 0;
                 copyAll.Enabled = Items.Count > 0;
-                _isContextMenuOpen = true;
             };
-
-            // Left-clicking a menu item (including hovering into the
-            // "Copy selection"/"Copy all" submenus) is, from
-            // OnExternalDragPollTick's perspective, indistinguishable from
-            // any other left-button press that isn't on a real cell - it
-            // would otherwise clear the selection the instant the menu is
-            // clicked, before the item's own Click handler (which reads
-            // that same selection) gets a chance to run. _isContextMenuOpen
-            // tells the poll tick to stay out of the way entirely while
-            // this whole cascading menu is up; Closed only fires once the
-            // whole thing (including any open submenu) actually closes.
-            menu.Closed += (sender, e) => _isContextMenuOpen = false;
 
             return menu;
         }
@@ -980,7 +911,10 @@ namespace ErikwnkWFUI.Controls
                 e.Graphics.FillRectangle(background, bounds);
             }
 
-            if (IsCellSelected(e.ItemIndex, e.ColumnIndex))
+            // FullRowSelect + native SelectedItems - the whole row's worth
+            // of cells share one selected/not-selected state, straight from
+            // the native control, not any hand-tracked range.
+            if (e.Item.Selected)
             {
                 using (var overlay = new SolidBrush(SelectionOverlayColor))
                 {
@@ -1036,452 +970,6 @@ namespace ErikwnkWFUI.Controls
             return new Rectangle(left, fallbackVerticalBounds.Top, width, fallbackVerticalBounds.Height);
         }
 
-        // _anchorColumn/_activeColumn are tracked in DISPLAY order (visual
-        // left-to-right position), not the column's own data index - so a
-        // dragged selection rectangle stays visually correct regardless of
-        // whether columns have been reordered. dataColumnIndex (as reported
-        // by the ownerdraw events) is converted to its current display
-        // position before comparing.
-        private bool IsCellSelected(int row, int dataColumnIndex)
-        {
-            if (row < 0 || row >= Items.Count || dataColumnIndex < 0 || dataColumnIndex >= Columns.Count)
-            {
-                return false;
-            }
-
-            // While a mouse drag is actually in progress (either the
-            // normal on-cell one, or a poll-driven one - see
-            // OnExternalDragPollTick), selection is real pixel-rectangle
-            // intersection against the cell's own bounds, matching how
-            // Explorer's own rubber-band selection works: a cell counts
-            // only if its bounds genuinely overlap the dragged area.
-            // Independently clamping row and column index from the
-            // cursor's X and Y (the previous approach) could select a cell
-            // whose row merely happened to share a Y-coordinate band with
-            // the cursor while X was nowhere near any column at all (e.g.
-            // dragging somewhere far to the side of the whole table).
-            if (_isDragSelecting || _isPolledDragSelecting)
-            {
-                var cellRect = GetSubItemBounds(Items[row], Columns[dataColumnIndex], Items[row].Bounds);
-                return cellRect.IntersectsWith(GetNormalizedSelectionRectangle());
-            }
-
-            if (_anchorRow < 0)
-            {
-                return false;
-            }
-
-            var displayIndex = Columns[dataColumnIndex].DisplayIndex;
-            var rowStart = Math.Min(_anchorRow, _activeRow);
-            var rowEnd = Math.Max(_anchorRow, _activeRow);
-            var columnStart = Math.Min(_anchorColumn, _activeColumn);
-            var columnEnd = Math.Max(_anchorColumn, _activeColumn);
-            return row >= rowStart && row <= rowEnd && displayIndex >= columnStart && displayIndex <= columnEnd;
-        }
-
-        // Built from the RAW anchor/current points (never clamped - see
-        // their own assignment sites), then intersected with what's
-        // actually on screen right now. Intersecting the finished
-        // rectangle, rather than clamping each endpoint to the client area
-        // beforehand, is the part that actually matters: clamping the
-        // endpoints still lets a drag that never touches the visible area
-        // at all (e.g. entirely below this control) produce a real,
-        // zero-height rectangle sitting exactly on the bottom edge - and a
-        // zero-height rectangle sitting ON a boundary still counts as
-        // touching (IntersectsWith) whatever row's bounds happen to end
-        // there, wrongly selecting the last visible row. Intersecting
-        // instead means a rectangle with no genuine overlap collapses to
-        // Rectangle.Empty (IntersectsWith nothing at all), while one that
-        // does overlap gets trimmed to only the part actually on screen.
-        private Rectangle GetNormalizedSelectionRectangle()
-        {
-            int left = Math.Min(_selectionAnchorPoint.X, _selectionCurrentPoint.X);
-            int right = Math.Max(_selectionAnchorPoint.X, _selectionCurrentPoint.X);
-            int top = Math.Min(_selectionAnchorPoint.Y, _selectionCurrentPoint.Y);
-            int bottom = Math.Max(_selectionAnchorPoint.Y, _selectionCurrentPoint.Y);
-            var rawRectangle = Rectangle.FromLTRB(left, top, right, bottom);
-
-            return Rectangle.Intersect(rawRectangle, GetVisibleContentArea());
-        }
-
-        // The area rows can actually be painted into right now - below the
-        // header strip, within the control's current client size.
-        private Rectangle GetVisibleContentArea()
-        {
-            int top = Math.Min(_headerHeight, ClientSize.Height);
-            return new Rectangle(0, top, ClientSize.Width, Math.Max(0, ClientSize.Height - top));
-        }
-
-        // Converts the live pixel selection rectangle into the index-based
-        // _anchorRow/_anchorColumn/_activeRow/_activeColumn representation
-        // once a drag ends, so keyboard navigation (MoveSelectionWithArrowKey),
-        // Ctrl+C, and a plain click's "is this cell already selected" check
-        // keep working the normal, index-based way afterward - only the
-        // live drag itself needs pixel intersection. A rectangle dragged
-        // over a regular cell grid always covers a contiguous index range,
-        // so tracking the min/max row and display-column index among every
-        // intersected cell fully reconstructs it.
-        private void FinalizeDragSelection()
-        {
-            if (Items.Count == 0 || Columns.Count == 0)
-            {
-                ClearSelection();
-                return;
-            }
-
-            var selectionRect = GetNormalizedSelectionRectangle();
-            var orderedColumns = GetColumnsInDisplayOrder();
-
-            int minRow = -1, maxRow = -1, minColumn = -1, maxColumn = -1;
-
-            for (int row = 0; row < Items.Count; row++)
-            {
-                var rowBounds = Items[row].Bounds;
-
-                for (int displayIndex = 0; displayIndex < orderedColumns.Count; displayIndex++)
-                {
-                    var cellRect = GetSubItemBounds(Items[row], orderedColumns[displayIndex], rowBounds);
-                    if (!cellRect.IntersectsWith(selectionRect))
-                    {
-                        continue;
-                    }
-
-                    minRow = minRow < 0 ? row : Math.Min(minRow, row);
-                    maxRow = Math.Max(maxRow, row);
-                    minColumn = minColumn < 0 ? displayIndex : Math.Min(minColumn, displayIndex);
-                    maxColumn = Math.Max(maxColumn, displayIndex);
-                }
-            }
-
-            if (minRow < 0)
-            {
-                ClearSelection();
-                return;
-            }
-
-            _anchorRow = minRow;
-            _activeRow = maxRow;
-            _anchorColumn = minColumn;
-            _activeColumn = maxColumn;
-        }
-
-        private void OnListViewMouseDown(object sender, MouseEventArgs e)
-        {
-            if (e.Button != MouseButtons.Left)
-            {
-                return;
-            }
-
-            // A real header click never reaches this handler at all - it
-            // lands on the header's own separate native child window (see
-            // HeaderInputSubclass).
-            var hitTest = HitTest(e.Location);
-            if (hitTest.Item == null)
-            {
-                // Handled entirely by OnExternalDragPollTick instead -
-                // native mouse events for an "off-item" press turned out
-                // unreliable here (confirmed by logging a real attempt:
-                // the native ListView fires its own MouseUp almost
-                // immediately for such a press, even while the physical
-                // button is still held, wiping out any state tracked from
-                // MouseDown before a real drag ever got a chance to
-                // register). Polling Control.MouseButtons/Cursor.Position
-                // instead doesn't depend on this control's own mouse
-                // events at all, so it isn't affected by that quirk - and
-                // handles a press starting outside this control the same
-                // way, uniformly, with no need to tell the two apart.
-                return;
-            }
-
-            var row = hitTest.Item.Index;
-            var column = GetColumnIndexAtX(e.Location.X);
-            var extendExisting = ModifierKeys == (Keys.Control | Keys.Alt) && _anchorRow >= 0;
-            if (extendExisting)
-            {
-                _activeRow = row;
-                _activeColumn = column;
-            }
-            else if (IsCellInCurrentSelection(row, column))
-            {
-                // Clicking a cell that's already selected toggles it back off,
-                // instead of re-selecting the same single cell.
-                ClearSelection();
-                return;
-            }
-            else
-            {
-                _anchorRow = row;
-                _anchorColumn = column;
-                _activeRow = row;
-                _activeColumn = column;
-                _selectionAnchorPoint = e.Location;
-                _selectionCurrentPoint = _selectionAnchorPoint;
-                _isDragSelecting = true;
-            }
-
-            Invalidate();
-        }
-
-        // Same rectangle test as IsCellSelected, but takes a column already
-        // expressed in DISPLAY order (as produced by GetColumnIndexAtX)
-        // instead of a data column index.
-        private bool IsCellInCurrentSelection(int row, int displayColumn)
-        {
-            if (_anchorRow < 0)
-            {
-                return false;
-            }
-
-            var rowStart = Math.Min(_anchorRow, _activeRow);
-            var rowEnd = Math.Max(_anchorRow, _activeRow);
-            var columnStart = Math.Min(_anchorColumn, _activeColumn);
-            var columnEnd = Math.Max(_anchorColumn, _activeColumn);
-            return row >= rowStart && row <= rowEnd && displayColumn >= columnStart && displayColumn <= columnEnd;
-        }
-
-        private void ClearSelection()
-        {
-            _anchorRow = -1;
-            _anchorColumn = -1;
-            _activeRow = -1;
-            _activeColumn = -1;
-            _isDragSelecting = false;
-            Invalidate();
-        }
-
-        private void OnListViewMouseMove(object sender, MouseEventArgs e)
-        {
-            if (!_isDragSelecting || (e.Button & MouseButtons.Left) == 0)
-            {
-                return;
-            }
-
-            if (e.Location == _selectionCurrentPoint)
-            {
-                return;
-            }
-
-            _selectionCurrentPoint = e.Location;
-            Invalidate();
-        }
-
-        private void OnListViewMouseUp(object sender, MouseEventArgs e)
-        {
-            if (_isDragSelecting)
-            {
-                FinalizeDragSelection();
-                Invalidate();
-            }
-
-            _isDragSelecting = false;
-        }
-
-        // Drives cell selection for every press that ISN'T a direct hit on
-        // a real cell - both a press starting in this control's own dead
-        // zone (below the last row, beside the last column) and one
-        // starting somewhere else in the app entirely, uniformly, with no
-        // need to tell the two apart. A direct on-cell press is still
-        // handled the normal way, by OnListViewMouseDown/Move/Up - those
-        // reliably fire for a genuine item hit, and already have their own
-        // richer click behavior (toggle off if already selected,
-        // Ctrl+Alt to extend) that only makes sense there.
-        //
-        // Everything here works off polled global state
-        // (Control.MouseButtons/Cursor.Position) instead of this
-        // control's own mouse events, because two different event-based
-        // attempts both broke on real native quirks: routing through
-        // MouseMove never saw a single event for a press that started
-        // outside this control (WinForms implicitly captures the mouse
-        // for whichever control the button actually went down on, so nothing
-        // ever reaches here); and routing through this control's own
-        // MouseDown/MouseUp for a dead-zone press broke because the native
-        // ListView fires its own MouseUp almost immediately for an
-        // "off-item" press, even while the physical button is still held -
-        // confirmed by logging a real attempt, where MouseUp landed right
-        // after MouseDown at the same point while every MouseMove
-        // afterward kept reporting the button as still down. Polling
-        // doesn't depend on any of that; it just asks the OS directly,
-        // every tick.
-        private void OnExternalDragPollTick(object sender, EventArgs e)
-        {
-            bool leftDown = (MouseButtons & MouseButtons.Left) != 0;
-            bool justPressed = leftDown && !_wasLeftButtonDownLastPoll;
-            bool justReleased = !leftDown && _wasLeftButtonDownLastPoll;
-            _wasLeftButtonDownLastPoll = leftDown;
-
-            // A press on the header (reordering a column, or just resizing
-            // one) is owned entirely by HeaderInputSubclass/DoDragDrop -
-            // this control's own MouseDown never even fires for it (see
-            // HeaderInputSubclass's own comment), so without this check
-            // this poll would otherwise see "a fresh press that isn't on a
-            // real cell" and start a cell-selection drag at the same time
-            // as a column-reorder drag.
-            if (_isHeaderPressActive)
-            {
-                _isPollTrackingPress = false;
-                _isPolledDragSelecting = false;
-                return;
-            }
-
-            // A fresh press is checked against the scrollbar (native
-            // non-client area) before anything else below can react to it -
-            // scrolling by dragging the thumb or clicking the track/arrows
-            // must never clear or start a selection, the same as a header
-            // or context-menu press. The check only needs to run once, on
-            // the press itself: while the button stays down afterward
-            // (dragging the thumb), the cursor can move away from the
-            // scrollbar's own bounds (Windows keeps tracking the drag via
-            // its own capture regardless), so latching the result for the
-            // whole press - instead of re-hit-testing every tick - is what
-            // keeps a thumb-drag that briefly crosses over the list content
-            // from suddenly being treated as a selection drag mid-scroll.
-            if (justPressed)
-            {
-                _isScrollBarPressActive = IsPointOnScrollBar(Cursor.Position);
-            }
-
-            if (_isScrollBarPressActive)
-            {
-                if (justReleased)
-                {
-                    _isScrollBarPressActive = false;
-                }
-
-                _isPollTrackingPress = false;
-                _isPolledDragSelecting = false;
-                return;
-            }
-
-            // Same idea as the header check above - a left-click on this
-            // control's own ContextMenuStrip (including its "Copy
-            // selection"/"Copy all" submenus) isn't on a real cell either,
-            // and without this the poll would clear the very selection
-            // that click's own menu item is about to act on, before its
-            // Click handler ever gets a chance to read it - confirmed live:
-            // right-click a selected cell, then left-click "Copy selection"
-            // in the menu, and nothing got copied (no toast, selection
-            // visibly gone) because this poll cleared it out from under the
-            // menu click.
-            if (_isContextMenuOpen)
-            {
-                _isPollTrackingPress = false;
-                _isPolledDragSelecting = false;
-                return;
-            }
-
-            if (justPressed && !_isDragSelecting)
-            {
-                // _isDragSelecting can only already be true here if the
-                // press landed on a real cell - OnListViewMouseDown (a
-                // normal input event, delivered before this poll tick could
-                // possibly run) already claimed it. A fresh press anywhere
-                // else clears whatever was selected, same as the original
-                // "click below the last row clears the selection" behavior,
-                // just no longer limited to that one specific dead zone.
-                if (_anchorRow >= 0)
-                {
-                    ClearSelection();
-                }
-
-                _pollPressPoint = PointToClient(Cursor.Position);
-                _isPollTrackingPress = true;
-            }
-
-            // Reliable, poll-driven release detection - a backstop for
-            // BOTH kinds of drag, not just the poll-driven one. The same
-            // native-event unreliability documented above for a press
-            // (MouseUp firing early/never for anything off-item) applies
-            // just as much to a drag that STARTED on a real cell
-            // (_isDragSelecting, normally finalized by OnListViewMouseUp)
-            // once the cursor leaves this control's bounds mid-drag -
-            // OnListViewMouseMove/MouseUp can simply stop arriving from
-            // that point on. Without this, _isDragSelecting could get
-            // stuck true forever after such a drag, which - since the
-            // justPressed handling above only clears the selection when
-            // "!_isDragSelecting" - would silently block every future
-            // click here from ever deselecting anything again.
-            if (justReleased)
-            {
-                if (_isDragSelecting || _isPolledDragSelecting)
-                {
-                    FinalizeDragSelection();
-                    Invalidate();
-                }
-
-                _isDragSelecting = false;
-                _isPollTrackingPress = false;
-                _isPolledDragSelecting = false;
-                return;
-            }
-
-            if (!leftDown)
-            {
-                return;
-            }
-
-            // Same reliability gap while the button is still down: once an
-            // on-cell drag's cursor leaves this control, native MouseMove
-            // can stop updating _selectionCurrentPoint too, freezing the
-            // selection rectangle at whatever it last saw instead of
-            // following the still-active drag. The poll keeps it live
-            // here as a fallback - if native MouseMove is still firing
-            // fine, this just recomputes the same point every tick, a
-            // no-op past the equality check below.
-            if (_isDragSelecting)
-            {
-                var followedPoint = PointToClient(Cursor.Position);
-                if (followedPoint != _selectionCurrentPoint)
-                {
-                    _selectionCurrentPoint = followedPoint;
-                    Invalidate();
-                }
-
-                return;
-            }
-
-            if (!_isPollTrackingPress || Items.Count == 0 || Columns.Count == 0)
-            {
-                return;
-            }
-
-            var currentPoint = PointToClient(Cursor.Position);
-
-            if (!_isPolledDragSelecting)
-            {
-                bool movedEnough =
-                    Math.Abs(currentPoint.X - _pollPressPoint.X) >= SystemInformation.DragSize.Width ||
-                    Math.Abs(currentPoint.Y - _pollPressPoint.Y) >= SystemInformation.DragSize.Height;
-
-                if (!movedEnough)
-                {
-                    return;
-                }
-
-                // Anchored at the ORIGINAL press point - safe even when
-                // that point is far outside this control entirely (pressed
-                // somewhere else in the app), because selection is real
-                // rectangle intersection (see IsCellSelected) against a
-                // rectangle that GetNormalizedSelectionRectangle always
-                // intersects down to what's actually visible - a raw
-                // anchor/current pair that never touches the visible area
-                // at all collapses to an empty rectangle there, matching
-                // any cell nowhere at all.
-                _selectionAnchorPoint = _pollPressPoint;
-                _selectionCurrentPoint = currentPoint;
-                _isPolledDragSelecting = true;
-                Invalidate();
-                return;
-            }
-
-            if (currentPoint == _selectionCurrentPoint)
-            {
-                return;
-            }
-
-            _selectionCurrentPoint = currentPoint;
-            Invalidate();
-        }
-
         // Called from HeaderInputSubclass once a header click has moved
         // past the drag threshold - a header click lands on the header's
         // own native child window, not on this control, so detecting the
@@ -1513,14 +1001,6 @@ namespace ErikwnkWFUI.Controls
                 _isDraggingColumn = false;
                 _dragColumnIndex = -1;
                 _dragInsertBeforeDisplayIndex = -1;
-
-                // DoDragDrop runs its own internal message loop for the
-                // whole drag, so the header's own WM_LBUTTONUP (which
-                // would otherwise clear this) may never actually reach
-                // HeaderInputSubclass's normal WndProc handling for a real
-                // reorder - this is the reliable place to clear it instead,
-                // since DoDragDrop has, by definition, just finished.
-                _isHeaderPressActive = false;
 
                 InvalidateHeader();
             }
@@ -1675,6 +1155,93 @@ namespace ErikwnkWFUI.Controls
             return orderedColumns.Count;
         }
 
+        // Native click behavior always ends up with just the clicked item
+        // selected (for a plain click, no modifiers) - it never TOGGLES an
+        // already-selected item back off, the way this control used to
+        // (see the class doc's history). Restoring just that one piece:
+        // remember, at MouseDown, whether the pressed item was already the
+        // sole selected item; if MouseUp lands back on that same item
+        // (i.e. this wasn't a drag to somewhere else), deselect it. Native
+        // selection handling itself is untouched - this only adds a
+        // correction afterward, so drag-select/Ctrl/Shift-click all keep
+        // working exactly as native.
+        private void OnListViewMouseDownForToggleDeselect(object sender, MouseEventArgs e)
+        {
+            _pendingToggleDeselectItemIndex = -1;
+
+            if (e.Button != MouseButtons.Left || ModifierKeys != Keys.None)
+            {
+                return;
+            }
+
+            var hitTest = HitTest(e.Location);
+            if (hitTest.Item != null && hitTest.Item.Selected && SelectedItems.Count == 1)
+            {
+                _pendingToggleDeselectItemIndex = hitTest.Item.Index;
+            }
+        }
+
+        private void OnListViewMouseUpForToggleDeselect(object sender, MouseEventArgs e)
+        {
+            var pendingIndex = _pendingToggleDeselectItemIndex;
+            _pendingToggleDeselectItemIndex = -1;
+
+            if (pendingIndex < 0 || e.Button != MouseButtons.Left)
+            {
+                return;
+            }
+
+            var hitTest = HitTest(e.Location);
+            if (hitTest.Item != null && hitTest.Item.Index == pendingIndex && hitTest.Item.Selected)
+            {
+                hitTest.Item.Selected = false;
+
+                // comctl32 arms an internal "click to rename" timer for ANY
+                // press on an item that's already both selected AND
+                // focused, regardless of LabelEdit - that timer fires
+                // natively about a second later and re-applies the item's
+                // selected state on its own, silently undoing the deselect
+                // above. There's no way to preempt that timer itself from
+                // managed code, but ItemSelectionChanged fires the instant
+                // it does fire - watching for that and reverting it right
+                // there (see OnItemSelectionChangedForToggleDeselect) reacts
+                // as soon as it happens instead of waiting out a guessed
+                // delay, so the item never visibly sits there re-selected
+                // for the better part of a second. The timer below is only
+                // a safety net that stops the watch if that reselect never
+                // actually happens.
+                _toggleDeselectWatchIndex = pendingIndex;
+                _toggleDeselectSettleTimer.Stop();
+                _toggleDeselectSettleTimer.Start();
+            }
+        }
+
+        private void OnItemSelectionChangedForToggleDeselect(object sender, ListViewItemSelectionChangedEventArgs e)
+        {
+            if (_toggleDeselectWatchIndex < 0 || e.ItemIndex != _toggleDeselectWatchIndex || !e.IsSelected)
+            {
+                return;
+            }
+
+            // Clear the watch BEFORE reverting - Selected's setter below
+            // raises this same event again (with IsSelected false this
+            // time), and without clearing first that recursive call would
+            // still match the guard above and try to act again.
+            _toggleDeselectWatchIndex = -1;
+            _toggleDeselectSettleTimer.Stop();
+            e.Item.Selected = false;
+        }
+
+        // Only reached if the native reselect quirk never actually fired
+        // for this click - just stops watching, since
+        // OnItemSelectionChangedForToggleDeselect already handles the real
+        // case the instant it happens.
+        private void OnToggleDeselectSettleTimerTick(object sender, EventArgs e)
+        {
+            _toggleDeselectSettleTimer.Stop();
+            _toggleDeselectWatchIndex = -1;
+        }
+
         // Shows the full cell text on hover whenever OnDrawSubItem would
         // have had to ellipsize it - the same 6px left / 3px right padding
         // it draws text with is subtracted here to decide if it actually
@@ -1746,6 +1313,10 @@ namespace ErikwnkWFUI.Controls
             return measured.Width > availableWidth;
         }
 
+        // Arrow-key navigation/range-extension (Up/Down/Shift+Up/Down, plus
+        // Ctrl-navigate-without-selecting) is entirely native - only Ctrl+C/
+        // Ctrl+Shift+C/Ctrl+A need handling here, since the native control
+        // has no built-in accelerator for any of those three.
         private void OnListViewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Control && e.Shift && e.KeyCode == Keys.C)
@@ -1766,95 +1337,34 @@ namespace ErikwnkWFUI.Controls
                 e.Handled = true;
                 e.SuppressKeyPress = true;
             }
-            else if (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down || e.KeyCode == Keys.Left || e.KeyCode == Keys.Right)
-            {
-                if (MoveSelectionWithArrowKey(e.KeyCode, e.Shift))
-                {
-                    e.Handled = true;
-                    e.SuppressKeyPress = true;
-                }
-            }
         }
 
-        // Plain arrow key moves a single-cell selection by one row/column
-        // (like clicking a neighboring cell). Shift+arrow instead extends
-        // the active corner while the anchor stays put, same as Shift+click
-        // would - so a range can be built up without touching the mouse.
-        private bool MoveSelectionWithArrowKey(Keys key, bool extendSelection)
-        {
-            if (Items.Count == 0 || Columns.Count == 0)
-            {
-                return false;
-            }
-
-            int row;
-            int column;
-            if (_anchorRow < 0)
-            {
-                row = 0;
-                column = 0;
-            }
-            else
-            {
-                row = _activeRow;
-                column = _activeColumn;
-                switch (key)
-                {
-                    case Keys.Up:
-                        row = Math.Max(0, row - 1);
-                        break;
-                    case Keys.Down:
-                        row = Math.Min(Items.Count - 1, row + 1);
-                        break;
-                    case Keys.Left:
-                        column = Math.Max(0, column - 1);
-                        break;
-                    case Keys.Right:
-                        column = Math.Min(Columns.Count - 1, column + 1);
-                        break;
-                }
-            }
-
-            if (extendSelection && _anchorRow >= 0)
-            {
-                _activeRow = row;
-                _activeColumn = column;
-            }
-            else
-            {
-                _anchorRow = row;
-                _anchorColumn = column;
-                _activeRow = row;
-                _activeColumn = column;
-            }
-
-            if (row >= 0 && row < Items.Count)
-            {
-                Items[row].EnsureVisible();
-            }
-
-            Invalidate();
-            return true;
-        }
-
+        // The native ListView has no built-in "select everything" - unlike
+        // ListBox, which does.
         private void SelectAll()
         {
-            if (Items.Count == 0 || Columns.Count == 0)
+            if (Items.Count == 0)
             {
                 return;
             }
 
-            _anchorRow = 0;
-            _anchorColumn = 0;
-            _activeRow = Items.Count - 1;
-            _activeColumn = Columns.Count - 1;
-            Invalidate();
+            BeginUpdate();
+            try
+            {
+                foreach (ListViewItem item in Items)
+                {
+                    item.Selected = true;
+                }
+            }
+            finally
+            {
+                EndUpdate();
+            }
         }
 
-        // Returns a DISPLAY index (position in visual column order), to match
-        // how _anchorColumn/_activeColumn and IsCellSelected are tracked -
-        // necessary so drag-selection stays visually correct after columns
-        // have been reordered.
+        // Returns a DISPLAY index (position in visual column order) - used
+        // for header-reorder/tooltip column hit-testing, unrelated to
+        // selection (which is now entirely native/row-based).
         private int GetColumnIndexAtX(int x)
         {
             var orderedColumns = GetColumnsInDisplayOrder();
@@ -1886,30 +1396,25 @@ namespace ErikwnkWFUI.Controls
 
         private void CopySelectionCore(bool includeHeader)
         {
-            if (_anchorRow < 0)
+            // SelectedItems isn't guaranteed to be in visual order - sorting
+            // by Index keeps the copied rows in the same top-to-bottom order
+            // they're actually shown in, regardless of the order they were
+            // clicked/dragged into the selection.
+            var selectedItems = SelectedItems.Cast<ListViewItem>().OrderBy(item => item.Index).ToList();
+            if (selectedItems.Count == 0)
             {
                 return;
             }
 
-            var rowStart = Math.Min(_anchorRow, _activeRow);
-            var rowEnd = Math.Min(Math.Max(_anchorRow, _activeRow), Items.Count - 1);
-
-            // _anchorColumn/_activeColumn are DISPLAY indices; map the
-            // selected display range back to actual data columns before
-            // indexing SubItems, so copying still lines up correctly after
-            // the user has dragged columns into a different order.
+            // Every column, in DISPLAY order - a whole-row copy always
+            // includes every column, so (unlike the old cell-range copy)
+            // there's no column span to compute here.
             var orderedColumns = GetColumnsInDisplayOrder();
-            var columnStart = Math.Min(_anchorColumn, _activeColumn);
-            var columnEnd = Math.Min(Math.Max(_anchorColumn, _activeColumn), orderedColumns.Count - 1);
 
             List<string> headerCells = null;
             if (includeHeader)
             {
-                headerCells = new List<string>();
-                for (var displayColumn = columnStart; displayColumn <= columnEnd; displayColumn++)
-                {
-                    headerCells.Add(orderedColumns[displayColumn].Text);
-                }
+                headerCells = orderedColumns.Select(column => column.Text).ToList();
             }
 
             var plainTextBuilder = new StringBuilder();
@@ -1919,25 +1424,17 @@ namespace ErikwnkWFUI.Controls
             }
 
             var rows = new List<List<string>>();
-            var cellCount = 0;
-            for (var row = rowStart; row <= rowEnd; row++)
+            foreach (var item in selectedItems)
             {
-                var item = Items[row];
                 var cells = new List<string>();
-                for (var displayColumn = columnStart; displayColumn <= columnEnd; displayColumn++)
+                foreach (var column in orderedColumns)
                 {
-                    var dataColumn = orderedColumns[displayColumn].Index;
+                    var dataColumn = column.Index;
                     cells.Add(dataColumn < item.SubItems.Count ? item.SubItems[dataColumn].Text : string.Empty);
-                    cellCount++;
                 }
 
                 rows.Add(cells);
                 plainTextBuilder.AppendLine(string.Join("\t", cells));
-            }
-
-            if (cellCount == 0)
-            {
-                return;
             }
 
             // Plain text is the universal fallback (any app that only reads
@@ -1951,9 +1448,9 @@ namespace ErikwnkWFUI.Controls
             dataObject.SetData(DataFormats.Html, BuildCfHtmlTable(headerCells, rows));
             Clipboard.SetDataObject(dataObject, true);
 
-            var message = cellCount == 1
-                ? UIStrings.Get("ListView.CellCopied")
-                : string.Format(UIStrings.Get("ListView.CellsCopied"), cellCount);
+            var message = selectedItems.Count == 1
+                ? UIStrings.Get("ListView.RowCopied")
+                : string.Format(UIStrings.Get("ListView.RowsCopied"), selectedItems.Count);
             ShowCopyToast(includeHeader ? message + UIStrings.Get("ListView.WithHeaderSuffix") : message);
         }
 
@@ -2122,13 +1619,6 @@ namespace ErikwnkWFUI.Controls
                 switch (m.Msg)
                 {
                     case WM_LBUTTONDOWN:
-                        // Set for ANY press here, including a resize-grip
-                        // click OnMouseDown itself ignores (leaves
-                        // _pendingColumnIndex at -1) - a resize is still a
-                        // header interaction, not a cell one, and must
-                        // block OnExternalDragPollTick's cell-selection
-                        // polling exactly the same as a reorder does.
-                        _owner._isHeaderPressActive = true;
                         OnMouseDown(GetX(m.LParam));
                         break;
 
@@ -2160,7 +1650,6 @@ namespace ErikwnkWFUI.Controls
                         // only ever called after OnMouseMove sees the
                         // threshold exceeded.
                         _pendingColumnIndex = -1;
-                        _owner._isHeaderPressActive = false;
                         break;
                 }
             }
@@ -2225,6 +1714,73 @@ namespace ErikwnkWFUI.Controls
                 // its own internal message loop - this call doesn't return
                 // until the drag ends one way or another.
                 _owner.BeginColumnDragDrop(columnIndex);
+            }
+        }
+
+        // Clears the selection when a left-button press lands anywhere else
+        // in the app - a Windows message filter sees every message before
+        // its target window does, which is the standard, non-polling way
+        // to react to "a click happened somewhere I'm not". A press
+        // targeting this control's OWN window handle is never "outside",
+        // whether it's WM_LBUTTONDOWN on the client area (a real cell, or
+        // empty space below the last row/beside the last column) or
+        // WM_NCLBUTTONDOWN on its own non-client area (the scrollbar) -
+        // both report m.HWnd as this control's own handle either way. The
+        // header is a separate native child window ("SysHeader32", see
+        // HeaderInputSubclass) so it needs its own explicit exclusion.
+        // Anything else - another control in this form, empty space on the
+        // form, a completely different window elsewhere in this app - is
+        // genuinely "outside" and clears the selection. A click in a
+        // different application entirely doesn't even resolve to a Control
+        // via FromChildHandle, so it's naturally excluded too.
+        private sealed class OutsideClickDeselectFilter : IMessageFilter
+        {
+            private const int WM_LBUTTONDOWN = 0x0201;
+            private const int WM_NCLBUTTONDOWN = 0x00A1;
+
+            private readonly ListView _owner;
+
+            public OutsideClickDeselectFilter(ListView owner)
+            {
+                _owner = owner;
+            }
+
+            public bool PreFilterMessage(ref Message m)
+            {
+                if (m.Msg != WM_LBUTTONDOWN && m.Msg != WM_NCLBUTTONDOWN)
+                {
+                    return false;
+                }
+
+                if (_owner.IsDisposed || !_owner.IsHandleCreated || _owner.SelectedItems.Count == 0)
+                {
+                    return false;
+                }
+
+                if (m.HWnd == _owner.Handle)
+                {
+                    return false;
+                }
+
+                var headerHandle = HeaderInputSubclass.GetHeaderHandle(_owner.Handle);
+                if (headerHandle != System.IntPtr.Zero && m.HWnd == headerHandle)
+                {
+                    return false;
+                }
+
+                if (Control.FromChildHandle(m.HWnd) == null)
+                {
+                    // Not one of this process's own windows (e.g. a click
+                    // in a different application) - nothing to react to.
+                    return false;
+                }
+
+                foreach (ListViewItem item in _owner.SelectedItems.Cast<ListViewItem>().ToList())
+                {
+                    item.Selected = false;
+                }
+
+                return false;
             }
         }
     }
