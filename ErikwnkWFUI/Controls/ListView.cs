@@ -448,10 +448,36 @@ namespace ErikwnkWFUI.Controls
             ApplyFillColumn();
         }
 
+        // LVM_SETEXTENDEDLISTVIEWSTYLE / LVS_EX_DOUBLEBUFFER - turns on the
+        // native ListView's OWN internal double buffering. Without this,
+        // scrolling an owner-drawn ListView (this control draws every cell
+        // itself via DrawSubItem) can leave stray gray streaks/lines behind:
+        // comctl32 scrolls existing content with ScrollWindowEx and then
+        // repaints only the newly-exposed strip directly to screen, and that
+        // strip's owner-draw callbacks can visibly lag behind the blit for
+        // a frame, showing whatever was underneath (typically gray) instead
+        // of this control's own row background. This is the standard fix
+        // for exactly that class of artifact and has no public .NET API -
+        // DoubleBuffered/ControlStyles (already set in the constructor) only
+        // cover .NET's own OnPaint pipeline, which this control's actual
+        // row/cell content never goes through.
+        private const int LVM_FIRST = 0x1000;
+        private const int LVM_SETEXTENDEDLISTVIEWSTYLE = LVM_FIRST + 54;
+        private const int LVS_EX_DOUBLEBUFFER = 0x00010000;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern System.IntPtr SendMessage(System.IntPtr hWnd, int msg, System.IntPtr wParam, System.IntPtr lParam);
+
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
             ApplyFillColumn();
+
+            // Re-applied every time the handle is (re)created, same as the
+            // header subclass just below - this extended style lives on the
+            // native control itself, not anything .NET persists across a
+            // handle recreation.
+            SendMessage(Handle, LVM_SETEXTENDEDLISTVIEWSTYLE, (System.IntPtr)LVS_EX_DOUBLEBUFFER, (System.IntPtr)LVS_EX_DOUBLEBUFFER);
 
             // The header is a separate native child window (class
             // "SysHeader32"), recreated along with the ListView's own handle -
@@ -540,8 +566,63 @@ namespace ErikwnkWFUI.Controls
             return onVerticalScrollBar || onHorizontalScrollBar;
         }
 
+        // Scrolling (scrollbar drag/click, mouse wheel, or a keyboard
+        // scroll) makes the native ListView shift its existing pixels with
+        // ScrollWindowEx and then repaint only the newly-exposed strip -
+        // for an owner-drawn control that can leave a stray gray edge
+        // behind at the seam, confirmed to only happen scrolling DOWN
+        // (matching a blit/seam bug rather than anything in the actual
+        // per-cell drawing logic in OnDrawSubItem, which isn't direction-
+        // dependent). Forcing a full repaint on every scroll message,
+        // instead of trusting that partial blit-based update, redraws
+        // every visible row fresh and gets rid of it. LVS_EX_DOUBLEBUFFER
+        // above keeps this from re-introducing the flicker the partial
+        // blit was originally meant to avoid.
+        private const int WM_VSCROLL = 0x0115;
+        private const int WM_HSCROLL = 0x0114;
+        private const int WM_MOUSEWHEEL = 0x020A;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool LockWindowUpdate(System.IntPtr hWndLock);
+
         protected override void WndProc(ref Message m)
         {
+            if (m.Msg == WM_VSCROLL || m.Msg == WM_HSCROLL || m.Msg == WM_MOUSEWHEEL)
+            {
+                // base.WndProc below runs the native control's own scroll
+                // handling SYNCHRONOUSLY, including its glitchy partial
+                // ScrollWindowEx-based repaint - by the time control
+                // returns here, that bad frame has already reached the
+                // screen once, so invalidating afterward (an earlier
+                // attempt) still let it flash for a frame before the
+                // corrected repaint replaced it. A WM_SETREDRAW(FALSE)
+                // suppression around that same call (also tried) still let
+                // an occasional frame through - LVS_EX_DOUBLEBUFFER's own
+                // internal presentation isn't fully gated by that flag on
+                // every comctl32 version. LockWindowUpdate is the stronger
+                // guarantee: it blocks ANY pixel of this window (and its
+                // children, including the header) from reaching the screen
+                // at the GDI level while locked, regardless of how the
+                // native control internally decides to paint - so nothing
+                // native can flash through no matter the mechanism.
+                // Re-enabling it and forcing an immediate synchronous
+                // repaint (Update(), not just Invalidate()) means the very
+                // first frame the user actually sees is the corrected one.
+                LockWindowUpdate(Handle);
+                try
+                {
+                    base.WndProc(ref m);
+                }
+                finally
+                {
+                    LockWindowUpdate(System.IntPtr.Zero);
+                }
+
+                Invalidate();
+                Update();
+                return;
+            }
+
             base.WndProc(ref m);
 
             if (m.Msg != WM_PAINT || Width <= 1 || Height <= 1)
