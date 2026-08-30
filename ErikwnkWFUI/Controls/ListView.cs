@@ -1272,6 +1272,18 @@ namespace ErikwnkWFUI.Controls
         {
             _pendingToggleDeselectItemIndex = -1;
 
+            // Any new press cancels a still-pending watch from a PREVIOUS
+            // toggle-deselect - without this, clicking the same row again
+            // quickly (a legitimate new selection, well within the native
+            // quirk's ~1s window) looked identical to the delayed quirk
+            // itself from OnItemSelectionChangedForToggleDeselect's point
+            // of view, so it silently reverted the new click's selection
+            // too - fast repeated clicking on a row appeared to just do
+            // nothing. Once another press has started, whatever selection
+            // state results from it is trusted as fresh.
+            _toggleDeselectWatchIndex = -1;
+            _toggleDeselectSettleTimer.Stop();
+
             if (e.Button != MouseButtons.Left || ModifierKeys != Keys.None)
             {
                 return;
