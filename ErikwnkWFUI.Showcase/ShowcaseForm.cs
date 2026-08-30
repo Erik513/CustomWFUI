@@ -608,8 +608,15 @@ namespace ErikwnkWFUI.Showcase
             var listView = UIStyles.ListViews.CreateStandard();
             listView.Columns.Add("Item", 180);
             listView.Columns.Add("Status", 100);
-            listView.Items.Add(new ListViewItem(new[] { "Row A", "OK" }));
-            listView.Items.Add(new ListViewItem(new[] { "Row B", "Pending" }));
+
+            // Enough rows to force a vertical scrollbar - the 260px row
+            // height below only shows ~8 of them at once, so this doubles
+            // as a way to actually exercise drag-select + scroll behavior
+            // here instead of only in a consuming app.
+            for (int i = 1; i <= 40; i++)
+            {
+                listView.Items.Add(new ListViewItem(new[] { "Row " + i, i % 2 == 0 ? "OK" : "Pending" }));
+            }
 
             table.AddRow("CreateStandard", 260, listView);
         }

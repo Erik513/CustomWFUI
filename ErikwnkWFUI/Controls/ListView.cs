@@ -967,13 +967,37 @@ namespace ErikwnkWFUI.Controls
             return row >= rowStart && row <= rowEnd && displayIndex >= columnStart && displayIndex <= columnEnd;
         }
 
+        // Built from the RAW anchor/current points (never clamped - see
+        // their own assignment sites), then intersected with what's
+        // actually on screen right now. Intersecting the finished
+        // rectangle, rather than clamping each endpoint to the client area
+        // beforehand, is the part that actually matters: clamping the
+        // endpoints still lets a drag that never touches the visible area
+        // at all (e.g. entirely below this control) produce a real,
+        // zero-height rectangle sitting exactly on the bottom edge - and a
+        // zero-height rectangle sitting ON a boundary still counts as
+        // touching (IntersectsWith) whatever row's bounds happen to end
+        // there, wrongly selecting the last visible row. Intersecting
+        // instead means a rectangle with no genuine overlap collapses to
+        // Rectangle.Empty (IntersectsWith nothing at all), while one that
+        // does overlap gets trimmed to only the part actually on screen.
         private Rectangle GetNormalizedSelectionRectangle()
         {
             int left = Math.Min(_selectionAnchorPoint.X, _selectionCurrentPoint.X);
             int right = Math.Max(_selectionAnchorPoint.X, _selectionCurrentPoint.X);
             int top = Math.Min(_selectionAnchorPoint.Y, _selectionCurrentPoint.Y);
             int bottom = Math.Max(_selectionAnchorPoint.Y, _selectionCurrentPoint.Y);
-            return Rectangle.FromLTRB(left, top, right, bottom);
+            var rawRectangle = Rectangle.FromLTRB(left, top, right, bottom);
+
+            return Rectangle.Intersect(rawRectangle, GetVisibleContentArea());
+        }
+
+        // The area rows can actually be painted into right now - below the
+        // header strip, within the control's current client size.
+        private Rectangle GetVisibleContentArea()
+        {
+            int top = Math.Min(_headerHeight, ClientSize.Height);
+            return new Rectangle(0, top, ClientSize.Width, Math.Max(0, ClientSize.Height - top));
         }
 
         // Converts the live pixel selection rectangle into the index-based
@@ -1001,6 +1025,7 @@ namespace ErikwnkWFUI.Controls
             for (int row = 0; row < Items.Count; row++)
             {
                 var rowBounds = Items[row].Bounds;
+
                 for (int displayIndex = 0; displayIndex < orderedColumns.Count; displayIndex++)
                 {
                     var cellRect = GetSubItemBounds(Items[row], orderedColumns[displayIndex], rowBounds);
@@ -1078,7 +1103,7 @@ namespace ErikwnkWFUI.Controls
                 _activeRow = row;
                 _activeColumn = column;
                 _selectionAnchorPoint = e.Location;
-                _selectionCurrentPoint = e.Location;
+                _selectionCurrentPoint = _selectionAnchorPoint;
                 _isDragSelecting = true;
             }
 
@@ -1221,19 +1246,59 @@ namespace ErikwnkWFUI.Controls
                 _isPollTrackingPress = true;
             }
 
+            // Reliable, poll-driven release detection - a backstop for
+            // BOTH kinds of drag, not just the poll-driven one. The same
+            // native-event unreliability documented above for a press
+            // (MouseUp firing early/never for anything off-item) applies
+            // just as much to a drag that STARTED on a real cell
+            // (_isDragSelecting, normally finalized by OnListViewMouseUp)
+            // once the cursor leaves this control's bounds mid-drag -
+            // OnListViewMouseMove/MouseUp can simply stop arriving from
+            // that point on. Without this, _isDragSelecting could get
+            // stuck true forever after such a drag, which - since the
+            // justPressed handling above only clears the selection when
+            // "!_isDragSelecting" - would silently block every future
+            // click here from ever deselecting anything again.
             if (justReleased)
             {
-                if (_isPolledDragSelecting)
+                if (_isDragSelecting || _isPolledDragSelecting)
                 {
                     FinalizeDragSelection();
                     Invalidate();
                 }
 
+                _isDragSelecting = false;
                 _isPollTrackingPress = false;
                 _isPolledDragSelecting = false;
+                return;
             }
 
-            if (_isDragSelecting || !leftDown || !_isPollTrackingPress || Items.Count == 0 || Columns.Count == 0)
+            if (!leftDown)
+            {
+                return;
+            }
+
+            // Same reliability gap while the button is still down: once an
+            // on-cell drag's cursor leaves this control, native MouseMove
+            // can stop updating _selectionCurrentPoint too, freezing the
+            // selection rectangle at whatever it last saw instead of
+            // following the still-active drag. The poll keeps it live
+            // here as a fallback - if native MouseMove is still firing
+            // fine, this just recomputes the same point every tick, a
+            // no-op past the equality check below.
+            if (_isDragSelecting)
+            {
+                var followedPoint = PointToClient(Cursor.Position);
+                if (followedPoint != _selectionCurrentPoint)
+                {
+                    _selectionCurrentPoint = followedPoint;
+                    Invalidate();
+                }
+
+                return;
+            }
+
+            if (!_isPollTrackingPress || Items.Count == 0 || Columns.Count == 0)
             {
                 return;
             }
@@ -1251,17 +1316,15 @@ namespace ErikwnkWFUI.Controls
                     return;
                 }
 
-                // Anchored at the ORIGINAL press point, in raw (unclamped)
-                // pixels - safe even when that point is far outside this
-                // control entirely (pressed somewhere else in the app),
-                // because selection is now real rectangle intersection
-                // (see IsCellSelected): a rectangle whose corner starts far
-                // away simply won't intersect any cell that isn't actually
-                // within it. The earlier index-clamping approach silently
-                // snapped an out-of-range point to the nearest row/column
-                // regardless of the other axis, which could select a cell
-                // whose row merely shared a Y-coordinate band with the
-                // cursor while X was nowhere near any column.
+                // Anchored at the ORIGINAL press point - safe even when
+                // that point is far outside this control entirely (pressed
+                // somewhere else in the app), because selection is real
+                // rectangle intersection (see IsCellSelected) against a
+                // rectangle that GetNormalizedSelectionRectangle always
+                // intersects down to what's actually visible - a raw
+                // anchor/current pair that never touches the visible area
+                // at all collapses to an empty rectangle there, matching
+                // any cell nowhere at all.
                 _selectionAnchorPoint = _pollPressPoint;
                 _selectionCurrentPoint = currentPoint;
                 _isPolledDragSelecting = true;
