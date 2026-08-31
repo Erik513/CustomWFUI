@@ -66,6 +66,8 @@ namespace ErikwnkWFUI.Controls
         private bool _isRowRangeDragging;
         private int _rowRangeDragAnchorIndex = -1;
         private int _rowRangeDragLastAppliedIndex = -1;
+        private int _rowRangeAutoScrollDirection;
+        private readonly Timer _rowRangeDragPollTimer;
         private readonly OutsideClickDeselectFilter _outsideClickDeselectFilter;
 
         private Color _rowBackColor = UIColors.BackgroundMedium;
@@ -297,8 +299,12 @@ namespace ErikwnkWFUI.Controls
             MouseDown += OnListViewMouseDownForToggleDeselect;
             MouseUp += OnListViewMouseUpForToggleDeselect;
             MouseDown += OnListViewMouseDownForRowRangeDrag;
-            MouseMove += OnListViewMouseMoveForRowRangeDrag;
             MouseUp += OnListViewMouseUpForRowRangeDrag;
+            // Only ever running for the duration of one active row-range
+            // drag - see OnListViewMouseDownForRowRangeDrag/
+            // OnRowRangeDragPollTick.
+            _rowRangeDragPollTimer = new Timer { Interval = 40 };
+            _rowRangeDragPollTimer.Tick += OnRowRangeDragPollTick;
             ItemSelectionChanged += OnItemSelectionChangedForToggleDeselect;
             // Safety-net only, only ever running for ~1.5s after a toggle-
             // deselect - see OnListViewMouseUpForToggleDeselect for why
@@ -329,6 +335,8 @@ namespace ErikwnkWFUI.Controls
                 _cellToolTip.Dispose();
                 _toggleDeselectSettleTimer.Stop();
                 _toggleDeselectSettleTimer.Dispose();
+                _rowRangeDragPollTimer.Stop();
+                _rowRangeDragPollTimer.Dispose();
                 Application.RemoveMessageFilter(_outsideClickDeselectFilter);
             }
 
@@ -1374,20 +1382,24 @@ namespace ErikwnkWFUI.Controls
         // every row between the two (replacing whatever was selected
         // before), the same way Explorer's own drag-select feels.
         //
-        // Unlike the drag-selection machinery this replaced entirely
-        // earlier in this control's history, no polling is needed here:
-        // the drag only ever needs to track rows while the press STARTED
-        // on this control, and WinForms reliably keeps routing MouseMove/
-        // MouseUp to whichever control a press began on regardless of
-        // where the cursor goes afterward (implicit mouse capture) - it
-        // was only the "drag started somewhere else entirely" case that
-        // ever made native events unreliable, and that case doesn't apply
-        // here since a row-range drag can only ever start with a hit on a
-        // real item in the first place.
+        // A press starting on this control IS reliably delivered here via
+        // MouseDown, so that part still just works. Everything AFTER the
+        // press, though, goes through OnRowRangeDragPollTick instead of
+        // MouseMove/MouseUp - confirmed, the hard way, that native
+        // MouseMove/MouseUp for this control can stop arriving once the
+        // drag cursor leaves its bounds mid-drag (documented at length
+        // earlier in this control's history, the exact reason the old
+        // cell-drag-selection code polled at all) - so a row-range drag
+        // that needs to keep working past an edge (to auto-scroll) can't
+        // rely on them either. Unlike that old poll, THIS one only ever
+        // runs for the duration of one actual drag, started and stopped
+        // right here - not for the control's entire lifetime.
         private void OnListViewMouseDownForRowRangeDrag(object sender, MouseEventArgs e)
         {
             _isRowRangeDragging = false;
             _rowRangeDragAnchorIndex = -1;
+            _rowRangeAutoScrollDirection = 0;
+            _rowRangeDragPollTimer.Stop();
 
             if (e.Button != MouseButtons.Left || ModifierKeys != Keys.None)
             {
@@ -1405,16 +1417,88 @@ namespace ErikwnkWFUI.Controls
             _isRowRangeDragging = true;
             _rowRangeDragAnchorIndex = hitTest.Item.Index;
             _rowRangeDragLastAppliedIndex = hitTest.Item.Index;
+            _rowRangeDragPollTimer.Start();
         }
 
-        private void OnListViewMouseMoveForRowRangeDrag(object sender, MouseEventArgs e)
+        // A release landing back on this control still stops things
+        // immediately, rather than waiting up to one poll interval - the
+        // poll tick below is only the fallback for a release that happens
+        // somewhere the native MouseUp never reaches.
+        private void OnListViewMouseUpForRowRangeDrag(object sender, MouseEventArgs e)
         {
-            if (!_isRowRangeDragging || (e.Button & MouseButtons.Left) == 0)
+            _isRowRangeDragging = false;
+            _rowRangeDragAnchorIndex = -1;
+            _rowRangeAutoScrollDirection = 0;
+            _rowRangeDragPollTimer.Stop();
+        }
+
+        // Scrolls the same way TopItem's setter normally would, but
+        // guarded with the same LockWindowUpdate + forced full repaint
+        // WndProc already uses for WM_VSCROLL/WM_HSCROLL/WM_MOUSEWHEEL.
+        // Assigning TopItem directly scrolls via its own internal call,
+        // not through any of those messages, so it never got that
+        // protection - reintroducing exactly the stray-gray-line seam
+        // artifact those were fixed for, this time during auto-scroll.
+        private void ScrollToItemWithoutArtifacts(ListViewItem item)
+        {
+            LockWindowUpdate(Handle);
+            try
             {
+                TopItem = item;
+            }
+            finally
+            {
+                LockWindowUpdate(System.IntPtr.Zero);
+            }
+
+            Invalidate();
+            Update();
+        }
+
+        private void OnRowRangeDragPollTick(object sender, EventArgs e)
+        {
+            if (!_isRowRangeDragging)
+            {
+                _rowRangeDragPollTimer.Stop();
                 return;
             }
 
-            var currentIndex = GetNearestRowIndex(e.Location);
+            if ((MouseButtons & MouseButtons.Left) == 0)
+            {
+                _isRowRangeDragging = false;
+                _rowRangeAutoScrollDirection = 0;
+                _rowRangeDragPollTimer.Stop();
+                return;
+            }
+
+            var location = PointToClient(Cursor.Position);
+
+            // Auto-scrolling past either edge, the same way native
+            // marquee-select/Explorer itself does - without it, a drag
+            // could only ever reach whatever already happened to be on
+            // screen. This is purely a visual aid, not what actually
+            // gates the selection: GetNearestRowIndex below already
+            // clamps to the true first/last row in the whole list (not
+            // just the currently visible ones) the moment the cursor
+            // passes either edge, so the range itself is already correct;
+            // scrolling just lets the user see it happening.
+            int direction = location.Y < _headerHeight ? -1 : location.Y >= ClientSize.Height ? 1 : 0;
+            _rowRangeAutoScrollDirection = direction;
+
+            if (direction != 0)
+            {
+                var topItem = TopItem;
+                if (topItem != null)
+                {
+                    var newTopIndex = topItem.Index + direction;
+                    if (newTopIndex >= 0 && newTopIndex < Items.Count)
+                    {
+                        ScrollToItemWithoutArtifacts(Items[newTopIndex]);
+                    }
+                }
+            }
+
+            var currentIndex = GetNearestRowIndex(location);
             if (currentIndex < 0 || currentIndex == _rowRangeDragLastAppliedIndex)
             {
                 return;
@@ -1424,21 +1508,14 @@ namespace ErikwnkWFUI.Controls
             ApplyRowRangeSelection(_rowRangeDragAnchorIndex, currentIndex);
         }
 
-        private void OnListViewMouseUpForRowRangeDrag(object sender, MouseEventArgs e)
-        {
-            _isRowRangeDragging = false;
-            _rowRangeDragAnchorIndex = -1;
-        }
-
         // Resolves to the item actually under the point if there is one;
-        // otherwise the nearest row in that direction, so dragging past
-        // either end of the list (still within the control, e.g. below the
-        // last row) extends the range to that end instead of simply
-        // stopping - matching the point where the cursor left the last
-        // real row rather than freezing the selection there. Doesn't
-        // auto-scroll to reveal further rows while dragging past an edge -
-        // deliberately out of scope here, to keep this from growing back
-        // into the kind of complexity the old drag-selection code had.
+        // otherwise the nearest row in that direction - clamping to the
+        // true first/last row in the whole Items collection (not just
+        // whatever's currently scrolled into view), so a cursor held past
+        // either edge already resolves to the actual end of the list right
+        // away. OnRowRangeDragPollTick's auto-scroll is purely there to
+        // visually reveal that as it happens, not to gate which rows this
+        // can reach.
         private int GetNearestRowIndex(Point location)
         {
             if (Items.Count == 0)
