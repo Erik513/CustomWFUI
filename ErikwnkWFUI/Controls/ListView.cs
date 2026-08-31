@@ -2147,10 +2147,22 @@ namespace ErikwnkWFUI.Controls
                     return false;
                 }
 
-                if (Control.FromChildHandle(m.HWnd) == null)
+                var clickedControl = Control.FromChildHandle(m.HWnd);
+                if (clickedControl == null)
                 {
                     // Not one of this process's own windows (e.g. a click
                     // in a different application) - nothing to react to.
+                    return false;
+                }
+
+                if (clickedControl is ToolStripDropDown)
+                {
+                    // A context menu (this control's own, or any of its
+                    // submenus - each one is its own separate native popup
+                    // window) isn't "outside" either - without this, left-
+                    // clicking a menu item (e.g. "Copy selection") cleared
+                    // the very selection that item's own Click handler was
+                    // about to read, before it ever got the chance to.
                     return false;
                 }
 
