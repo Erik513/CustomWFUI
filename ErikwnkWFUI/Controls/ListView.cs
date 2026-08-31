@@ -58,6 +58,7 @@ namespace ErikwnkWFUI.Controls
         private const int DefaultMinimumColumnWidth = 40;
 
         private int _headerHeight = 24;
+        private bool _isOuterBorderDirty = true;
         private bool _isApplyingFillColumn;
         private bool _isSnappingHeightToWholeRows;
         private int _pendingToggleDeselectItemIndex = -1;
@@ -477,6 +478,7 @@ namespace ErikwnkWFUI.Controls
         {
             base.OnHandleCreated(e);
             ApplyFillColumn();
+            _isOuterBorderDirty = true;
 
             // Re-applied every time the handle is (re)created, same as the
             // header subclass just below - this extended style lives on the
@@ -528,6 +530,7 @@ namespace ErikwnkWFUI.Controls
         {
             base.OnResize(e);
             ApplyFillColumn();
+            _isOuterBorderDirty = true;
             SnapHeightToWholeRows();
         }
 
@@ -686,11 +689,31 @@ namespace ErikwnkWFUI.Controls
                 return;
             }
 
+            // The border's own pixels are now fully reserved from row
+            // content (see GetSubItemBounds' left/right/bottom insets),
+            // so nothing else can ever paint over them - redrawing on
+            // literally every WM_PAINT was therefore pure repetition, and
+            // an unbuffered draw (this happens straight on the screen DC,
+            // outside LVS_EX_DOUBLEBUFFER's own buffering, same as always)
+            // repeated that often was producing a visible flicker of its
+            // own, especially now that scrolling/dragging force several
+            // extra repaints per interaction. Only actually redrawing when
+            // something that could change the border's position or color
+            // - a resize, or a handle recreation (a theme switch rebuilds
+            // this control) - marks it dirty keeps it looking genuinely
+            // static the rest of the time.
+            if (!_isOuterBorderDirty)
+            {
+                return;
+            }
+
             System.IntPtr dc = GetDC(Handle);
             if (dc == System.IntPtr.Zero)
             {
                 return;
             }
+
+            _isOuterBorderDirty = false;
 
             try
             {
@@ -919,7 +942,16 @@ namespace ErikwnkWFUI.Controls
 
         private void OnDrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
         {
-            _headerHeight = e.Bounds.Height;
+            if (_headerHeight != e.Bounds.Height)
+            {
+                // The border's left/right edges start at _headerHeight
+                // (see the outer border draw in WndProc) - a header-height
+                // change (HeaderFont, RowHeight, ...) moves that starting
+                // point, so the border needs to actually redraw once more
+                // even though the control's own Size didn't change.
+                _headerHeight = e.Bounds.Height;
+                _isOuterBorderDirty = true;
+            }
 
             using (var background = new SolidBrush(_headerBackColor))
             using (var divider = new Pen(UIColors.BorderMedium))
@@ -1061,6 +1093,17 @@ namespace ErikwnkWFUI.Controls
             if (column.DisplayIndex == 0)
             {
                 left += 1;
+                width -= 1;
+            }
+
+            // Same trick, same reason, for the RIGHT edge - the rightmost
+            // column's content otherwise reaches all the way to
+            // ClientSize.Width - 1, the exact pixel column WndProc's
+            // border draws its own right edge on. Reserving it here means
+            // no row content can ever paint into it either, matching the
+            // left column's own inset above.
+            if (column.DisplayIndex == Columns.Count - 1)
+            {
                 width -= 1;
             }
 
