@@ -63,6 +63,9 @@ namespace ErikwnkWFUI.Controls
         private int _pendingToggleDeselectItemIndex = -1;
         private readonly Timer _toggleDeselectSettleTimer;
         private int _toggleDeselectWatchIndex = -1;
+        private bool _isRowRangeDragging;
+        private int _rowRangeDragAnchorIndex = -1;
+        private int _rowRangeDragLastAppliedIndex = -1;
         private readonly OutsideClickDeselectFilter _outsideClickDeselectFilter;
 
         private Color _rowBackColor = UIColors.BackgroundMedium;
@@ -293,6 +296,9 @@ namespace ErikwnkWFUI.Controls
             DrawSubItem += OnDrawSubItem;
             MouseDown += OnListViewMouseDownForToggleDeselect;
             MouseUp += OnListViewMouseUpForToggleDeselect;
+            MouseDown += OnListViewMouseDownForRowRangeDrag;
+            MouseMove += OnListViewMouseMoveForRowRangeDrag;
+            MouseUp += OnListViewMouseUpForRowRangeDrag;
             ItemSelectionChanged += OnItemSelectionChangedForToggleDeselect;
             // Safety-net only, only ever running for ~1.5s after a toggle-
             // deselect - see OnListViewMouseUpForToggleDeselect for why
@@ -1355,6 +1361,144 @@ namespace ErikwnkWFUI.Controls
         {
             _toggleDeselectSettleTimer.Stop();
             _toggleDeselectWatchIndex = -1;
+        }
+
+        // Native ListView's own marquee/rubber-band multi-select only ever
+        // arms for a press that starts on EMPTY space - a press starting ON
+        // an item is reserved internally for a possible OLE item drag
+        // (LVN_BEGINDRAG/ItemDrag), and since that's never wired up here,
+        // dragging from an item natively does nothing beyond the plain
+        // click that already happened on MouseDown. This fills exactly
+        // that gap: a plain (no modifier) press on a real row, followed by
+        // moving the mouse to a different row while still held, selects
+        // every row between the two (replacing whatever was selected
+        // before), the same way Explorer's own drag-select feels.
+        //
+        // Unlike the drag-selection machinery this replaced entirely
+        // earlier in this control's history, no polling is needed here:
+        // the drag only ever needs to track rows while the press STARTED
+        // on this control, and WinForms reliably keeps routing MouseMove/
+        // MouseUp to whichever control a press began on regardless of
+        // where the cursor goes afterward (implicit mouse capture) - it
+        // was only the "drag started somewhere else entirely" case that
+        // ever made native events unreliable, and that case doesn't apply
+        // here since a row-range drag can only ever start with a hit on a
+        // real item in the first place.
+        private void OnListViewMouseDownForRowRangeDrag(object sender, MouseEventArgs e)
+        {
+            _isRowRangeDragging = false;
+            _rowRangeDragAnchorIndex = -1;
+
+            if (e.Button != MouseButtons.Left || ModifierKeys != Keys.None)
+            {
+                return;
+            }
+
+            var hitTest = HitTest(e.Location);
+            if (hitTest.Item == null)
+            {
+                // An empty-space press is already native marquee-select's
+                // own job - nothing to add here.
+                return;
+            }
+
+            _isRowRangeDragging = true;
+            _rowRangeDragAnchorIndex = hitTest.Item.Index;
+            _rowRangeDragLastAppliedIndex = hitTest.Item.Index;
+        }
+
+        private void OnListViewMouseMoveForRowRangeDrag(object sender, MouseEventArgs e)
+        {
+            if (!_isRowRangeDragging || (e.Button & MouseButtons.Left) == 0)
+            {
+                return;
+            }
+
+            var currentIndex = GetNearestRowIndex(e.Location);
+            if (currentIndex < 0 || currentIndex == _rowRangeDragLastAppliedIndex)
+            {
+                return;
+            }
+
+            _rowRangeDragLastAppliedIndex = currentIndex;
+            ApplyRowRangeSelection(_rowRangeDragAnchorIndex, currentIndex);
+        }
+
+        private void OnListViewMouseUpForRowRangeDrag(object sender, MouseEventArgs e)
+        {
+            _isRowRangeDragging = false;
+            _rowRangeDragAnchorIndex = -1;
+        }
+
+        // Resolves to the item actually under the point if there is one;
+        // otherwise the nearest row in that direction, so dragging past
+        // either end of the list (still within the control, e.g. below the
+        // last row) extends the range to that end instead of simply
+        // stopping - matching the point where the cursor left the last
+        // real row rather than freezing the selection there. Doesn't
+        // auto-scroll to reveal further rows while dragging past an edge -
+        // deliberately out of scope here, to keep this from growing back
+        // into the kind of complexity the old drag-selection code had.
+        private int GetNearestRowIndex(Point location)
+        {
+            if (Items.Count == 0)
+            {
+                return -1;
+            }
+
+            var hitTest = HitTest(location);
+            if (hitTest.Item != null)
+            {
+                return hitTest.Item.Index;
+            }
+
+            if (location.Y <= Items[0].Bounds.Top)
+            {
+                return 0;
+            }
+
+            if (location.Y >= Items[Items.Count - 1].Bounds.Bottom)
+            {
+                return Items.Count - 1;
+            }
+
+            for (var index = 0; index < Items.Count; index++)
+            {
+                if (location.Y < Items[index].Bounds.Bottom)
+                {
+                    return index;
+                }
+            }
+
+            return Items.Count - 1;
+        }
+
+        private void ApplyRowRangeSelection(int anchorIndex, int currentIndex)
+        {
+            if (anchorIndex < 0 || anchorIndex >= Items.Count || currentIndex < 0 || currentIndex >= Items.Count)
+            {
+                return;
+            }
+
+            var rangeStart = Math.Min(anchorIndex, currentIndex);
+            var rangeEnd = Math.Max(anchorIndex, currentIndex);
+
+            BeginUpdate();
+            try
+            {
+                for (var index = 0; index < Items.Count; index++)
+                {
+                    var shouldBeSelected = index >= rangeStart && index <= rangeEnd;
+                    if (Items[index].Selected != shouldBeSelected)
+                    {
+                        Items[index].Selected = shouldBeSelected;
+                    }
+                }
+            }
+            finally
+            {
+                EndUpdate();
+            }
         }
 
         // Shows the full cell text on hover whenever OnDrawSubItem would
