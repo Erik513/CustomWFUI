@@ -34,7 +34,17 @@ namespace ErikwnkWFUI.Controls
             Controls.Add(_layout);
         }
 
-        /// <summary>Removes every row and section, leaving an empty table.</summary>
+        /// <summary>
+        /// Removes every row and section, leaving an empty table. Only
+        /// detaches the editor controls added via <see cref="AddRow(string,Control[])"/>
+        /// - it does NOT call <see cref="Control.Dispose"/> on them, so they
+        /// keep whatever state they had (text, selection, checked state,
+        /// ...) and can be re-added afterward via a fresh AddRow. Handy for
+        /// rebuilding a table live (e.g. on a language switch, re-adding the
+        /// same controls with new labels) without losing in-progress editor
+        /// state; if a caller genuinely wants the old controls gone for
+        /// good, dispose them explicitly first.
+        /// </summary>
         public void ClearRows()
         {
             _layout.Controls.Clear();

@@ -1,4 +1,5 @@
 using System.Windows.Forms;
+using ErikwnkWFUI.Styles;
 
 namespace ErikwnkWFUI.Factories
 {
@@ -11,6 +12,13 @@ namespace ErikwnkWFUI.Factories
         public static ListView CreateStandard()
         {
             return new Controls.ListView();
+        }
+
+        // Same control, framed in the current accent color instead of the
+        // fixed neutral border CreateStandard keeps.
+        public static ListView CreatePrimary()
+        {
+            return new Controls.ListView { BorderColor = UIColors.Primary };
         }
     }
 }

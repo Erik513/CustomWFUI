@@ -605,19 +605,86 @@ namespace ErikwnkWFUI.Showcase
         {
             table.AddSection("ListView");
 
-            var listView = UIStyles.ListViews.CreateStandard();
+            const int demoWidth = 300;
+
+            var standardListView = UIStyles.ListViews.CreateStandard();
+            PopulateListViewDemo(standardListView);
+            table.AddRow("CreateStandard", 260, UIColumn.Absolute(standardListView, demoWidth));
+            PinToDemoWidth(standardListView, demoWidth);
+
+            var primaryListView = UIStyles.ListViews.CreatePrimary();
+            PopulateListViewDemo(primaryListView);
+            table.AddRow("CreatePrimary", 260, UIColumn.Absolute(primaryListView, demoWidth));
+            PinToDemoWidth(primaryListView, demoWidth);
+        }
+
+        // AddRow's UIColumn.Absolute only bounds the WRAPPER cell to
+        // demoWidth - PropertyTable.ConfigureEditorControl (run as part of
+        // AddRow, no special case for ListView) still sets Dock = Fill on
+        // the control itself afterward, which stretches it right back out
+        // to fill that cell/wrapper rather than actually sizing it to
+        // demoWidth. Overriding Dock/Width here, after AddRow has already
+        // run, is what actually keeps the control narrow.
+        private static void PinToDemoWidth(System.Windows.Forms.Control control, int width)
+        {
+            control.Dock = DockStyle.None;
+            control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            control.Width = width;
+
+            // Widening a column past this fixed width makes a horizontal
+            // scrollbar appear, which shrinks ClientSize.Height - and
+            // ListView's own whole-rows-only height snapping (SnapHeight-
+            // ToWholeRows) then reacts to THAT by shrinking the control's
+            // actual Height too, even though nothing about the demo's own
+            // requested size changed. Locking both dimensions here, not
+            // just Width, keeps the whole footprint constant regardless of
+            // column widths.
+            //
+            // Deferred one more tick than the fix above needs strictly for
+            // Width, so this runs AFTER ListView's own initial whole-rows
+            // snap (itself deferred via BeginInvoke from OnHandleCreated)
+            // has already settled - capturing Height any earlier would
+            // lock in the raw, pre-snap value and immediately fight that
+            // snap the moment it actually ran. BeginInvoke needs a real
+            // handle to post to - this control may not have one yet at
+            // this point in the Showcase's own construction, so that case
+            // waits for HandleCreated first.
+            void LockCurrentSize()
+            {
+                var lockedSize = control.Size;
+                control.Resize += (sender, e) =>
+                {
+                    if (control.Size != lockedSize)
+                    {
+                        control.Size = lockedSize;
+                    }
+                };
+            }
+
+            if (control.IsHandleCreated)
+            {
+                control.BeginInvoke(new MethodInvoker(LockCurrentSize));
+            }
+            else
+            {
+                control.HandleCreated += (sender, e) => control.BeginInvoke(new MethodInvoker(LockCurrentSize));
+            }
+        }
+
+        private static void PopulateListViewDemo(System.Windows.Forms.ListView listView)
+        {
             listView.Columns.Add("Item", 180);
             listView.Columns.Add("Status", 100);
 
             // PropertyTable centers a row's editor control inside an
             // AutoSize middle row rather than stretching it (see
             // PropertyTable.AddControlToCell) - so the row height passed to
-            // AddRow below only changes how much padding surrounds the
+            // AddRow above only changes how much padding surrounds the
             // control, not the control's own size. The control's actual
             // rendered height comes from this Height instead.
-            listView.Height = 380;
+            listView.Height = 220;
 
-            // Enough rows to force a vertical scrollbar - only ~13 fit in
+            // Enough rows to force a vertical scrollbar - only ~7 fit in
             // that height at once, so this doubles as a way to actually
             // exercise drag-select + scroll behavior here instead of only
             // in a consuming app.
@@ -625,8 +692,6 @@ namespace ErikwnkWFUI.Showcase
             {
                 listView.Items.Add(new ListViewItem(new[] { "Row " + i, i % 2 == 0 ? "OK" : "Pending" }));
             }
-
-            table.AddRow("CreateStandard", 420, listView);
         }
 
         private void AddDataGridSection(PropertyTable table)

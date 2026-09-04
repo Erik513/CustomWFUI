@@ -58,7 +58,6 @@ namespace ErikwnkWFUI.Controls
         private const int DefaultMinimumColumnWidth = 40;
 
         private int _headerHeight = 24;
-        private bool _isOuterBorderDirty = true;
         private bool _isApplyingFillColumn;
         private bool _isSnappingHeightToWholeRows;
         private int _pendingToggleDeselectItemIndex = -1;
@@ -86,6 +85,8 @@ namespace ErikwnkWFUI.Controls
         private bool _allowColumnResizing = true;
         private Color _columnReorderIndicatorColorOverride;
         private bool _columnReorderIndicatorColorIsOverridden;
+        private Color _borderColorOverride;
+        private bool _borderColorIsOverridden;
         private bool _isDraggingColumn;
         private int _dragColumnIndex = -1;
         private int _dragInsertBeforeDisplayIndex = -1;
@@ -188,6 +189,29 @@ namespace ErikwnkWFUI.Controls
             {
                 _columnReorderIndicatorColorOverride = value;
                 _columnReorderIndicatorColorIsOverridden = true;
+            }
+        }
+
+        /// <summary>
+        /// Color of the whole control's "frame": the outer border's left,
+        /// right, and bottom edges (see WndProc) and each header cell's own
+        /// divider (OnDrawColumnHeader), which together form the top edge.
+        /// Defaults to <see cref="UIColors.BorderMedium"/> - a fixed,
+        /// neutral border regardless of the current accent, matching this
+        /// control's original, unconditional look
+        /// (<see cref="Factories.UIListViewFactory.CreateStandard"/> still
+        /// gets exactly that, unchanged). <see cref="Factories.UIListViewFactory.CreatePrimary"/>
+        /// sets this to <see cref="UIColors.Primary"/> instead for a
+        /// variant framed entirely in the current accent color.
+        /// </summary>
+        public Color BorderColor
+        {
+            get { return _borderColorIsOverridden ? _borderColorOverride : UIColors.BorderMedium; }
+            set
+            {
+                _borderColorOverride = value;
+                _borderColorIsOverridden = true;
+                Invalidate();
             }
         }
 
@@ -478,7 +502,6 @@ namespace ErikwnkWFUI.Controls
         {
             base.OnHandleCreated(e);
             ApplyFillColumn();
-            _isOuterBorderDirty = true;
 
             // Re-applied every time the handle is (re)created, same as the
             // header subclass just below - this extended style lives on the
@@ -530,7 +553,6 @@ namespace ErikwnkWFUI.Controls
         {
             base.OnResize(e);
             ApplyFillColumn();
-            _isOuterBorderDirty = true;
             SnapHeightToWholeRows();
         }
 
@@ -556,7 +578,25 @@ namespace ErikwnkWFUI.Controls
                 return;
             }
 
-            var availableContentHeight = ClientSize.Height - _headerHeight;
+            // A horizontal scrollbar (columns wider than the control) eats
+            // into ClientSize.Height the same way a vertical one eats into
+            // ClientSize.Width (see ApplyFillColumn's own
+            // scrollBarAllowance) - without compensating for it, the
+            // row-count target computed below would shift depending on
+            // whether that scrollbar happens to be showing at this exact
+            // instant. Since setting ClientSize further down can itself be
+            // part of what makes it appear or disappear, that turns into a
+            // feedback loop - confirmed live: widening a column past the
+            // control's own width while it's also being auto-scrolled/
+            // hovered could visibly jitter the bottom edge as this method
+            // kept re-triggering itself with a slightly different target
+            // each time. Adding the allowance back before computing the
+            // row count, then subtracting it again from the actual
+            // ClientSize.Height requested, keeps the "how many whole rows
+            // fit" answer stable regardless of that scrollbar's momentary
+            // visibility.
+            var horizontalScrollBarAllowance = IsHorizontalScrollBarLikelyVisible() ? SystemInformation.HorizontalScrollBarHeight : 0;
+            var availableContentHeight = ClientSize.Height + horizontalScrollBarAllowance - _headerHeight;
             if (availableContentHeight < rowHeight)
             {
                 // Not even one full row fits - leave the height alone
@@ -565,7 +605,7 @@ namespace ErikwnkWFUI.Controls
             }
 
             var wholeRowCount = availableContentHeight / rowHeight;
-            var desiredClientHeight = _headerHeight + (wholeRowCount * rowHeight);
+            var desiredClientHeight = _headerHeight + (wholeRowCount * rowHeight) - horizontalScrollBarAllowance;
             if (desiredClientHeight == ClientSize.Height)
             {
                 return;
@@ -585,9 +625,8 @@ namespace ErikwnkWFUI.Controls
         // The explicit RowHeight property (if set) is authoritative -
         // otherwise a real row's own native Bounds.Height is preferred
         // over a Font-based guess, since it reflects whatever padding/
-        // theming Windows actually applied; the Font-based estimate (the
-        // same one IsVerticalScrollBarLikelyVisible already uses) is only
-        // a fallback for when there's no row yet to measure.
+        // theming Windows actually applied; the Font-based estimate is
+        // only a fallback for when there's no row yet to measure.
         private int GetEffectiveRowHeight()
         {
             if (RowHeight > 0)
@@ -597,10 +636,23 @@ namespace ErikwnkWFUI.Controls
 
             if (Items.Count > 0)
             {
-                var height = Items[0].Bounds.Height;
-                if (height > 0)
+                try
                 {
-                    return height;
+                    var height = Items[0].Bounds.Height;
+                    if (height > 0)
+                    {
+                        return height;
+                    }
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // GetItemRect can throw if the native control hasn't
+                    // actually finished laying out its items yet - e.g.
+                    // mid-resize, or right after a handle recreation. The
+                    // real native height is worth using when it's actually
+                    // available (more accurate than the estimate below),
+                    // so this just falls through to that estimate instead
+                    // whenever it isn't.
                 }
             }
 
@@ -684,41 +736,34 @@ namespace ErikwnkWFUI.Controls
 
             base.WndProc(ref m);
 
-            if (m.Msg != WM_PAINT || Width <= 1 || Height <= 1)
+            if (m.Msg != WM_PAINT || ClientSize.Width <= 1 || ClientSize.Height <= 1)
             {
                 return;
             }
 
-            // The border's own pixels are now fully reserved from row
-            // content (see GetSubItemBounds' left/right/bottom insets),
-            // so nothing else can ever paint over them - redrawing on
-            // literally every WM_PAINT was therefore pure repetition, and
-            // an unbuffered draw (this happens straight on the screen DC,
-            // outside LVS_EX_DOUBLEBUFFER's own buffering, same as always)
-            // repeated that often was producing a visible flicker of its
-            // own, especially now that scrolling/dragging force several
-            // extra repaints per interaction. Only actually redrawing when
-            // something that could change the border's position or color
-            // - a resize, or a handle recreation (a theme switch rebuilds
-            // this control) - marks it dirty keeps it looking genuinely
-            // static the rest of the time.
-            if (!_isOuterBorderDirty)
-            {
-                return;
-            }
-
+            // Redrawn on every real WM_PAINT, deliberately - a "only when
+            // something relevant changed" version of this (tried, then
+            // reverted) turned out to not be safe: comctl32 can still
+            // repaint parts of the border's own pixels through paths this
+            // class doesn't get a hook into at all - e.g. its own native
+            // focus rectangle around the selected/focused item - even
+            // though ordinary row content is fully reserved from ever
+            // doing so (see GetSubItemBounds' left/right/bottom insets).
+            // Skipping the redraw there left the border silently wrong
+            // (or, for BorderColor, just not applied at all) after a
+            // selection change. Redrawing unconditionally costs three
+            // cheap DrawLine calls and is the one approach confirmed
+            // correct throughout this control's history.
             System.IntPtr dc = GetDC(Handle);
             if (dc == System.IntPtr.Zero)
             {
                 return;
             }
 
-            _isOuterBorderDirty = false;
-
             try
             {
                 using (Graphics g = Graphics.FromHdc(dc))
-                using (Pen pen = new Pen(UIColors.BorderMedium))
+                using (Pen pen = new Pen(BorderColor))
                 {
                     // Skips the whole header strip (y < _headerHeight)
                     // entirely, not just its top edge - the header sits
@@ -733,10 +778,23 @@ namespace ErikwnkWFUI.Controls
                     // area - so this leaves that whole strip to the one
                     // place already drawing it correctly, rather than
                     // trying to coexist with it.
-                    int top = Math.Min(_headerHeight, Height - 1);
-                    g.DrawLine(pen, 0, top, 0, Height - 1);
-                    g.DrawLine(pen, Width - 1, top, Width - 1, Height - 1);
-                    g.DrawLine(pen, 0, Height - 1, Width - 1, Height - 1);
+                    //
+                    // Right/bottom edges use ClientSize, not Width/Height -
+                    // Width/Height are the control's FULL outer bounds,
+                    // which include the native vertical scrollbar's own
+                    // strip when it's visible (see IsPointOnScrollBar's own
+                    // comment on that gap). A right border drawn at
+                    // Width - 1 landed exactly under the scrollbar itself,
+                    // which then painted over it - invisible, not missing.
+                    // ClientSize already excludes that strip, matching
+                    // where the actual row content already stops (see
+                    // GetSubItemBounds' own right/bottom insets).
+                    int right = ClientSize.Width - 1;
+                    int bottom = ClientSize.Height - 1;
+                    int top = Math.Min(_headerHeight, bottom);
+                    g.DrawLine(pen, 0, top, 0, bottom);
+                    g.DrawLine(pen, right, top, right, bottom);
+                    g.DrawLine(pen, 0, bottom, right, bottom);
                 }
             }
             finally
@@ -759,7 +817,17 @@ namespace ErikwnkWFUI.Controls
             {
                 e.NewWidth = minimumWidth;
                 e.Cancel = true;
+                return;
             }
+
+            // No live cap beyond the minimum-width floor above, for ANY
+            // column - including the fill one. ApplyFillColumn (see its
+            // own comment) only ever GROWS the fill column into genuine
+            // leftover space; it never shrinks it to make room for
+            // another column, so there's nothing left here that needs
+            // preempting live. A column growing past what currently fits
+            // just means a horizontal scrollbar appears, same as a plain,
+            // unmodified ListView.
         }
 
         // MinimumColumnWidth is a floor the caller chose, but a column must
@@ -849,11 +917,21 @@ namespace ErikwnkWFUI.Controls
             return ordered;
         }
 
-        // Whatever space isn't claimed by the other columns goes to the
-        // fill column (the last one, unless FillColumnIndex says
-        // otherwise) - so the table always reaches the right edge instead
-        // of leaving a dead strip of background, or needing a horizontal
-        // scrollbar for a couple of stray pixels.
+        // Every column, including the fill one, otherwise has a plain
+        // fixed size - the fill column only ever GROWS to absorb genuine
+        // leftover space, never shrinks to make room for another column
+        // growing. Widening some other column past what currently fits is
+        // therefore not something this corrects for at all: the total
+        // just exceeds ClientSize.Width at that point, same as it would
+        // for a plain, unmodified ListView, and a horizontal scrollbar
+        // appears normally - no different from any other native control,
+        // and nothing left to fight against comctl32's own scrollbar
+        // management over (several earlier attempts at actively
+        // preventing that overflow - live-capping columns, force-hiding
+        // the scrollbar - either broke native column-resize dragging or
+        // turned out unreliable against comctl32's internal scrollbar
+        // handling; not needing to prevent the overflow at all sidesteps
+        // both).
         private void ApplyFillColumn()
         {
             if (_isApplyingFillColumn || IsDisposed || !IsHandleCreated || Columns.Count == 0)
@@ -862,6 +940,8 @@ namespace ErikwnkWFUI.Controls
             }
 
             var fillIndex = GetEffectiveFillColumnIndex();
+            var currentWidth = Columns[fillIndex].Width;
+
             var otherColumnsWidth = 0;
             for (var index = 0; index < Columns.Count; index++)
             {
@@ -871,18 +951,25 @@ namespace ErikwnkWFUI.Controls
                 }
             }
 
-            var scrollBarAllowance = IsVerticalScrollBarLikelyVisible() ? SystemInformation.VerticalScrollBarWidth : 0;
-            var availableWidth = ClientSize.Width - otherColumnsWidth - scrollBarAllowance;
-            var newWidth = Math.Max(_minimumColumnWidth, availableWidth);
-            if (Columns[fillIndex].Width == newWidth)
+            // ClientSize.Width already excludes the native vertical
+            // scrollbar's own strip when it's visible (confirmed via
+            // IsPointOnScrollBar's own comment on that gap - the
+            // scrollbar lives in the space between ClientSize and this
+            // control's full Size), so no separate allowance is needed
+            // for that here.
+            var availableWidth = ClientSize.Width - otherColumnsWidth;
+            if (availableWidth <= currentWidth)
             {
+                // No genuine leftover space (or an outright overflow) -
+                // leave the fill column exactly as it is rather than
+                // shrinking it to make room.
                 return;
             }
 
             _isApplyingFillColumn = true;
             try
             {
-                Columns[fillIndex].Width = newWidth;
+                Columns[fillIndex].Width = availableWidth;
             }
             finally
             {
@@ -890,22 +977,24 @@ namespace ErikwnkWFUI.Controls
             }
         }
 
-        private bool IsVerticalScrollBarLikelyVisible()
+        // Used by SnapHeightToWholeRows to compensate for a horizontal
+        // scrollbar's own height. Column widths are always immediately
+        // known (unlike row heights, no native layout to wait on), so this
+        // can just sum them directly rather than estimating.
+        private bool IsHorizontalScrollBarLikelyVisible()
         {
-            if (Items.Count == 0)
+            if (Columns.Count == 0)
             {
                 return false;
             }
 
-            // Estimated from the font rather than a live item's own Bounds -
-            // reading Bounds requires the native control to have already
-            // laid out that row, which isn't guaranteed at every point
-            // ApplyFillColumn can run from (right after Items is cleared
-            // and repopulated, or during a handle recreation) and has been
-            // observed to throw there. A small fixed padding approximates
-            // the same per-row height OwnerDraw would otherwise use.
-            var itemHeight = Font.Height + 6;
-            return itemHeight > 0 && Items.Count * itemHeight > ClientSize.Height;
+            var totalColumnsWidth = 0;
+            foreach (ColumnHeader column in Columns)
+            {
+                totalColumnsWidth += column.Width;
+            }
+
+            return totalColumnsWidth > ClientSize.Width;
         }
 
         // The top level only ever shows "Copy selection" / "Copy all" -
@@ -942,19 +1031,10 @@ namespace ErikwnkWFUI.Controls
 
         private void OnDrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
         {
-            if (_headerHeight != e.Bounds.Height)
-            {
-                // The border's left/right edges start at _headerHeight
-                // (see the outer border draw in WndProc) - a header-height
-                // change (HeaderFont, RowHeight, ...) moves that starting
-                // point, so the border needs to actually redraw once more
-                // even though the control's own Size didn't change.
-                _headerHeight = e.Bounds.Height;
-                _isOuterBorderDirty = true;
-            }
+            _headerHeight = e.Bounds.Height;
 
             using (var background = new SolidBrush(_headerBackColor))
-            using (var divider = new Pen(UIColors.BorderMedium))
+            using (var divider = new Pen(BorderColor))
             using (var font = HeaderFont)
             {
                 e.Graphics.FillRectangle(background, e.Bounds);

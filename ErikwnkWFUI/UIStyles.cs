@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
+using ErikwnkCore;
 using ErikwnkWFUI.Controls;
 using ErikwnkWFUI.Factories;
 using ErikwnkWFUI.Styles;
@@ -17,8 +18,8 @@ namespace ErikwnkWFUI
     /// with a set of <c>Create*</c> factory methods that return a
     /// pre-themed, ready-to-add WinForms control. See <see cref="Colors"/>
     /// for how to customize the color scheme (accent color and/or full
-    /// light/dark theme) and <see cref="Language"/> for switching the
-    /// language of built-in dialog text.
+    /// light/dark theme) and <see cref="Language"/>/<see cref="SetLanguage"/>
+    /// for switching the language of built-in dialog text.
     /// </summary>
     public static class UIStyles
     {
@@ -26,11 +27,34 @@ namespace ErikwnkWFUI
         /// Language used by built-in dialogs/controls that ship their own text
         /// (update prompt, title bar tooltips). Set once at startup, before any
         /// ErikwnkWFUI form is created, to switch away from the English default.
+        /// Separate from <see cref="ErikwnkCore.AppLocalization"/>.Language (a
+        /// consuming app's OWN strings) - see <see cref="SetLanguage"/> to set
+        /// both together, which is what most apps actually want.
         /// </summary>
         public static UILanguage Language
         {
             get { return UIStrings.Language; }
             set { UIStrings.Language = value; }
+        }
+
+        /// <summary>
+        /// Sets this library's own <see cref="Language"/> and a consuming
+        /// app's <see cref="ErikwnkCore.AppLocalization"/>.Language together,
+        /// from one <see cref="ErikwnkCore.AppLanguage"/> value. The two are
+        /// separate properties, in separate assemblies with separate enums,
+        /// because AppLocalization has no WinForms dependency at all and
+        /// doesn't know this library exists - but almost every app that uses
+        /// both wants them switched in lockstep, and forgetting to set one of
+        /// the two is an easy way to end up with the app's own text in one
+        /// language and ErikwnkWFUI's built-in dialogs (update prompt, title
+        /// bar tooltips) in another. Prefer this over setting
+        /// <see cref="Language"/> and AppLocalization.Language individually
+        /// unless an app specifically wants them to diverge.
+        /// </summary>
+        public static void SetLanguage(AppLanguage language)
+        {
+            AppLocalization.Language = language;
+            Language = language == AppLanguage.German ? UILanguage.German : UILanguage.English;
         }
 
         /// <summary>
@@ -192,6 +216,18 @@ namespace ErikwnkWFUI
                     isIcon);
             }
 
+            /// <summary>
+            /// A yellow "open folder" icon button. <paramref name="tooltip"/>
+            /// is exactly that - the tooltip text - NOT the button's visible
+            /// label: this factory always sets <c>.Text</c> to the folder
+            /// glyph ("📁") itself, so there's no separate parameter for
+            /// visible text at all. Overwriting the returned button's
+            /// <c>.Text</c> afterward (e.g. while re-applying strings on a
+            /// language switch) replaces the icon with whatever was set and
+            /// is almost never what's wanted - to change the tooltip later,
+            /// use <see cref="UpdateTooltip"/> instead, and leave <c>.Text</c>
+            /// alone.
+            /// </summary>
             public static Button CreateBrowse(
                 string tooltip = "",
                 Size? size = null,
@@ -280,6 +316,27 @@ namespace ErikwnkWFUI
             {
                 return UIComboBoxFactory.CreateStandard(
                     comboBoxStyle);
+            }
+
+            /// <summary>
+            /// Clears <paramref name="comboBox"/>'s items and repopulates it
+            /// from <paramref name="items"/> - e.g. because a language switch
+            /// changed the item text - restoring whatever was selected
+            /// before by its POSITION in the list (not by value/identity, so
+            /// this assumes the same N choices in the same order, just
+            /// possibly relabeled). Saves callers from having to remember
+            /// SelectedIndex and re-set it by hand every time they rebuild a
+            /// combo box's items.
+            /// </summary>
+            public static void ReplaceItems(
+                ComboBox comboBox,
+                System.Collections.Generic.IEnumerable<object> items,
+                bool keepSelection = true)
+            {
+                UIComboBoxFactory.ReplaceItems(
+                    comboBox,
+                    items,
+                    keepSelection);
             }
         }
 
@@ -406,6 +463,11 @@ namespace ErikwnkWFUI
             public static System.Windows.Forms.ListView CreateStandard()
             {
                 return UIListViewFactory.CreateStandard();
+            }
+
+            public static System.Windows.Forms.ListView CreatePrimary()
+            {
+                return UIListViewFactory.CreatePrimary();
             }
         }
 
