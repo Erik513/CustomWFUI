@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using ErikwnkWFUI.Styles;
 
@@ -16,7 +15,6 @@ namespace ErikwnkWFUI.Forms
     {
         private const int ToastWidth = 350;
         private const int ToastHeight = 80;
-        private const int CornerRadius = 12;
         private const int CloseDelay = 2500;
 
         private static ToastForm _currentToast;
@@ -70,12 +68,6 @@ namespace ErikwnkWFUI.Forms
 
                 if (_currentToast == this)
                     _currentToast = null;
-
-                if (Region != null)
-                {
-                    Region.Dispose();
-                    Region = null;
-                }
             }
 
             base.Dispose(disposing);
@@ -183,40 +175,32 @@ namespace ErikwnkWFUI.Forms
                 (int)(owner.ClientSize.Height * 0.75) - toast.Height / 2));
         }
 
+        // Win11 rounds window corners itself via DWM (anti-aliased, all four
+        // identical, and it's what draws the thin gray border InfoPopupForm
+        // has - matched here rather than kept as a plain-rectangle GDI
+        // Region, which never gets that border). On pre-Win11 the call is a
+        // silent no-op and the toast is simply a plain rectangle - see
+        // InfoPopupForm.ApplyRoundedRegion, which uses the same approach.
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMWCP_ROUND = 2;
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
         private void ApplyRoundedRegion()
         {
-            if (ClientRectangle.Width <= 0 || ClientRectangle.Height <= 0)
+            if (!IsHandleCreated)
                 return;
 
-            Region oldRegion = Region;
-            GraphicsPath path = GetRoundedRectanglePath(ClientRectangle, CornerRadius);
-
+            int pref = DWMWCP_ROUND;
             try
             {
-                Region = new Region(path);
+                DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
             }
-            finally
+            catch
             {
-                path.Dispose();
-
-                if (oldRegion != null)
-                    oldRegion.Dispose();
+                // pre-Win11 - no rounded corners, plain rectangle
             }
-        }
-
-        private static GraphicsPath GetRoundedRectanglePath(Rectangle rect, int radius)
-        {
-            int diameter = radius * 2;
-            GraphicsPath path = new GraphicsPath();
-
-            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
-            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
-            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
-
-            path.CloseFigure();
-
-            return path;
         }
 
         private void OnToastLoad(object sender, EventArgs e)
