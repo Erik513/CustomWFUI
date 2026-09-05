@@ -1,6 +1,9 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 using ErikwnkWFUI.Controls;
+using ErikwnkWFUI.Factories;
 using ErikwnkWFUI.Styles;
 using ErikwnkWFUI.Helpers;
 
@@ -22,12 +25,23 @@ namespace ErikwnkWFUI.Forms
     {
         private readonly TitleBarControl _titleBar;
         private readonly Panel _contentPanel;
+        private readonly Label _versionLabel;
         private readonly BorderlessResizeHandler _resizeHandler;
 
         /// <summary>The panel below the title bar - add your own UI here.</summary>
         public Panel ContentPanel
         {
             get { return _contentPanel; }
+        }
+
+        /// <summary>
+        /// The reserved bottom-right version strip, or null when
+        /// <see cref="StyledFormOptions.VersionText"/> wasn't set - reach
+        /// through here to restyle it (font, color) after construction.
+        /// </summary>
+        public Label VersionLabel
+        {
+            get { return _versionLabel; }
         }
 
         /// <summary>
@@ -117,19 +131,37 @@ namespace ErikwnkWFUI.Forms
                 Margin = new Padding(0)
             };
 
+            string versionText = options.VersionText;
+            if (string.IsNullOrEmpty(versionText) && options.Type == StyledFormType.Settings)
+                versionText = GetEntryAssemblyVersionText();
+
+            if (!string.IsNullOrEmpty(versionText))
+            {
+                _versionLabel = UILabelFactory.CreateMuted(versionText);
+                _versionLabel.Dock = DockStyle.Bottom;
+                _versionLabel.Height = 22;
+                _versionLabel.TextAlign = ContentAlignment.MiddleRight;
+                _versionLabel.Padding = new Padding(0, 0, 10, 0);
+            }
+
             Controls.Add(_contentPanel);
             Controls.Add(_titleBar);
+
+            if (_versionLabel != null)
+                Controls.Add(_versionLabel);
 
             if (options.Borderless && options.Resizable)
                 _resizeHandler = new BorderlessResizeHandler(this);
         }
-        /// <summary>Quick-start constructor for the common case - just a title and whether it behaves like a dialog (no minimize/maximize, fixed size) or a standard resizable window.</summary>
+        /// <summary>Quick-start constructor for the common case - just a title and whether it behaves like a dialog (no minimize/maximize, fixed size), a settings screen (same, plus an automatic version strip), or a standard resizable window.</summary>
         public StyledForm(
             string title,
             StyledFormType type = StyledFormType.Standard)
             : this(type == StyledFormType.Dialog
                 ? StyledFormOptions.CreateDialog(title)
-                : StyledFormOptions.CreateStandard(title))
+                : type == StyledFormType.Settings
+                    ? StyledFormOptions.CreateSettings(title)
+                    : StyledFormOptions.CreateStandard(title))
         {
         }
 
@@ -141,13 +173,27 @@ namespace ErikwnkWFUI.Forms
             if (_resizeHandler != null)
                 _resizeHandler.TryHandleMessage(ref m);
         }
+
+        // Entry assembly, not the executing one - the executing assembly
+        // here would be ErikwnkWFUI.dll itself, never the consuming app.
+        // Falls back to the executing assembly only for the unusual hosts
+        // (e.g. some test runners) where GetEntryAssembly() returns null.
+        private static string GetEntryAssemblyVersionText()
+        {
+            Assembly assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+            Version version = assembly.GetName().Version;
+
+            return version != null ? "v" + version.ToString(3) : null;
+        }
     }
 
     /// <summary>Which <see cref="StyledFormOptions"/> preset a <see cref="StyledForm"/> should start from.</summary>
     public enum StyledFormType
     {
         Standard,
-        Dialog
+        Dialog,
+        /// <summary>Like <see cref="Dialog"/>, but automatically shows the entry assembly's version in the reserved bottom-right strip - see <see cref="StyledFormOptions.CreateSettings"/>.</summary>
+        Settings
     }
 
     /// <summary>
@@ -187,6 +233,18 @@ namespace ErikwnkWFUI.Forms
         /// <summary>The OS-level icon (taskbar, Alt-Tab, system menu) - not the title bar logo, see <see cref="Icon"/> for that. Falls back to the running exe's own icon when left null.</summary>
         public Icon WindowIcon { get; set; } = null;
 
+        /// <summary>
+        /// When set, reserves a thin strip at the bottom of the window with
+        /// this text right-aligned - typically the app version, e.g.
+        /// "v1.0.0". Left null (the default), <see cref="Type"/> ==
+        /// <see cref="StyledFormType.Settings"/> fills it in automatically
+        /// from the entry assembly's own version; for any other
+        /// <see cref="Type"/>, null just means no strip at all. Set this
+        /// explicitly to override the automatic value (e.g. a custom
+        /// format, or a version string from a different assembly).
+        /// </summary>
+        public string VersionText { get; set; } = null;
+
         /// <summary>A normal, resizable window with minimize/maximize/close.</summary>
         public static StyledFormOptions CreateStandard(string title = "", ContentAlignment titleTextAlign = ContentAlignment.MiddleCenter, Color? backColor = null, Image icon = null, Icon windowIcon = null)
         {
@@ -225,6 +283,22 @@ namespace ErikwnkWFUI.Forms
                 ShowCloseButton = true,
                 AllowWindowSnapAndMaximize = false
             };
+        }
+
+        /// <summary>
+        /// A fixed-size dialog like <see cref="CreateDialog"/>, but marked
+        /// as a settings screen: <see cref="StyledForm"/> automatically
+        /// shows the entry assembly's version (e.g. "v1.0.0") in a reserved
+        /// bottom-right strip, without the caller having to look up or pass
+        /// a version string itself. Use this for every "Settings" window -
+        /// that's what makes the version strip show up consistently across
+        /// all of them instead of each app wiring it up separately.
+        /// </summary>
+        public static StyledFormOptions CreateSettings(string title = "", ContentAlignment titleTextAlign = ContentAlignment.MiddleLeft, Color? backColor = null, Image icon = null, Icon windowIcon = null)
+        {
+            StyledFormOptions options = CreateDialog(title, titleTextAlign, backColor, icon, windowIcon);
+            options.Type = StyledFormType.Settings;
+            return options;
         }
     }
 }
