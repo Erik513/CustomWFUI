@@ -126,10 +126,25 @@ namespace ErikwnkWFUI.Forms
         public Button CreateUpdateAvailableButton(UpdateCheckResult result, Version currentVersion, Form owner)
         {
             Button button = UIButtonFactory.CreateGreen(
-                "⬆",
+                "▲",
                 UIStrings.Get("Update.AvailableTooltip"),
-                new Size(20, 18),
+                new Size(22, 20),
                 isIcon: true);
+
+            // "▲" fills its glyph box (unlike the wispy "⬆"); a smaller size
+            // keeps it from clipping in this strip-sized button.
+            button.Font = new Font("Segoe UI Symbol", 9f);
+            button.Padding = new Padding(0);
+            // A FlowLayoutPanel top-aligns its children; center the button in
+            // the strip. No right margin - it should sit in the corner.
+            button.Margin = new Padding(6, 2, 0, 2);
+
+            // Keep the tooltip in step with a live language switch, the way the
+            // title bar's own buttons do.
+            EventHandler relocalize = (s, e) =>
+                UIButtonFactory.UpdateTooltip(button, UIStrings.Get("Update.AvailableTooltip"));
+            UIStrings.LanguageChanged += relocalize;
+            button.Disposed += (s, e) => UIStrings.LanguageChanged -= relocalize;
 
             button.Click += async (sender, e) => await ShowUpdatePromptAsync(result, currentVersion, owner);
 
