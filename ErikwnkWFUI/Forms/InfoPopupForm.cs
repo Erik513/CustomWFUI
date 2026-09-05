@@ -65,7 +65,7 @@ namespace ErikwnkWFUI.Forms
 
                     AutoSize = false;
                     Padding = new Padding(0);
-                    Opacity = 0.92;
+                    Opacity = 0.90;   // match ToastForm
                     ApplyCompactSize();
                 }
             }
