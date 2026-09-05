@@ -416,21 +416,21 @@ namespace ErikwnkWFUI.Showcase
         {
             table.AddSection("ToggleSwitches");
 
-            ToggleSwitch standardOn = UIStyles.ToggleSwitches.CreateStandard(true);
-            ToggleSwitch standardOff = UIStyles.ToggleSwitches.CreateStandard(false);
-            ToggleSwitch disabledToggle = UIStyles.ToggleSwitches.CreateStandard(true);
+            ToggleSwitch standardOn = UIStyles.ToggleSwitches.CreateStandard(true, "On", "Off");
+            ToggleSwitch standardOff = UIStyles.ToggleSwitches.CreateStandard(false, "On", "Off");
+            ToggleSwitch disabledToggle = UIStyles.ToggleSwitches.CreateStandard(true, "On", "Off");
             disabledToggle.Enabled = false;
             AddUniformRow(table, "CreateStandard", standardOn, standardOff, disabledToggle);
 
-            ToggleSwitch smallOn = UIStyles.ToggleSwitches.CreateSmall(true);
-            ToggleSwitch smallOff = UIStyles.ToggleSwitches.CreateSmall(false);
-            ToggleSwitch smallDisabled = UIStyles.ToggleSwitches.CreateSmall(true);
+            ToggleSwitch smallOn = UIStyles.ToggleSwitches.CreateSmall(true, "On", "Off");
+            ToggleSwitch smallOff = UIStyles.ToggleSwitches.CreateSmall(false, "On", "Off");
+            ToggleSwitch smallDisabled = UIStyles.ToggleSwitches.CreateSmall(true, "On", "Off");
             smallDisabled.Enabled = false;
             AddUniformRow(table, "CreateSmall", smallOn, smallOff, smallDisabled);
 
-            ToggleSwitch largeOn = UIStyles.ToggleSwitches.CreateLarge(true);
-            ToggleSwitch largeOff = UIStyles.ToggleSwitches.CreateLarge(false);
-            ToggleSwitch largeDisabled = UIStyles.ToggleSwitches.CreateLarge(true);
+            ToggleSwitch largeOn = UIStyles.ToggleSwitches.CreateLarge(true, "On", "Off");
+            ToggleSwitch largeOff = UIStyles.ToggleSwitches.CreateLarge(false, "On", "Off");
+            ToggleSwitch largeDisabled = UIStyles.ToggleSwitches.CreateLarge(true, "On", "Off");
             largeDisabled.Enabled = false;
             AddUniformRow(table, "CreateLarge", largeOn, largeOff, largeDisabled);
         }
