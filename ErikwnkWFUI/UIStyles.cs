@@ -605,6 +605,24 @@ namespace ErikwnkWFUI
             }
         }
 
+        /// <summary>A slim, theme-matching horizontal <see cref="Controls.SliderBar"/> (WinForms has none of its own).</summary>
+        public static class SliderBars
+        {
+            public static SliderBar CreateStandard(double value = 0, double maximum = 1.0)
+            {
+                return UISliderBarFactory.CreateStandard(value, maximum);
+            }
+        }
+
+        /// <summary>A <see cref="Controls.VolumeSlider"/> - a <see cref="Controls.SliderBar"/> fixed to 0..1 that shows the current percentage in a small popup while dragged.</summary>
+        public static class VolumeSliders
+        {
+            public static VolumeSlider CreateStandard(double value = 0)
+            {
+                return UIVolumeSliderFactory.CreateStandard(value);
+            }
+        }
+
         /// <summary>
         /// ErikwnkWFUI's own bundled icons (Web/Folder/Document/Application),
         /// plus <see cref="LoadEmbedded"/> for loading your own app's icon

@@ -52,6 +52,8 @@ namespace ErikwnkWFUI.Showcase
         private Panel _scrollHost;
         private InfoPopupForm _infoPopup;
         private Timer _infoPopupHideTimer;
+        private InfoPopupForm _compactInfoPopup;
+        private Timer _compactInfoPopupHideTimer;
         private bool _isLightTheme;
 
         // Lets every ProgressBars-section row (the setters registered by
@@ -85,6 +87,19 @@ namespace ErikwnkWFUI.Showcase
             {
                 _infoPopupHideTimer.Stop();
                 _infoPopup.Hide();
+            };
+
+            // A separate instance from _infoPopup - Compact is meant to be
+            // set once and left on for that instance's whole life (see its
+            // own doc comment), so the plain-text demo above and this one
+            // can't share a single popup.
+            _compactInfoPopup = new InfoPopupForm { Compact = true, CompactSize = new Size(70, 32) };
+
+            _compactInfoPopupHideTimer = new Timer { Interval = 3000 };
+            _compactInfoPopupHideTimer.Tick += delegate
+            {
+                _compactInfoPopupHideTimer.Stop();
+                _compactInfoPopup.Hide();
             };
 
             // 1% every 60ms - a full 0->100 sweep takes 6 seconds, slow
@@ -124,6 +139,19 @@ namespace ErikwnkWFUI.Showcase
                 {
                     _infoPopup.Dispose();
                     _infoPopup = null;
+                }
+
+                if (_compactInfoPopupHideTimer != null)
+                {
+                    _compactInfoPopupHideTimer.Stop();
+                    _compactInfoPopupHideTimer.Dispose();
+                    _compactInfoPopupHideTimer = null;
+                }
+
+                if (_compactInfoPopup != null)
+                {
+                    _compactInfoPopup.Dispose();
+                    _compactInfoPopup = null;
                 }
             }
 
@@ -280,9 +308,11 @@ namespace ErikwnkWFUI.Showcase
             AddPanelsSection(table);
             AddPopupsSection(table);
             AddProgressBarsSection(table);
+            AddSliderBarSection(table);
             AddSlimProgressBarsSection(table);
             AddTextBoxesSection(table);
             AddToggleSwitchesSection(table);
+            AddVolumeSliderSection(table);
 
             host.Controls.Add(table);
         }
@@ -530,6 +560,34 @@ namespace ErikwnkWFUI.Showcase
             AddTwoColumnRow(table, "CreateStatus", slimStatusBar, slimStatusDisabled);
         }
 
+        // Value/Enabled are set directly rather than via AnimateProgressBar -
+        // a slider represents a user-set position, not a moving load, so a
+        // fixed demo value (like the disabled ProgressBar rows use) is the
+        // right comparison here, not motion.
+        private void AddSliderBarSection(PropertyTable table)
+        {
+            table.AddSection("SliderBar");
+
+            SliderBar slider = UIStyles.SliderBars.CreateStandard(0.4);
+            SliderBar sliderDisabled = UIStyles.SliderBars.CreateStandard(0.65);
+            sliderDisabled.Enabled = false;
+            AddTwoColumnRow(table, "CreateStandard", slider, sliderDisabled);
+        }
+
+        // VolumeSlider adds its own drag-value popup on top of SliderBar -
+        // drag the enabled one to see it. No separate "with popup" variant
+        // to demo since that popup is the whole point of this control, not
+        // an optional extra.
+        private void AddVolumeSliderSection(PropertyTable table)
+        {
+            table.AddSection("VolumeSlider");
+
+            VolumeSlider volume = UIStyles.VolumeSliders.CreateStandard(0.4);
+            VolumeSlider volumeDisabled = UIStyles.VolumeSliders.CreateStandard(0.65);
+            volumeDisabled.Enabled = false;
+            AddTwoColumnRow(table, "CreateStandard", volume, volumeDisabled);
+        }
+
         // Applies the current animation percentage immediately (so the bar
         // doesn't sit at its Value=0 default until the next timer tick)
         // and registers the setter so future ticks keep it moving.
@@ -758,9 +816,22 @@ namespace ErikwnkWFUI.Showcase
                 _infoPopupHideTimer.Start();
             };
 
+            Button compactInfoPopupButton = UIStyles.Buttons.CreateStandard("Show InfoPopupForm (Compact)", size: new Size(220, 32));
+            compactInfoPopupButton.Click += delegate
+            {
+                // Fixed-size mode meant for a short value like a slider's
+                // percentage (see VolumeSlider) - not the free-form text the
+                // plain demo above uses.
+                _compactInfoPopup.ShowInfo("70%", compactInfoPopupButton);
+
+                _compactInfoPopupHideTimer.Stop();
+                _compactInfoPopupHideTimer.Start();
+            };
+
             table.AddRow("MessageBox", messageBoxButton);
             table.AddRow("ToastForm", toastButton);
             table.AddRow("InfoPopupForm", infoPopupButton);
+            table.AddRow("InfoPopupForm.Compact", compactInfoPopupButton);
         }
     }
 }
