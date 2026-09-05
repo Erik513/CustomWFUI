@@ -1,8 +1,10 @@
 using System;
+using System.Drawing;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ErikwnkWFUI.Factories;
 using ErikwnkWFUI.Styles;
 using ErikwnkCore.Updater;
 
@@ -31,52 +33,107 @@ namespace ErikwnkWFUI.Forms
         }
 
         /// <summary>
-        /// Best-effort, non-blocking check against GitHub's latest release. Never
+        /// Best-effort, non-blocking check against GitHub's latest release that
+        /// immediately shows the "update available" prompt if there is one. Never
         /// throws; a failed or slow check just means no prompt is shown. On "Update
         /// now", downloads and swaps in the new build and exits the app so the swap
         /// helper can finish the job.
+        ///
+        /// For a settings screen that would rather notify about a new version once
+        /// (not on every single startup) and otherwise show a quiet "update
+        /// available" button instead of an unprompted popup, use the silent
+        /// <see cref="CheckForUpdateAsync(Version, TimeSpan)"/> overload together
+        /// with <see cref="ShowUpdatePromptAsync"/> and
+        /// <see cref="CreateUpdateAvailableButton"/> instead.
         /// </summary>
         public async Task CheckForUpdateAsync(Version currentVersion, TimeSpan checkTimeout, Form owner)
         {
             try
             {
-                using (CancellationTokenSource timeout = new CancellationTokenSource(checkTimeout))
-                {
-                    UpdateCheckResult result = await _updateChecker.CheckForUpdateAsync(
-                        currentVersion,
-                        timeout.Token);
+                UpdateCheckResult result = await CheckForUpdateAsync(currentVersion, checkTimeout);
 
-                    if (result == null)
-                    {
-                        return;
-                    }
-
-                    string displayedCurrentVersion =
-                        currentVersion.Major + "." + currentVersion.Minor + "." + currentVersion.Build;
-
-                    UpdateOutcome outcome = await UpdatePrompt.ShowUpdateAvailableAsync(
-                        displayedCurrentVersion,
-                        result.LatestVersion.ToString(),
-                        progress => ApplyUpdateAsync(result, progress),
-                        owner);
-
-                    if (outcome == UpdateOutcome.Failed)
-                    {
-                        MessageBox.Show(
-                            UIStrings.Get("Update.DownloadFailedMessage"),
-                            UIStrings.Get("Update.Title"),
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Warning,
-                            owner,
-                            MessageBoxSize.Small);
-
-                        OpenReleasePage(result.ReleaseUrl);
-                    }
-                }
+                if (result != null)
+                    await ShowUpdatePromptAsync(result, currentVersion, owner);
             }
             catch
             {
             }
+        }
+
+        /// <summary>
+        /// Same GitHub check as the other overload, but silent - never shows any
+        /// UI, just returns the result (or null on no update/failure/timeout) so
+        /// the caller can decide when, or whether, to actually prompt. Never
+        /// throws.
+        /// </summary>
+        public async Task<UpdateCheckResult> CheckForUpdateAsync(Version currentVersion, TimeSpan checkTimeout)
+        {
+            try
+            {
+                using (CancellationTokenSource timeout = new CancellationTokenSource(checkTimeout))
+                {
+                    return await _updateChecker.CheckForUpdateAsync(currentVersion, timeout.Token);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Shows the "update available" prompt for a <paramref name="result"/> from
+        /// the silent <see cref="CheckForUpdateAsync(Version, TimeSpan)"/> - the
+        /// same dialog+download+failure-handling flow the combined overload uses
+        /// internally, just callable on its own (from a one-time startup notice, or
+        /// later from an update button click). Returns how the dialog ended.
+        /// </summary>
+        public async Task<UpdateOutcome> ShowUpdatePromptAsync(UpdateCheckResult result, Version currentVersion, Form owner)
+        {
+            string displayedCurrentVersion =
+                currentVersion.Major + "." + currentVersion.Minor + "." + currentVersion.Build;
+
+            UpdateOutcome outcome = await UpdatePrompt.ShowUpdateAvailableAsync(
+                displayedCurrentVersion,
+                result.LatestVersion.ToString(),
+                progress => ApplyUpdateAsync(result, progress),
+                owner);
+
+            if (outcome == UpdateOutcome.Failed)
+            {
+                MessageBox.Show(
+                    UIStrings.Get("Update.DownloadFailedMessage"),
+                    UIStrings.Get("Update.Title"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning,
+                    owner,
+                    MessageBoxSize.Small);
+
+                OpenReleasePage(result.ReleaseUrl);
+            }
+
+            return outcome;
+        }
+
+        /// <summary>
+        /// A small, ready-styled green button (with an update glyph and a
+        /// tooltip) for <see cref="StyledForm.VersionStrip"/> - clicking it shows
+        /// the same prompt <see cref="ShowUpdatePromptAsync"/> does. Add it once
+        /// you know an update is available (e.g. after
+        /// <see cref="CheckForUpdateAsync(Version, TimeSpan)"/> returned a
+        /// non-null result), typically when building the settings screen.
+        /// </summary>
+        public Button CreateUpdateAvailableButton(UpdateCheckResult result, Version currentVersion, Form owner)
+        {
+            Button button = UIButtonFactory.CreateGreen(
+                "⬆",
+                UIStrings.Get("Update.AvailableTooltip"),
+                new Size(20, 18),
+                isIcon: true);
+
+            button.Click += async (sender, e) => await ShowUpdatePromptAsync(result, currentVersion, owner);
+
+            return button;
         }
 
         private async Task<bool> ApplyUpdateAsync(UpdateCheckResult result, IProgress<int> downloadProgress)

@@ -50,6 +50,7 @@ namespace ErikwnkWFUI.Styles
 
             ["Update.Title"] = "Update",
             ["Update.DownloadFailedMessage"] = "The update download failed. Opening the release page instead.",
+            ["Update.AvailableTooltip"] = "A new version is available - click to update",
 
             ["MessageBox.Cancel"] = "Cancel",
             ["InfoPopup.None"] = "None",
@@ -76,6 +77,7 @@ namespace ErikwnkWFUI.Styles
 
             ["Update.Title"] = "Update",
             ["Update.DownloadFailedMessage"] = "Der Update-Download ist fehlgeschlagen. Die Release-Seite wird stattdessen geöffnet.",
+            ["Update.AvailableTooltip"] = "Eine neue Version ist verfügbar - zum Aktualisieren klicken",
 
             ["MessageBox.Cancel"] = "Abbrechen",
             ["InfoPopup.None"] = "Keine",

@@ -25,6 +25,7 @@ namespace ErikwnkWFUI.Forms
     {
         private readonly TitleBarControl _titleBar;
         private readonly Panel _contentPanel;
+        private readonly FlowLayoutPanel _versionStrip;
         private readonly Label _versionLabel;
         private readonly BorderlessResizeHandler _resizeHandler;
 
@@ -32,6 +33,19 @@ namespace ErikwnkWFUI.Forms
         public Panel ContentPanel
         {
             get { return _contentPanel; }
+        }
+
+        /// <summary>
+        /// The reserved bottom-right strip holding <see cref="VersionLabel"/>,
+        /// or null when it wasn't reserved at all (see
+        /// <see cref="StyledFormOptions.VersionText"/>). Flows right-to-left,
+        /// so <c>VersionStrip.Controls.Add(someControl)</c> places it
+        /// directly to the left of the version text - e.g. an
+        /// <see cref="AppUpdater.CreateUpdateAvailableButton"/> button.
+        /// </summary>
+        public FlowLayoutPanel VersionStrip
+        {
+            get { return _versionStrip; }
         }
 
         /// <summary>
@@ -138,17 +152,35 @@ namespace ErikwnkWFUI.Forms
             if (!string.IsNullOrEmpty(versionText))
             {
                 _versionLabel = UILabelFactory.CreateMuted(versionText);
-                _versionLabel.Dock = DockStyle.Bottom;
-                _versionLabel.Height = 22;
+                _versionLabel.AutoSize = true;
                 _versionLabel.TextAlign = ContentAlignment.MiddleRight;
-                _versionLabel.Padding = new Padding(0, 0, 10, 0);
+                _versionLabel.Margin = new Padding(0, 4, 0, 0);
+
+                _versionStrip = new FlowLayoutPanel
+                {
+                    Dock = DockStyle.Bottom,
+                    Height = 24,
+                    FlowDirection = FlowDirection.RightToLeft,
+                    WrapContents = false,
+                    AutoSize = false,
+                    Margin = new Padding(0),
+                    Padding = new Padding(0, 0, 10, 0),
+                    // Explicit, not left to the transparent-background
+                    // ancestor-walk every OwnerDrawLabel does - the strip's
+                    // own edges (outside the label's now AutoSize width)
+                    // would otherwise show through with the FlowLayoutPanel's
+                    // default gray SystemColors.Control instead of matching
+                    // the rest of the window.
+                    BackColor = UIColors.BackgroundBlack
+                };
+                _versionStrip.Controls.Add(_versionLabel);
             }
 
             Controls.Add(_contentPanel);
             Controls.Add(_titleBar);
 
-            if (_versionLabel != null)
-                Controls.Add(_versionLabel);
+            if (_versionStrip != null)
+                Controls.Add(_versionStrip);
 
             if (options.Borderless && options.Resizable)
                 _resizeHandler = new BorderlessResizeHandler(this);
