@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
+using ErikwnkWFUI.Helpers;
 using ErikwnkWFUI.Styles;
 
 namespace ErikwnkWFUI.Factories
@@ -227,6 +228,7 @@ namespace ErikwnkWFUI.Factories
 
             ToolTip toolTip = UIToolTipFactory.CreateToolTip();
             toolTip.SetToolTip(button, tooltip);
+            toolTip.ReviveOnFormActivate(button);
             _tooltips.Add(button, toolTip);
 
             button.Disposed += delegate

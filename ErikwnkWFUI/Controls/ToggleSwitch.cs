@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using ErikwnkWFUI.Helpers;
 using ErikwnkWFUI.Styles;
 
 namespace ErikwnkWFUI.Controls
@@ -237,6 +238,7 @@ namespace ErikwnkWFUI.Controls
                 ReshowDelay = 100,
                 AutoPopDelay = 5000
             };
+            _toolTip.ReviveOnFormActivate(this);
         }
 
         private void UpdateToolTip()
