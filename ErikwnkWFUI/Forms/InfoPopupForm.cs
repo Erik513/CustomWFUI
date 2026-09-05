@@ -1,7 +1,6 @@
 ﻿using ErikwnkWFUI.Styles;
 using System;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -18,7 +17,6 @@ namespace ErikwnkWFUI.Forms
     /// </summary>
     public class InfoPopupForm : Form
     {
-        private const int CornerRadius = 12;
         private const int MaxTextWidth = 260;
         private const int ScreenMargin = 10;
         private const int OwnerOffsetX = 8;
@@ -33,6 +31,77 @@ namespace ErikwnkWFUI.Forms
         private Point _pendingMouseScreenPosition;
         private InfoPopupSection[] _pendingSections;
         private string _lastSectionContentKey;
+        private bool _compact;
+        private Size _compactSize = new Size(48, 24);
+
+        /// <summary>
+        /// Fixed-size mode for a single very short value (e.g. a percentage over
+        /// a slider): the popup is exactly <see cref="CompactSize"/>, the text is
+        /// centred, and it does not resize as the value's width changes
+        /// ("9%" vs "100%"). Set this before the first Show call.
+        /// </summary>
+        public bool Compact
+        {
+            get { return _compact; }
+            set
+            {
+                if (_compact == value)
+                    return;
+                _compact = value;
+
+                if (value)
+                {
+                    _layout.Visible = false;
+                    if (_layout.Controls.Contains(_textLabel))
+                        _layout.Controls.Remove(_textLabel);
+
+                    _textLabel.AutoSize = false;
+                    _textLabel.Dock = DockStyle.Fill;
+                    _textLabel.TextAlign = ContentAlignment.MiddleCenter;
+                    _textLabel.MaximumSize = Size.Empty;
+                    if (!Controls.Contains(_textLabel))
+                        Controls.Add(_textLabel);
+                    _textLabel.BringToFront();
+
+                    AutoSize = false;
+                    Padding = new Padding(0);
+                    Opacity = 0.92;
+                    ApplyCompactSize();
+                }
+            }
+        }
+
+        // A borderless top-level Form can't go below the OS minimum tracking
+        // size (~136x39) unless MinimumSize is set explicitly - WinForms then
+        // writes it into WM_GETMINMAXINFO. Lock min == max == the wanted size.
+        private void ApplyCompactSize()
+        {
+            MinimumSize = Size.Empty;
+            MaximumSize = Size.Empty;
+            ClientSize = _compactSize;
+            MinimumSize = Size;
+            MaximumSize = Size;
+            ApplyRoundedRegion();
+        }
+
+        /// <summary>The fixed client size used while <see cref="Compact"/> is true.</summary>
+        public Size CompactSize
+        {
+            get { return _compactSize; }
+            set
+            {
+                _compactSize = value;
+                if (_compact)
+                    ApplyCompactSize();
+            }
+        }
+
+        // A value popup must never take activation away from the window whose
+        // slider is being dragged.
+        protected override bool ShowWithoutActivation
+        {
+            get { return true; }
+        }
 
         public InfoPopupForm(string title = "")
         {
@@ -97,6 +166,47 @@ namespace ErikwnkWFUI.Forms
                 location.Y = screen.Bottom - Height - ScreenMargin;
 
             return location;
+        }
+
+        /// <summary>
+        /// Shows (or repositions) a single line of text centred horizontally on
+        /// <paramref name="anchorLocalX"/> (a pixel x inside <paramref name="anchor"/>)
+        /// and just above <paramref name="anchor"/> - flips below if there is no
+        /// room. Typical use is a live value readout over a slider thumb.
+        /// </summary>
+        public void ShowCenteredAbove(string text, Control anchor, int anchorLocalX)
+        {
+            if (anchor == null || anchor.IsDisposed)
+                return;
+
+            RefreshColors();
+
+            _textLabel.Text = string.IsNullOrWhiteSpace(text)
+                ? UIStrings.Get("InfoPopup.None")
+                : text;
+
+            if (!_compact)
+                PerformLayout();   // compact mode is a fixed size, don't resize
+
+            Point anchorTop = anchor.PointToScreen(new Point(anchorLocalX, 0));
+            int x = anchorTop.X - Width / 2;
+            int y = anchorTop.Y - Height - 6;
+
+            Rectangle screen = Screen.FromControl(anchor).WorkingArea;
+
+            if (x < screen.Left + ScreenMargin)
+                x = screen.Left + ScreenMargin;
+            if (x + Width > screen.Right - ScreenMargin)
+                x = screen.Right - ScreenMargin - Width;
+            if (y < screen.Top + ScreenMargin)
+                y = anchorTop.Y + anchor.Height + 6;
+
+            Location = new Point(x, y);
+
+            if (!Visible)
+                Show(anchor.FindForm());
+
+            BringToFront();
         }
 
         /// <summary>Same as <see cref="ShowInfo"/>, but anchored near <paramref name="mouseScreenPosition"/> instead of <paramref name="owner"/>'s bounds - typical use is showing this from a MouseMove handler.</summary>
@@ -354,6 +464,12 @@ namespace ErikwnkWFUI.Forms
             Color foreColor = GetForeColor();
             Color dimForeColor = GetDimForeColor();
 
+            if (_compact)
+            {
+                _textLabel.ForeColor = foreColor;
+                return;
+            }
+
             foreach (Control control in _layout.Controls)
             {
                 Label label = control as Label;
@@ -371,6 +487,7 @@ namespace ErikwnkWFUI.Forms
             TopMost = true;
             StartPosition = FormStartPosition.Manual;
 
+            DoubleBuffered = true;
             BackColor = UIColors.PrimaryDark;
             Padding = new Padding(12);
 
@@ -427,40 +544,36 @@ namespace ErikwnkWFUI.Forms
             ApplyRoundedRegion();
         }
 
+        /// <summary>
+        /// Clips the window to a rounded rectangle. Always recomputed from the
+        /// *current* <see cref="Control.ClientRectangle"/> - setting it once from
+        /// a stale/pre-final size is what left one corner square before.
+        /// </summary>
+        // Win11 rounds window corners itself via DWM (anti-aliased, all four
+        // identical) - just ask for the small radius. A window Region fights
+        // this and leaves one corner square; on Win10 the call is a silent
+        // no-op and the popup is simply a plain rectangle.
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMWCP_ROUND = 2;
+        private const int DWMWCP_ROUNDSMALL = 3;
+
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
         private void ApplyRoundedRegion()
         {
-            if (ClientRectangle.Width <= 0 || ClientRectangle.Height <= 0)
+            if (!IsHandleCreated)
                 return;
 
-            Region oldRegion = Region;
-            GraphicsPath path = CreateRoundedRectangle(ClientRectangle, CornerRadius);
-
+            int pref = _compact ? DWMWCP_ROUNDSMALL : DWMWCP_ROUND;
             try
             {
-                Region = new Region(path);
+                DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
             }
-            finally
+            catch
             {
-                path.Dispose();
-
-                if (oldRegion != null)
-                    oldRegion.Dispose();
+                // pre-Win11 - no rounded corners, plain rectangle
             }
-        }
-
-        private static GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
-        {
-            int diameter = radius * 2;
-            GraphicsPath path = new GraphicsPath();
-
-            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
-            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
-            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
-
-            path.CloseFigure();
-
-            return path;
         }
 
         protected override void Dispose(bool disposing)
