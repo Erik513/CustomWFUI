@@ -38,12 +38,26 @@ namespace ErikwnkWFUI.Controls
             // ValueChanged alone would already cover dragging too (it fires
             // continuously on every mouse-move, restarting the hide timer
             // each time so it never gets 700ms of quiet to actually fire) -
-            // DragStarted/DragEnded are only needed for the click-without-
-            // moving edge case, where SetValueFromUser's no-op-if-unchanged
-            // check means ValueChanged never fires at all.
+            // DragStarted is only needed for the click-without-moving edge
+            // case, where SetValueFromUser's no-op-if-unchanged check means
+            // ValueChanged never fires at all.
             DragStarted += delegate { ShowPopup(); };
             ValueChanged += delegate { ShowPopup(); StartHideTimer(); };
-            DragEnded += delegate { StartHideTimer(); };
+
+            // Forced (bypasses the throttle below) - releasing a fast drag
+            // right on 0% or 100% could otherwise land its very last
+            // ValueChanged inside the throttle window, leaving the popup
+            // stuck showing a slightly-stale value forever (the drag is
+            // over, so nothing else would ever trigger another update).
+            DragEnded += delegate { ShowPopup(force: true); StartHideTimer(); };
+
+            // Same problem, same fix, for holding an arrow key: OS key-repeat
+            // can outrun the throttle just like a fast drag can, so the last
+            // repeat before release might get skipped, stranding the popup on
+            // a slightly-stale value (e.g. 95% instead of 100%). KeyUp fires
+            // even though IsInputKey claims these keys - it only changes
+            // which keys generate KeyDown/KeyUp, not whether they do.
+            KeyUp += delegate { ShowPopup(force: true); StartHideTimer(); };
         }
 
         private void StartHideTimer()
@@ -102,12 +116,69 @@ namespace ErikwnkWFUI.Controls
             }
         }
 
-        private void ShowPopup()
+        // Narrowly scoped to just around a ShowPopup() call (see below) -
+        // deliberately NOT "is the popup currently visible", which was tried
+        // first and was wrong: the popup is meant to stay visible for up to
+        // PopupHideDelayMs after ANY interaction, so that check treated
+        // every focus loss in that whole window - including a deliberate
+        // click on some other control entirely - as "my own popup stole
+        // focus" and kept stealing it back, blocking that other control.
+        private bool _isSelfFocusChurn;
+
+        // Guards against scheduling a fresh BeginInvoke below on every
+        // single ShowPopup() call - which, during a fast drag, fires on
+        // every mouse-move (dozens of times a second). Each BeginInvoke
+        // posts a real message through the window's message queue; doing
+        // that at mouse-move frequency was enough overhead to visibly stall
+        // unrelated things driven by the same message loop, like the
+        // Showcase's own ProgressBar animation timer. Only one clear is
+        // ever pending at a time - later calls just keep _isSelfFocusChurn
+        // true for longer, which is exactly what's wanted anyway.
+        private bool _focusChurnClearPending;
+
+        // ShowCenteredAbove (specifically its unconditional BringToFront()
+        // call, which forces a Z-order/DWM update every single time) turned
+        // out to be the real cost, not the BeginInvoke above - it runs once
+        // per ValueChanged, i.e. once per mouse-move during a drag, dozens
+        // of times a second, and that alone was enough to visibly stall the
+        // Showcase's ProgressBar animation. A percentage readout doesn't
+        // need to redraw faster than this to still look instant, so actual
+        // updates are capped to this interval; ShowPopup() calls in between
+        // just keep the already-visible popup up (via the hide timer) with
+        // whatever value it last showed.
+        private const int MinPopupUpdateIntervalMs = 40;
+        private int _lastPopupUpdateTickCount = int.MinValue;
+
+        // force bypasses the throttle - used by DragEnded to guarantee the
+        // final value is always shown, even if it lands inside the window.
+        private void ShowPopup(bool force = false)
         {
             if (FindForm() == null)
                 return;
 
+            int now = Environment.TickCount;
+            bool alreadyVisible = _popup != null && !_popup.IsDisposed && _popup.Visible;
+            if (!force && alreadyVisible && unchecked(now - _lastPopupUpdateTickCount) < MinPopupUpdateIntervalMs)
+                return;
+
+            _lastPopupUpdateTickCount = now;
+
+            _isSelfFocusChurn = true;
             Popup.ShowCenteredAbove(_formatValue(Value), this, ThumbCenterX);
+
+            if (_focusChurnClearPending)
+                return;
+
+            _focusChurnClearPending = true;
+
+            // Cleared on the NEXT message-loop iteration, not immediately -
+            // Show()'s transient focus loss can arrive slightly after this
+            // call returns, not only synchronously within it.
+            BeginInvoke(new MethodInvoker(delegate
+            {
+                _focusChurnClearPending = false;
+                _isSelfFocusChurn = false;
+            }));
         }
 
         private void HidePopup()
@@ -119,6 +190,27 @@ namespace ErikwnkWFUI.Controls
         protected override void OnLostFocus(EventArgs e)
         {
             base.OnLostFocus(e);
+
+            if (_isSelfFocusChurn)
+            {
+                // Our own popup's Show()/BringToFront() just took Win32
+                // focus, not the user moving away - reclaim it once the
+                // current message (which might still be Show()'s own
+                // internal pump) has fully unwound. Reclaiming inline here
+                // was tried and made things measurably worse during a fast
+                // drag: Show() pumps messages internally, so a queued
+                // MouseMove could dispatch and recurse back into
+                // ShowPopup() while Show() was still on the call stack,
+                // corrupting the popup window (UI freezes, a popup that
+                // never finished painting).
+                BeginInvoke(new MethodInvoker(delegate
+                {
+                    if (!IsDisposed && !Focused)
+                        Focus();
+                }));
+                return;
+            }
+
             if (_hideTimer != null)
                 _hideTimer.Stop();
             HidePopup();

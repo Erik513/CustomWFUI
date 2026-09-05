@@ -203,10 +203,18 @@ namespace ErikwnkWFUI.Forms
 
             Location = new Point(x, y);
 
+            // BringToFront() only on the transition to visible, not on
+            // every single call - VolumeSlider calls this on every
+            // ValueChanged while dragging (dozens of times a second), and
+            // re-asserting Z-order that often on an already-topmost,
+            // already-visible window is needless overhead with no visible
+            // effect, but was enough to stall unrelated things sharing the
+            // UI thread's message loop (e.g. a ProgressBar's animation timer).
             if (!Visible)
+            {
                 Show(anchor.FindForm());
-
-            BringToFront();
+                BringToFront();
+            }
         }
 
         /// <summary>Same as <see cref="ShowInfo"/>, but anchored near <paramref name="mouseScreenPosition"/> instead of <paramref name="owner"/>'s bounds - typical use is showing this from a MouseMove handler.</summary>
