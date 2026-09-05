@@ -10,9 +10,10 @@ namespace ErikwnkWFUI.Controls
     /// A <see cref="SliderBar"/> preconfigured for a 0..1 volume value that
     /// shows the current percentage in a small popup above the thumb while the
     /// user drags it, then briefly after they let go, click once, or change
-    /// the value with an arrow key. The consuming app only wires
-    /// <see cref="SliderBar.ValueChanged"/> and sets <see cref="SliderBar.Value"/> -
-    /// the readout is handled here.
+    /// the value with an arrow key - and also for as long as the mouse simply
+    /// hovers over it, disappearing the instant the mouse leaves. The
+    /// consuming app only wires <see cref="SliderBar.ValueChanged"/> and sets
+    /// <see cref="SliderBar.Value"/> - the readout is handled here.
     /// </summary>
     public class VolumeSlider : SliderBar
     {
@@ -163,8 +164,12 @@ namespace ErikwnkWFUI.Controls
 
             _lastPopupUpdateTickCount = now;
 
+            Point savedScroll = CaptureScrollPosition();
+
             _isSelfFocusChurn = true;
             Popup.ShowCenteredAbove(_formatValue(Value), this, ThumbCenterX);
+
+            RestoreScrollPosition(savedScroll);
 
             if (_focusChurnClearPending)
                 return;
@@ -183,8 +188,78 @@ namespace ErikwnkWFUI.Controls
 
         private void HidePopup()
         {
-            if (_popup != null && !_popup.IsDisposed)
-                _popup.Hide();
+            if (_popup == null || _popup.IsDisposed)
+                return;
+
+            Point savedScroll = CaptureScrollPosition();
+            _popup.Hide();
+            RestoreScrollPosition(savedScroll);
+        }
+
+        // Show()/Hide() on the popup - a separate top-level window owned by
+        // whatever Form this control lives in - can disturb that owner's
+        // ActiveControl (e.g. hiding it seems to hand activation back to the
+        // owner, which then falls back to selecting the first control in tab
+        // order if nothing else claims it). If this control sits inside a
+        // ScrollableControl, .NET auto-scrolls whatever just became active
+        // into view - which, for the "first control" fallback, usually means
+        // jumping straight back to the very top. Saving/restoring the
+        // nearest scrollable ancestor's position around every Show/Hide
+        // neutralizes that regardless of the exact mechanism.
+        private Point CaptureScrollPosition()
+        {
+            ScrollableControl scrollable = FindScrollableAncestor();
+            return scrollable != null
+                ? new Point(-scrollable.AutoScrollPosition.X, -scrollable.AutoScrollPosition.Y)
+                : Point.Empty;
+        }
+
+        private void RestoreScrollPosition(Point saved)
+        {
+            ScrollableControl scrollable = FindScrollableAncestor();
+            if (scrollable != null)
+                scrollable.AutoScrollPosition = saved;
+        }
+
+        private ScrollableControl FindScrollableAncestor()
+        {
+            for (Control control = Parent; control != null; control = control.Parent)
+            {
+                ScrollableControl scrollable = control as ScrollableControl;
+                if (scrollable != null && scrollable.AutoScroll)
+                    return scrollable;
+            }
+            return null;
+        }
+
+        // Independent of the interaction popup above (drag/click/arrow-key,
+        // which lingers for PopupHideDelayMs) - hovering shows it too, but
+        // only for exactly as long as the mouse stays over the control, no
+        // lingering. Skipped while dragging: DragStarted/ValueChanged/
+        // DragEnded already own the popup for that, and the mouse can leave
+        // the control mid-drag (no Capture is set) without the drag itself
+        // ending.
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            base.OnMouseEnter(e);
+
+            if (IsDragging)
+                return;
+
+            if (_hideTimer != null)
+                _hideTimer.Stop();
+
+            ShowPopup(force: true);
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+
+            if (IsDragging)
+                return;
+
+            HidePopup();
         }
 
         protected override void OnLostFocus(EventArgs e)
